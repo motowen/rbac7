@@ -1,0 +1,607 @@
+openapi: 3.0.3
+info:
+  title: RBAC System API
+  version: 1.2.0
+  description: API for Role-Based Access Control system (Common + System Scope + Resource Scope).
+servers:
+  - url: /api/v1
+
+tags:
+  - name: Common
+    description: Shared APIs across scopes
+  - name: System
+    description: System scope management
+  - name: Resource
+    description: Resource scope management
+
+paths:
+  /user_roles/me:
+    get:
+      tags:
+        - Common
+      summary: Get current user's roles
+      description: |
+        Retrieve the roles of the current logged-in user.
+
+        - scope=system requires permission: `platform.system.read`
+        - scope=resource requires permission: `resource.{resource_type}.read`
+          (e.g. `resource.widget.read`, `resource.dashboard.read`)
+      parameters:
+        - $ref: '#/components/parameters/AuthenticationHeader'
+        - $ref: '#/components/parameters/XUserIdHeader'
+        - in: query
+          name: scope
+          schema:
+            type: string
+            enum: [system, resource]
+          required: true
+          description: Scope of the roles to retrieve
+        - in: query
+          name: resource_type
+          schema:
+            type: string
+          required: false
+          description: |
+            Required when scope=resource.
+            Example: dashboard, widget, app
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_roles:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserRole'
+        '400':
+          description: Bad request
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /permissions/check:
+    post:
+      tags:
+        - Common
+      summary: Check permission
+      description: |
+        Check if the current user has a specific permission.
+
+        - scope=system: check against namespace (optional, but recommended to be explicit)
+        - scope=resource: must include resource_type and resource_id
+      parameters:
+        - $ref: '#/components/parameters/AuthenticationHeader'
+        - $ref: '#/components/parameters/XUserIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PermissionCheckRequest'
+      responses:
+        '200':
+          description: Permission check result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  allowed:
+                    type: boolean
+        '400':
+          description: Bad request
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /user_roles:
+    get:
+      tags:
+        - Common
+      summary: Get members
+      description: |
+        Get all users with roles.
+
+        - scope=system requires permission: `platform.system.get_member`
+        - scope=resource requires permission: `resource.{resource_type}.get_member`
+          (e.g. `resource.dashboard.get_member`)
+      parameters:
+        - $ref: '#/components/parameters/AuthenticationHeader'
+        - $ref: '#/components/parameters/XUserIdHeader'
+        - in: query
+          name: scope
+          schema:
+            type: string
+            enum: [system, resource]
+          required: true
+          description: Scope of the membership query
+        - in: query
+          name: namespace
+          schema:
+            type: string
+          required: false
+          description: Required when scope=system
+        - in: query
+          name: resource_type
+          schema:
+            type: string
+          required: false
+          description: Required when scope=resource
+        - in: query
+          name: resource_id
+          schema:
+            type: string
+          required: false
+          description: Required when scope=resource
+      responses:
+        '200':
+          description: List of user roles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_roles:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserRole'
+        '400':
+          description: Bad request
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - System
+      summary: Assign or edit system user role
+      description: |
+        Assign a role to a user or edit an existing user's role in a system namespace.
+
+        Permission: `platform.system.add_member`
+      parameters:
+        - $ref: '#/components/parameters/AuthenticationHeader'
+        - $ref: '#/components/parameters/XUserIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SystemUserRole'
+      responses:
+        '200':
+          description: User role assigned/edited
+        '400':
+          description: Bad request
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags:
+        - System
+      summary: Delete system user role
+      description: |
+        Remove a user from a system namespace.
+
+        Permission: `platform.system.remove_member`
+      parameters:
+        - $ref: '#/components/parameters/AuthenticationHeader'
+        - $ref: '#/components/parameters/XUserIdHeader'
+        - in: query
+          name: scope
+          schema:
+            type: string
+            enum: [system]
+            default: system
+          required: true
+        - in: query
+          name: namespace
+          schema:
+            type: string
+          required: true
+        - in: query
+          name: user_id
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: User role removed
+        '404':
+          description: User or system not found
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /user_roles/owner:
+    post:
+      tags:
+        - System
+      summary: Assign system owner
+      description: |
+        Assign a new owner to a system namespace.
+
+        Permission: `platform.system.add_owner`
+        Role `moderator` only.
+      parameters:
+        - $ref: '#/components/parameters/AuthenticationHeader'
+        - $ref: '#/components/parameters/XUserIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SystemOwnerUpsertRequest'
+      responses:
+        '200':
+          description: Owner assigned successfully
+        '400':
+          description: Bad request
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags:
+        - System
+      summary: Transfer system owner
+      description: |
+        Transfer ownership. The new user becomes owner, the original owner becomes admin.
+
+        Permission: `platform.system.transfer_owner`
+      parameters:
+        - $ref: '#/components/parameters/AuthenticationHeader'
+        - $ref: '#/components/parameters/XUserIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SystemOwnerUpsertRequest'
+      responses:
+        '200':
+          description: Owner transferred successfully
+        '400':
+          description: Bad request
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /user_roles/resources/owner:
+    post:
+      tags:
+        - Resource
+      summary: Assign resource owner
+      description: |
+        Assign a new owner to a resource.
+
+        Permission: `resource.{resource_type}.add_owner`
+        Example: `resource.dashboard.add_owner`
+      parameters:
+        - $ref: '#/components/parameters/AuthenticationHeader'
+        - $ref: '#/components/parameters/XUserIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResourceOwnerUpsertRequest'
+      responses:
+        '200':
+          description: Resource owner assigned successfully
+        '400':
+          description: Bad request
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags:
+        - Resource
+      summary: Transfer resource owner
+      description: |
+        Transfer resource ownership. The new user becomes owner, the original owner becomes admin.
+
+        Permission: `resource.{resource_type}.transfer_owner`
+        Example: `resource.dashboard.transfer_owner`
+      parameters:
+        - $ref: '#/components/parameters/AuthenticationHeader'
+        - $ref: '#/components/parameters/XUserIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResourceOwnerUpsertRequest'
+      responses:
+        '200':
+          description: Resource owner transferred successfully
+        '400':
+          description: Bad request
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /user_roles/resources:
+    post:
+      tags:
+        - Resource
+      summary: Assign or edit resource user role
+      description: |
+        Assign a role to a user or edit an existing user's role on a resource.
+
+        Permission: `resource.{resource_type}.add_member`
+        Example: `resource.dashboard.add_member`
+      parameters:
+        - $ref: '#/components/parameters/AuthenticationHeader'
+        - $ref: '#/components/parameters/XUserIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResourceUserRole'
+      responses:
+        '200':
+          description: Resource user role assigned/edited
+        '400':
+          description: Bad request
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags:
+        - Resource
+      summary: Delete resource user role
+      description: |
+        Remove a user's role from a resource.
+
+        Permission: `resource.{resource_type}.remove_member`
+        Example: `resource.dashboard.remove_member`
+      parameters:
+        - $ref: '#/components/parameters/AuthenticationHeader'
+        - $ref: '#/components/parameters/XUserIdHeader'
+        - in: query
+          name: scope
+          schema:
+            type: string
+            enum: [resource]
+            default: resource
+          required: true
+        - in: query
+          name: resource_type
+          schema:
+            type: string
+          required: true
+        - in: query
+          name: resource_id
+          schema:
+            type: string
+          required: true
+        - in: query
+          name: user_id
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: Resource user role removed
+        '404':
+          description: User or resource not found
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  parameters:
+    AuthenticationHeader:
+      name: authentication
+      in: header
+      required: true
+      schema:
+        type: string
+      description: Authentication token (e.g. Bearer token). Header name per spec `authentication`.
+    XUserIdHeader:
+      name: x-user-id
+      in: header
+      required: false
+      schema:
+        type: string
+      description: Test-only header to override current user id.
+
+  responses:
+    Unauthorized:
+      description: Unauthorized (missing/invalid authentication)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Forbidden (permission denied)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalServerError:
+      description: Internal server error (DB read/write failure or unexpected error)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: forbidden
+            message:
+              type: string
+              example: Permission denied
+            request_id:
+              type: string
+              example: req_123456
+      required: [error]
+
+    UserRole:
+      description: |
+        Union schema of SystemUserRole and ResourceUserRole.
+        Use `scope` to distinguish.
+      oneOf:
+        - $ref: '#/components/schemas/SystemUserRole'
+        - $ref: '#/components/schemas/ResourceUserRole'
+
+    PermissionCheckRequest:
+      type: object
+      required: [permission, scope]
+      properties:
+        permission:
+          type: string
+          example: platform.system.read
+        scope:
+          type: string
+          enum: [system, resource]
+          example: system
+        namespace:
+          type: string
+          description: Recommended when scope=system
+          example: namespace_1
+        resource_type:
+          type: string
+          description: Required when scope=resource
+          example: dashboard
+        resource_id:
+          type: string
+          description: Required when scope=resource
+          example: r_9876
+
+    SystemUserRole:
+      type: object
+      required: [user_id, user_type, role, scope, namespace]
+      properties:
+        user_id:
+          type: string
+          description: Unique ID of the user
+          example: u_1
+        user_type:
+          type: string
+          description: Type of the user (e.g., member, org)
+          example: member
+        role:
+          type: string
+          enum: [moderator, owner, admin, dev_user, viewer]
+          example: admin
+        scope:
+          type: string
+          enum: [system]
+          example: system
+        namespace:
+          type: string
+          description: System namespace key
+          example: namespace_1
+
+    SystemOwnerUpsertRequest:
+      type: object
+      required: [user_id, namespace]
+      properties:
+        user_id:
+          type: string
+          example: u_1
+        role:
+          type: string
+          enum: [owner]
+          default: owner
+        namespace:
+          type: string
+          example: namespace_1
+
+    ResourceUserRole:
+      type: object
+      required: [user_id, user_type, role, scope, resource_type, resource_id]
+      properties:
+        user_id:
+          type: string
+          description: Unique ID of the user
+          example: u_1
+        users:
+          type: string
+          description: Deprecated compatibility field (use user_id instead)
+          example: u_1
+        user_type:
+          type: string
+          description: Type of the user (e.g., member, org)
+          example: member
+        role:
+          type: string
+          enum: [owner, admin, editor, viewer]
+          example: editor
+        scope:
+          type: string
+          enum: [resource]
+          example: resource
+        resource_type:
+          type: string
+          description: Type of the resource
+          example: dashboard
+        resource_id:
+          type: string
+          description: ID of the resource
+          example: r_9876
+
+    ResourceOwnerUpsertRequest:
+      type: object
+      required: [user_id, resource_type, resource_id]
+      properties:
+        user_id:
+          type: string
+          example: u_1
+        role:
+          type: string
+          enum: [owner]
+          default: owner
+        resource_type:
+          type: string
+          example: dashboard
+        resource_id:
+          type: string
+          example: r_9876
