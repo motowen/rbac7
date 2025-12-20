@@ -82,3 +82,47 @@ func (h *SystemHandler) PutSystemOwner(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, map[string]string{"status": "success"})
 }
+
+// PostUserRoles handles POST /user_roles (System Scope)
+func (h *SystemHandler) PostUserRoles(c echo.Context) error {
+	callerID, err := h.extractCallerID(c)
+	if err != nil {
+		code, body := httpError(err)
+		return c.JSON(code, body)
+	}
+
+	var req model.SystemUserRole
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "bad_request", Message: "Invalid body"},
+		})
+	}
+
+	err = h.Service.AssignSystemUserRole(c.Request().Context(), callerID, req)
+	if err != nil {
+		code, body := httpError(err)
+		return c.JSON(code, body)
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"status": "success"})
+}
+
+// DeleteUserRoles handles DELETE /user_roles (System Scope)
+func (h *SystemHandler) DeleteUserRoles(c echo.Context) error {
+	callerID, err := h.extractCallerID(c)
+	if err != nil {
+		code, body := httpError(err)
+		return c.JSON(code, body)
+	}
+
+	namespace := c.QueryParam("namespace")
+	userID := c.QueryParam("user_id")
+
+	err = h.Service.DeleteSystemUserRole(c.Request().Context(), callerID, namespace, userID)
+	if err != nil {
+		code, body := httpError(err)
+		return c.JSON(code, body)
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"status": "success"})
+}

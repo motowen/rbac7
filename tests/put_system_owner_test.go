@@ -39,8 +39,13 @@ func (m *PutOwnerMockRepo) CreateUserRole(ctx context.Context, role *model.UserR
 	return args.Error(0)
 }
 
-func (m *PutOwnerMockRepo) HasSystemRole(ctx context.Context, userID, role string) (bool, error) {
-	args := m.Called(ctx, userID, role)
+func (m *PutOwnerMockRepo) HasSystemRole(ctx context.Context, userID, namespace, role string) (bool, error) {
+	args := m.Called(ctx, userID, namespace, role)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *PutOwnerMockRepo) HasAnySystemRole(ctx context.Context, userID, namespace string, roles []string) (bool, error) {
+	args := m.Called(ctx, userID, namespace, roles)
 	return args.Bool(0), args.Error(1)
 }
 
@@ -54,11 +59,19 @@ func (m *PutOwnerMockRepo) TransferSystemOwner(ctx context.Context, namespace, o
 	return args.Error(0)
 }
 
-func TestPutSystemOwner(t *testing.T) {
-	// Setup
-	e := SetupServer()
+func (m *PutOwnerMockRepo) UpsertUserRole(ctx context.Context, role *model.UserRole) error {
+	return nil
+}
+func (m *PutOwnerMockRepo) DeleteUserRole(ctx context.Context, namespace, userID, scope string) error {
+	return nil
+}
+func (m *PutOwnerMockRepo) CountSystemOwners(ctx context.Context, namespace string) (int64, error) {
+	return 0, nil
+}
 
+func TestPutSystemOwner(t *testing.T) {
 	t.Run("transfer system owner success and return 200", func(t *testing.T) {
+		e := SetupServer()
 		mockRepo := new(PutOwnerMockRepo)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
@@ -83,6 +96,7 @@ func TestPutSystemOwner(t *testing.T) {
 	})
 
 	t.Run("transfer system owner old owner becomes admin (implied) and return 200", func(t *testing.T) {
+		e := SetupServer()
 		mockRepo := new(PutOwnerMockRepo)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
@@ -100,6 +114,7 @@ func TestPutSystemOwner(t *testing.T) {
 	})
 
 	t.Run("transfer system owner missing new user_id and return 400", func(t *testing.T) {
+		e := SetupServer()
 		mockRepo := new(PutOwnerMockRepo)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
@@ -113,6 +128,7 @@ func TestPutSystemOwner(t *testing.T) {
 	})
 
 	t.Run("transfer system owner to same user_id and return 400", func(t *testing.T) {
+		e := SetupServer()
 		mockRepo := new(PutOwnerMockRepo)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
@@ -126,6 +142,7 @@ func TestPutSystemOwner(t *testing.T) {
 	})
 
 	t.Run("transfer system owner unauthorized and return 401", func(t *testing.T) {
+		e := SetupServer()
 		mockRepo := new(PutOwnerMockRepo)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
@@ -137,6 +154,7 @@ func TestPutSystemOwner(t *testing.T) {
 	})
 
 	t.Run("transfer system owner forbidden (caller not current owner) and return 403", func(t *testing.T) {
+		e := SetupServer()
 		mockRepo := new(PutOwnerMockRepo)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
@@ -153,11 +171,7 @@ func TestPutSystemOwner(t *testing.T) {
 	})
 
 	t.Run("transfer system owner target user not found and return 404", func(t *testing.T) {
-		// As reasoned before, if GetSystemOwner returns nil (no owner/system),
-		// the service returns generic error. Service doesn't explicitly return ErrNotFound.
-		// Let's modify service to return error compatible with 500 for now,
-		// OR we mocked GetSystemOwner returning nil.
-
+		e := SetupServer()
 		mockRepo := new(PutOwnerMockRepo)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
@@ -173,6 +187,7 @@ func TestPutSystemOwner(t *testing.T) {
 	})
 
 	t.Run("transfer system owner internal error and return 500", func(t *testing.T) {
+		e := SetupServer()
 		mockRepo := new(PutOwnerMockRepo)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)

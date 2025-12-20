@@ -5,6 +5,8 @@ import (
 	"errors"
 	"rbac7/internal/rbac/model"
 	"rbac7/internal/rbac/repository"
+
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var (
@@ -18,6 +20,8 @@ var (
 type RBACService interface {
 	AssignSystemOwner(ctx context.Context, callerID string, req model.SystemOwnerUpsertRequest) error
 	TransferSystemOwner(ctx context.Context, callerID string, req model.SystemOwnerUpsertRequest) error
+	AssignSystemUserRole(ctx context.Context, callerID string, req model.SystemUserRole) error
+	DeleteSystemUserRole(ctx context.Context, callerID, namespace, userID string) error
 }
 
 type Service struct {
@@ -34,8 +38,8 @@ func (s *Service) AssignSystemOwner(ctx context.Context, callerID string, req mo
 		return err
 	}
 
-	// 2. Check permissions: Caller must be a moderator
-	isModerator, err := s.Repo.HasSystemRole(ctx, callerID, model.RoleSystemModerator)
+	// 2. Check permissions: Caller must be a moderator (Global, no namespace needed)
+	isModerator, err := s.Repo.HasSystemRole(ctx, callerID, "", model.RoleSystemModerator)
 	if err != nil {
 		return err
 	}
@@ -74,11 +78,6 @@ func (s *Service) TransferSystemOwner(ctx context.Context, callerID string, req 
 	}
 
 	// 2. Check permissions: Caller must be OWNER of this namespace
-	// Not just any owner, but owner of THIS system
-	// GetSystemOwner returns the owner of the namespace.
-	// Easier: Check DB via HasSystemRole logic but specifically for this namespace + owner role
-	// Actually repo.GetSystemOwner(ctx, req.Namespace) returns the user role.
-
 	currentOwner, err := s.Repo.GetSystemOwner(ctx, req.Namespace)
 	if err != nil {
 		return err
@@ -103,15 +102,111 @@ func (s *Service) TransferSystemOwner(ctx context.Context, callerID string, req 
 	return nil
 }
 
-func (s *Service) validateRequest(callerID string, req model.SystemOwnerUpsertRequest) error {
-	if callerID == "" {
-		return ErrUnauthorized
-	}
-	if req.Namespace == "" {
-		return ErrInvalidNamespace
+func (s *Service) AssignSystemUserRole(ctx context.Context, callerID string, req model.SystemUserRole) error {
+	if err := s.validateCallerAndNamespace(callerID, req.Namespace); err != nil {
+		return err
 	}
 	if req.UserID == "" {
 		return ErrBadRequest
+	}
+	if req.Role == model.RoleSystemOwner {
+		return ErrForbidden
+	}
+	if req.Role != "admin" && req.Role != "viewer" && req.Role != "editor" && req.Role != "moderator" {
+		return ErrBadRequest
+	}
+
+	canAssign, err := s.Repo.HasAnySystemRole(ctx, callerID, req.Namespace, []string{model.RoleSystemOwner, model.RoleSystemAdmin})
+	if err != nil {
+		return err
+	}
+	if !canAssign {
+		return ErrForbidden
+	}
+
+	currentOwner, err := s.Repo.GetSystemOwner(ctx, req.Namespace)
+	if err != nil {
+		return err
+	}
+	if currentOwner != nil && currentOwner.UserID == req.UserID {
+		count, err := s.Repo.CountSystemOwners(ctx, req.Namespace)
+		if err != nil {
+			return err
+		}
+		if count <= 1 {
+			return ErrForbidden
+		}
+	}
+
+	role := &model.UserRole{
+		UserID:    req.UserID,
+		Role:      req.Role,
+		Scope:     model.ScopeSystem,
+		Namespace: req.Namespace,
+		UserType:  req.UserType,
+	}
+	if role.UserType == "" {
+		role.UserType = model.UserTypeMember
+	}
+	return s.Repo.UpsertUserRole(ctx, role)
+}
+
+func (s *Service) DeleteSystemUserRole(ctx context.Context, callerID, namespace, userID string) error {
+	if err := s.validateCallerAndNamespace(callerID, namespace); err != nil {
+		return err
+	}
+	if userID == "" {
+		return ErrBadRequest
+	}
+
+	canDelete, err := s.Repo.HasAnySystemRole(ctx, callerID, namespace, []string{model.RoleSystemOwner, model.RoleSystemAdmin})
+	if err != nil {
+		return err
+	}
+	if !canDelete {
+		return ErrForbidden
+	}
+
+	currentOwner, err := s.Repo.GetSystemOwner(ctx, namespace)
+	if err != nil {
+		return err
+	}
+	if currentOwner != nil && currentOwner.UserID == userID {
+		count, err := s.Repo.CountSystemOwners(ctx, namespace)
+		if err != nil {
+			return err
+		}
+		if count <= 1 {
+			return ErrForbidden
+		}
+	}
+
+	err = s.Repo.DeleteUserRole(ctx, namespace, userID, model.ScopeSystem)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
+func (s *Service) validateRequest(callerID string, req model.SystemOwnerUpsertRequest) error {
+	if err := s.validateCallerAndNamespace(callerID, req.Namespace); err != nil {
+		return err
+	}
+	if req.UserID == "" {
+		return ErrBadRequest
+	}
+	return nil
+}
+
+func (s *Service) validateCallerAndNamespace(callerID, namespace string) error {
+	if callerID == "" {
+		return ErrUnauthorized
+	}
+	if namespace == "" {
+		return ErrInvalidNamespace
 	}
 	return nil
 }
