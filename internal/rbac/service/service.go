@@ -17,6 +17,7 @@ var (
 
 type RBACService interface {
 	AssignSystemOwner(ctx context.Context, callerID string, req model.SystemOwnerUpsertRequest) error
+	TransferSystemOwner(ctx context.Context, callerID string, req model.SystemOwnerUpsertRequest) error
 }
 
 type Service struct {
@@ -28,17 +29,9 @@ func NewService(repo repository.RBACRepository) *Service {
 }
 
 func (s *Service) AssignSystemOwner(ctx context.Context, callerID string, req model.SystemOwnerUpsertRequest) error {
-	// 0. Validate Caller
-	if callerID == "" {
-		return ErrUnauthorized
-	}
-
-	// 1. Validate Input
-	if req.Namespace == "" {
-		return ErrInvalidNamespace
-	}
-	if req.UserID == "" {
-		return ErrBadRequest
+	// 0. Validate Caller & Input
+	if err := s.validateRequest(callerID, req); err != nil {
+		return err
 	}
 
 	// 2. Check permissions: Caller must be a moderator
@@ -67,5 +60,58 @@ func (s *Service) AssignSystemOwner(ctx context.Context, callerID string, req mo
 		return err
 	}
 
+	return nil
+}
+
+func (s *Service) TransferSystemOwner(ctx context.Context, callerID string, req model.SystemOwnerUpsertRequest) error {
+	// 0. Validate Caller & Input
+	if err := s.validateRequest(callerID, req); err != nil {
+		return err
+	}
+	// Cannot transfer to self
+	if req.UserID == callerID {
+		return ErrBadRequest
+	}
+
+	// 2. Check permissions: Caller must be OWNER of this namespace
+	// Not just any owner, but owner of THIS system
+	// GetSystemOwner returns the owner of the namespace.
+	// Easier: Check DB via HasSystemRole logic but specifically for this namespace + owner role
+	// Actually repo.GetSystemOwner(ctx, req.Namespace) returns the user role.
+
+	currentOwner, err := s.Repo.GetSystemOwner(ctx, req.Namespace)
+	if err != nil {
+		return err
+	}
+	if currentOwner == nil {
+		return errors.New("system not found or has no owner")
+	}
+
+	if currentOwner.UserID != callerID {
+		// Caller is not the owner
+		return ErrForbidden
+	}
+
+	// 3. Perform Transfer (Transaction)
+	// New owner is req.UserID
+	err = s.Repo.TransferSystemOwner(ctx, req.Namespace, callerID, req.UserID)
+	if err != nil {
+		// Map errors if needed, or return generic
+		return err
+	}
+
+	return nil
+}
+
+func (s *Service) validateRequest(callerID string, req model.SystemOwnerUpsertRequest) error {
+	if callerID == "" {
+		return ErrUnauthorized
+	}
+	if req.Namespace == "" {
+		return ErrInvalidNamespace
+	}
+	if req.UserID == "" {
+		return ErrBadRequest
+	}
 	return nil
 }

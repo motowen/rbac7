@@ -21,20 +21,81 @@ type RBACRepository interface {
 	HasSystemRole(ctx context.Context, userID, role string) (bool, error)
 	// Initialize Indexes
 	EnsureIndexes(ctx context.Context) error
+	// Transfer ownership safely using transaction
+	TransferSystemOwner(ctx context.Context, namespace, oldOwnerID, newOwnerID string) error
 }
 
 type MongoRepository struct {
 	Collection *mongo.Collection
+	Client     *mongo.Client // Added Client for transactions
 }
 
-func NewMongoRepository(db *mongo.Database) *MongoRepository {
+func NewMongoRepository(db *mongo.Database, collectionName string) *MongoRepository {
 	repo := &MongoRepository{
-		Collection: db.Collection("user_roles"),
+		Collection: db.Collection(collectionName),
+		Client:     db.Client(),
 	}
-	// Best practice: Initialize indexes at startup, but for now we can do it here or let main call it.
-	// Since main calls NewMongoRepository, we'll let main call EnsureIndexes or do it here inside (async or sync).
-	// To keep New simple, we won't blocking call it here, but we will impl the method.
 	return repo
+}
+
+// ... EnsureIndexes ...
+
+// ... GetSystemOwner ...
+
+// ... CreateUserRole ...
+
+// ... HasSystemRole ...
+
+func (r *MongoRepository) TransferSystemOwner(ctx context.Context, namespace, oldOwnerID, newOwnerID string) error {
+	session, err := r.Client.StartSession()
+	if err != nil {
+		return err
+	}
+	defer session.EndSession(ctx)
+
+	callback := func(sessCtx mongo.SessionContext) (interface{}, error) {
+		// 1. Demote Old Owner to Admin
+		filterOld := bson.M{
+			"user_id":   oldOwnerID,
+			"scope":     model.ScopeSystem,
+			"namespace": namespace,
+			"role":      model.RoleSystemOwner,
+		}
+		updateOld := bson.M{"$set": bson.M{"role": model.RoleSystemAdmin}}
+
+		resOld, err := r.Collection.UpdateOne(sessCtx, filterOld, updateOld)
+		if err != nil {
+			return nil, err
+		}
+		if resOld.MatchedCount == 0 {
+			// Could happen if race condition or old owner removed
+			return nil, errors.New("current owner not found or role changed")
+		}
+
+		// 2. Promote New Owner (Upsert to handle if they are already a member or not)
+		filterNew := bson.M{
+			"user_id":   newOwnerID,
+			"scope":     model.ScopeSystem,
+			"namespace": namespace,
+		}
+		updateNew := bson.M{
+			"$set": bson.M{
+				"role":      model.RoleSystemOwner,
+				"user_type": model.UserTypeMember, // Ensure user type
+			},
+		}
+		opts := options.Update().SetUpsert(true)
+
+		_, err = r.Collection.UpdateOne(sessCtx, filterNew, updateNew, opts)
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, nil
+	}
+
+	_, err = session.WithTransaction(ctx, callback)
+	return err
 }
 
 func (r *MongoRepository) EnsureIndexes(ctx context.Context) error {
@@ -63,7 +124,10 @@ func (r *MongoRepository) EnsureIndexes(ctx context.Context) error {
 		Options: options.Index().
 			SetUnique(true).
 			SetName("unique_system_owner").
-			SetPartialFilterExpression(bson.M{"role": model.RoleSystemOwner}),
+			SetPartialFilterExpression(bson.M{
+				"scope": model.ScopeSystem,
+				"role":  model.RoleSystemOwner,
+			}),
 	}
 
 	_, err := r.Collection.Indexes().CreateMany(ctx, []mongo.IndexModel{idx1, idx2})

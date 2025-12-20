@@ -12,4 +12,5 @@ func RegisterRoutes(e *echo.Echo, h *handler.SystemHandler) {
 
 	// System Scope Routes
 	v1.POST("/user_roles/owner", h.PostSystemOwner)
+	v1.PUT("/user_roles/owner", h.PutSystemOwner)
 }

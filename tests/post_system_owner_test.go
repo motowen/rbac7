@@ -45,6 +45,11 @@ func (m *MockRepo) EnsureIndexes(ctx context.Context) error {
 	return args.Error(0)
 }
 
+func (m *MockRepo) TransferSystemOwner(ctx context.Context, namespace, oldOwnerID, newOwnerID string) error {
+	args := m.Called(ctx, namespace, oldOwnerID, newOwnerID)
+	return args.Error(0)
+}
+
 // --- Test Implementation ---
 
 func TestPostSystemOwner(t *testing.T) {

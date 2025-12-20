@@ -5,9 +5,10 @@ import (
 )
 
 type Config struct {
-	MongoURI string
-	Port     string
-	DBName   string
+	MongoURI            string
+	Port                string
+	DBName              string
+	UserRolesCollection string
 }
 
 func LoadConfig() *Config {
@@ -22,8 +23,16 @@ func LoadConfig() *Config {
 	}
 
 	return &Config{
-		MongoURI: mongoURI,
-		Port:     port,
-		DBName:   "rbac_db", // Could be env var too
+		MongoURI:            mongoURI,
+		Port:                port,
+		DBName:              "rbac_db", // Could be env var too
+		UserRolesCollection: getEnv("COLLECTION_USER_ROLES", "user_roles"),
 	}
+}
+
+func getEnv(key, fallback string) string {
+	if value, exists := os.LookupEnv(key); exists {
+		return value
+	}
+	return fallback
 }

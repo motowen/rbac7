@@ -14,5 +14,6 @@ func TestPostSystemUserRole(t *testing.T) {
 	t.Run("assign system role unauthorized and return 401", func(t *testing.T) {})
 	t.Run("assign system role forbidden (caller not owner/admin) and return 403", func(t *testing.T) {})
 	t.Run("assign system role forbidden (admin trying to assign owner) and return 403", func(t *testing.T) {})
+	t.Run("edit system role forbidden (cannot downgrade last owner) and return 403", func(t *testing.T) {})
 	t.Run("assign system role internal error and return 500", func(t *testing.T) {})
 }

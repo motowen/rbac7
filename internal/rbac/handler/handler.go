@@ -16,12 +16,20 @@ func NewSystemHandler(s service.RBACService) *SystemHandler {
 	return &SystemHandler{Service: s}
 }
 
+func (h *SystemHandler) extractCallerID(c echo.Context) (string, error) {
+	callerID := c.Request().Header.Get("x-user-id")
+	if callerID == "" {
+		return "", service.ErrUnauthorized
+	}
+	return callerID, nil
+}
+
 // PostSystemOwner handles POST /user_roles/owner
 func (h *SystemHandler) PostSystemOwner(c echo.Context) error {
 	// 1. Auth Headers
-	callerID := c.Request().Header.Get("x-user-id")
-	if callerID == "" {
-		code, body := httpError(service.ErrUnauthorized)
+	callerID, err := h.extractCallerID(c)
+	if err != nil {
+		code, body := httpError(err)
 		return c.JSON(code, body)
 	}
 
@@ -39,7 +47,34 @@ func (h *SystemHandler) PostSystemOwner(c echo.Context) error {
 		})
 	}
 
-	err := h.Service.AssignSystemOwner(c.Request().Context(), callerID, req)
+	err = h.Service.AssignSystemOwner(c.Request().Context(), callerID, req)
+	if err != nil {
+		code, body := httpError(err)
+		return c.JSON(code, body)
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"status": "success"})
+}
+
+// PutSystemOwner handles PUT /user_roles/owner (Transfer)
+func (h *SystemHandler) PutSystemOwner(c echo.Context) error {
+	// 1. Auth
+	callerID, err := h.extractCallerID(c)
+	if err != nil {
+		code, body := httpError(err)
+		return c.JSON(code, body)
+	}
+
+	// 2. Bind
+	var req model.SystemOwnerUpsertRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "bad_request", Message: "Invalid body"},
+		})
+	}
+
+	// 3. Call Service
+	err = h.Service.TransferSystemOwner(c.Request().Context(), callerID, req)
 	if err != nil {
 		code, body := httpError(err)
 		return c.JSON(code, body)
