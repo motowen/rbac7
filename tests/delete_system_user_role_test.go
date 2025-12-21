@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"rbac7/internal/rbac/handler"
@@ -14,46 +13,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type DeleteMockRepo struct {
-	mock.Mock
-}
-
-func (m *DeleteMockRepo) GetSystemOwner(ctx context.Context, namespace string) (*model.UserRole, error) {
-	args := m.Called(ctx, namespace)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*model.UserRole), args.Error(1)
-}
-func (m *DeleteMockRepo) DeleteUserRole(ctx context.Context, ns, u, s, d string) error {
-	return m.Called(ctx, ns, u, s, d).Error(0)
-}
-func (m *DeleteMockRepo) HasSystemRole(ctx context.Context, userID, namespace, role string) (bool, error) {
-	args := m.Called(ctx, userID, namespace, role)
-	return args.Bool(0), args.Error(1)
-}
-func (m *DeleteMockRepo) HasAnySystemRole(ctx context.Context, userID, namespace string, roles []string) (bool, error) {
-	args := m.Called(ctx, userID, namespace, roles)
-	return args.Bool(0), args.Error(1)
-}
-
-func (m *DeleteMockRepo) FindUserRoles(ctx context.Context, filter model.UserRoleFilter) ([]*model.UserRole, error) {
-	return nil, nil
-}
-
-func (m *DeleteMockRepo) CountSystemOwners(ctx context.Context, namespace string) (int64, error) {
-	args := m.Called(ctx, namespace)
-	return int64(args.Int(0)), args.Error(1)
-}
-func (m *DeleteMockRepo) UpsertUserRole(ctx context.Context, role *model.UserRole) error { return nil }
-func (m *DeleteMockRepo) CreateUserRole(ctx context.Context, role *model.UserRole) error { return nil }
-func (m *DeleteMockRepo) EnsureIndexes(ctx context.Context) error                        { return nil }
-func (m *DeleteMockRepo) TransferSystemOwner(ctx context.Context, ns, o, n string) error { return nil }
+// DeleteMockRepo usage is replaced by shared MockRBACRepository in mock_repo.go
 
 func TestDeleteSystemUserRole(t *testing.T) {
 	t.Run("remove system member success and return 200", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(DeleteMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.DELETE("/user_roles", h.DeleteUserRoles)
@@ -68,7 +33,7 @@ func TestDeleteSystemUserRole(t *testing.T) {
 
 	t.Run("remove system member missing parameters and return 400", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(DeleteMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.DELETE("/user_roles_bad", h.DeleteUserRoles)
@@ -80,7 +45,7 @@ func TestDeleteSystemUserRole(t *testing.T) {
 
 	t.Run("remove system member unauthorized and return 401", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(DeleteMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.DELETE("/user_roles_401", h.DeleteUserRoles)
@@ -91,7 +56,7 @@ func TestDeleteSystemUserRole(t *testing.T) {
 
 	t.Run("remove system member forbidden (cannot delete last owner) and return 403", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(DeleteMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.DELETE("/user_roles_own", h.DeleteUserRoles)
@@ -100,7 +65,7 @@ func TestDeleteSystemUserRole(t *testing.T) {
 
 		ownerRole := &model.UserRole{UserID: "u_target", Role: model.RoleSystemOwner}
 		mockRepo.On("GetSystemOwner", mock.Anything, "NS_1").Return(ownerRole, nil)
-		mockRepo.On("CountSystemOwners", mock.Anything, "NS_1").Return(1, nil)
+		mockRepo.On("CountSystemOwners", mock.Anything, "NS_1").Return(int64(1), nil)
 
 		rec := PerformRequest(e, http.MethodDelete, "/user_roles_own?namespace=ns_1&user_id=u_target", nil, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
 		assert.Equal(t, http.StatusForbidden, rec.Code)
@@ -108,7 +73,7 @@ func TestDeleteSystemUserRole(t *testing.T) {
 
 	t.Run("remove system member forbidden (missing delete permission) and return 403", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(DeleteMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.DELETE("/user_roles_403", h.DeleteUserRoles)
@@ -121,7 +86,7 @@ func TestDeleteSystemUserRole(t *testing.T) {
 
 	t.Run("remove system member forbidden should not reveal existence and return 403 even if target not found", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(DeleteMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.DELETE("/user_roles_403_reveal", h.DeleteUserRoles)
@@ -138,7 +103,7 @@ func TestDeleteSystemUserRole(t *testing.T) {
 
 	t.Run("remove system member twice should be idempotent and return 200", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(DeleteMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.DELETE("/user_roles_idempotent", h.DeleteUserRoles)
@@ -154,7 +119,7 @@ func TestDeleteSystemUserRole(t *testing.T) {
 
 	t.Run("remove system member internal error and return 500", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(DeleteMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.DELETE("/user_roles_500", h.DeleteUserRoles)

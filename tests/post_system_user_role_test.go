@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"rbac7/internal/rbac/handler"
@@ -13,52 +12,12 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-type UserRoleMockRepo struct {
-	mock.Mock
-}
-
-func (m *UserRoleMockRepo) GetSystemOwner(ctx context.Context, namespace string) (*model.UserRole, error) {
-	args := m.Called(ctx, namespace)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*model.UserRole), args.Error(1)
-}
-func (m *UserRoleMockRepo) UpsertUserRole(ctx context.Context, role *model.UserRole) error {
-	return m.Called(ctx, role).Error(0)
-}
-func (m *UserRoleMockRepo) HasSystemRole(ctx context.Context, userID, namespace, role string) (bool, error) {
-	args := m.Called(ctx, userID, namespace, role)
-	return args.Bool(0), args.Error(1)
-}
-func (m *UserRoleMockRepo) HasAnySystemRole(ctx context.Context, userID, namespace string, roles []string) (bool, error) {
-	args := m.Called(ctx, userID, namespace, roles)
-	return args.Bool(0), args.Error(1)
-}
-
-func (m *UserRoleMockRepo) FindUserRoles(ctx context.Context, filter model.UserRoleFilter) ([]*model.UserRole, error) {
-	return nil, nil
-}
-
-func (m *UserRoleMockRepo) CountSystemOwners(ctx context.Context, namespace string) (int64, error) {
-	args := m.Called(ctx, namespace)
-	return int64(args.Int(0)), args.Error(1)
-}
-
-// Unused but required by interface
-func (m *UserRoleMockRepo) CreateUserRole(ctx context.Context, role *model.UserRole) error {
-	return nil
-}
-func (m *UserRoleMockRepo) EnsureIndexes(ctx context.Context) error { return nil }
-func (m *UserRoleMockRepo) TransferSystemOwner(ctx context.Context, ns, o, n string) error {
-	return nil
-}
-func (m *UserRoleMockRepo) DeleteUserRole(ctx context.Context, ns, u, s, d string) error { return nil }
+// UserRoleMockRepo usage is replaced by shared MockRBACRepository in mock_repo.go
 
 func TestPostSystemUserRole(t *testing.T) {
 	t.Run("assign system admin role success and return 200", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(UserRoleMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.POST("/user_roles", h.PostUserRoles)
@@ -76,7 +35,7 @@ func TestPostSystemUserRole(t *testing.T) {
 
 	t.Run("assign system viewer role success and return 200", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(UserRoleMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.POST("/user_roles_viewer", h.PostUserRoles)
@@ -94,7 +53,7 @@ func TestPostSystemUserRole(t *testing.T) {
 
 	t.Run("edit existing system user role success and return 200", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(UserRoleMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.POST("/user_roles_edit", h.PostUserRoles)
@@ -112,7 +71,7 @@ func TestPostSystemUserRole(t *testing.T) {
 
 	t.Run("edit system role forbidden (cannot downgrade last owner) and return 403", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(UserRoleMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.POST("/user_roles_downgrade", h.PostUserRoles)
@@ -121,7 +80,7 @@ func TestPostSystemUserRole(t *testing.T) {
 
 		currentOwner := &model.UserRole{UserID: "owner_1", Role: model.RoleSystemOwner}
 		mockRepo.On("GetSystemOwner", mock.Anything, "NS_1").Return(currentOwner, nil)
-		mockRepo.On("CountSystemOwners", mock.Anything, "NS_1").Return(1, nil)
+		mockRepo.On("CountSystemOwners", mock.Anything, "NS_1").Return(int64(1), nil)
 
 		reqBody := model.SystemUserRole{UserID: "owner_1", Role: "admin", Namespace: "ns_1"}
 		rec := PerformRequest(e, http.MethodPost, "/user_roles_downgrade", reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
@@ -130,7 +89,7 @@ func TestPostSystemUserRole(t *testing.T) {
 
 	t.Run("assign system role forbidden (admin trying to assign owner) and return 403", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(UserRoleMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.POST("/user_roles_bad_role", h.PostUserRoles)
@@ -142,7 +101,7 @@ func TestPostSystemUserRole(t *testing.T) {
 
 	t.Run("assign system role invalid role value and return 400", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(UserRoleMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.POST("/user_roles_invalid", h.PostUserRoles)
@@ -154,7 +113,7 @@ func TestPostSystemUserRole(t *testing.T) {
 
 	t.Run("assign system role forbidden (caller not owner/admin) and return 403", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(UserRoleMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.POST("/user_roles_forbidden_caller", h.PostUserRoles)
@@ -168,7 +127,7 @@ func TestPostSystemUserRole(t *testing.T) {
 
 	t.Run("assign system role missing namespace and return 400", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(UserRoleMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.POST("/user_roles_missing_ns", h.PostUserRoles)
@@ -180,7 +139,7 @@ func TestPostSystemUserRole(t *testing.T) {
 
 	t.Run("assign system role missing user_id and return 400", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(UserRoleMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.POST("/user_roles_missing_uid", h.PostUserRoles)
@@ -192,7 +151,7 @@ func TestPostSystemUserRole(t *testing.T) {
 
 	t.Run("assign system role unauthorized and return 401", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(UserRoleMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.POST("/user_roles_401", h.PostUserRoles)
@@ -205,7 +164,7 @@ func TestPostSystemUserRole(t *testing.T) {
 
 	t.Run("assign system role internal error and return 500", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(UserRoleMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.POST("/user_roles_500", h.PostUserRoles)
@@ -220,7 +179,7 @@ func TestPostSystemUserRole(t *testing.T) {
 	})
 	t.Run("assign system role auth check db error and return 500", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(UserRoleMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.POST("/user_roles_auth_error", h.PostUserRoles)

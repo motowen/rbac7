@@ -27,7 +27,7 @@ type RBACRepository interface {
 	// Initialize Indexes
 	EnsureIndexes(ctx context.Context) error
 	// Transfer ownership safely using transaction
-	TransferSystemOwner(ctx context.Context, namespace, oldOwnerID, newOwnerID string) error
+	TransferSystemOwner(ctx context.Context, namespace, oldOwnerID, newOwnerID, updatedBy string) error
 	// Upsert a user role (Create or Update)
 	UpsertUserRole(ctx context.Context, role *model.UserRole) error
 	// Delete a user role (Soft Delete)
@@ -49,7 +49,7 @@ func NewMongoRepository(db *mongo.Database, collectionName string) *MongoReposit
 	return repo
 }
 
-func (r *MongoRepository) TransferSystemOwner(ctx context.Context, namespace, oldOwnerID, newOwnerID string) error {
+func (r *MongoRepository) TransferSystemOwner(ctx context.Context, namespace, oldOwnerID, newOwnerID, updatedBy string) error {
 	session, err := r.Client.StartSession()
 	if err != nil {
 		return err
@@ -68,19 +68,12 @@ func (r *MongoRepository) TransferSystemOwner(ctx context.Context, namespace, ol
 		}
 
 		now := time.Now()
-		// We assume caller ID isn't passed here easily without breaking sig,
-		// but typically Transfer is done by an admin/owner.
-		// For now, we focus on the fields we have or can infer.
-		// Detailed audit for Transfer might need signature update too.
-		// Let's assume UpdatedBy comes from context or we skip it here if not passed.
-		// Actually Model has UpdatedBy. We should ideally update Transfer signature too?
-		// User requirement "create/update/delete all need log".
-		// Let's stick to Soft Delete logic here.
 
 		updateOld := bson.M{
 			"$set": bson.M{
 				"role":       model.RoleSystemAdmin,
 				"updated_at": now,
+				"updated_by": updatedBy,
 			},
 		}
 
@@ -111,7 +104,14 @@ func (r *MongoRepository) TransferSystemOwner(ctx context.Context, namespace, ol
 				"role":       model.RoleSystemOwner,
 				"user_type":  model.UserTypeMember,
 				"updated_at": now,
-				"created_at": now, // SetOnInsert would be better but simple set is ok for upsert logic collision
+				"updated_by": updatedBy,
+				// Set created_by only if it's an insert (handled by setOnInsert) or if we want to overwrite?
+				// Usually created_by is immutable, but if we are "resurrecting" logically maybe current caller is creator of this new role state?
+				// Let's stick to setOnInsert for created_by/at, but updated_by aligns with action.
+			},
+			"$setOnInsert": bson.M{
+				"created_at": now,
+				"created_by": updatedBy,
 			},
 			"$unset": bson.M{
 				"deleted_at": "",

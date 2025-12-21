@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"net/url"
@@ -16,45 +15,14 @@ import (
 )
 
 // Define local mock
-type GetMeMockRepo struct {
-	mock.Mock
-}
-
-func (m *GetMeMockRepo) FindUserRoles(ctx context.Context, filter model.UserRoleFilter) ([]*model.UserRole, error) {
-	args := m.Called(ctx, filter)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]*model.UserRole), args.Error(1)
-}
-
-func (m *GetMeMockRepo) HasAnySystemRole(ctx context.Context, userID, namespace string, roles []string) (bool, error) {
-	args := m.Called(ctx, userID, namespace, roles)
-	return args.Bool(0), args.Error(1)
-}
-
-// Implement other interface methods to satisfy RBACRepository
-func (m *GetMeMockRepo) UpsertUserRole(ctx context.Context, role *model.UserRole) error { return nil }
-func (m *GetMeMockRepo) CreateUserRole(ctx context.Context, role *model.UserRole) error { return nil }
-func (m *GetMeMockRepo) GetSystemOwner(ctx context.Context, ns string) (*model.UserRole, error) {
-	return nil, nil
-}
-func (m *GetMeMockRepo) DeleteUserRole(ctx context.Context, ns, u, s, d string) error   { return nil }
-func (m *GetMeMockRepo) EnsureIndexes(ctx context.Context) error                        { return nil }
-func (m *GetMeMockRepo) TransferSystemOwner(ctx context.Context, ns, o, n string) error { return nil }
-func (m *GetMeMockRepo) CountSystemOwners(ctx context.Context, ns string) (int64, error) {
-	return 0, nil
-}
-func (m *GetMeMockRepo) HasSystemRole(ctx context.Context, u, n, r string) (bool, error) {
-	return false, nil
-}
+// GetMeMockRepo usage is replaced by shared MockRBACRepository in mock_repo.go
 
 func TestGetUserRolesMe(t *testing.T) {
 	// API: GET /user_roles/me
 
 	t.Run("get current user system roles success and return 200", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(GetMeMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.GET("/user_roles/me", h.GetUserRolesMe)
@@ -83,7 +51,7 @@ func TestGetUserRolesMe(t *testing.T) {
 
 	t.Run("get user roles missing scope parameter and return 400", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(GetMeMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.GET("/user_roles/me", h.GetUserRolesMe)
@@ -99,7 +67,7 @@ func TestGetUserRolesMe(t *testing.T) {
 
 	t.Run("get user roles invalid scope value and return 400", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(GetMeMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.GET("/user_roles/me", h.GetUserRolesMe)
@@ -111,7 +79,7 @@ func TestGetUserRolesMe(t *testing.T) {
 
 	t.Run("get user roles unauthorized (no token) and return 401", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(GetMeMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.GET("/user_roles/me", h.GetUserRolesMe)
@@ -132,7 +100,7 @@ func TestGetUserRolesMe(t *testing.T) {
 		// IMPLEMENTATION PLAN: service.GetUserRolesMe will need to call HasAnySystemRole or check permissions.
 
 		e := SetupServer()
-		mockRepo := new(GetMeMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.GET("/user_roles/me", h.GetUserRolesMe)
@@ -180,7 +148,7 @@ func TestGetUserRolesMe(t *testing.T) {
 
 	t.Run("get user roles internal server error and return 500", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(GetMeMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.GET("/user_roles/me", h.GetUserRolesMe)
@@ -195,7 +163,7 @@ func TestGetUserRolesMe(t *testing.T) {
 	// Response correctness (not only status code)
 	t.Run("get user roles should only return roles of current user", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(GetMeMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.GET("/user_roles/me", h.GetUserRolesMe)

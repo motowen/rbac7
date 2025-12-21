@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"net/url"
@@ -16,52 +15,14 @@ import (
 )
 
 // Reuse GetMeMockRepo type or define new one. Let's define one to be safe and isolated.
-type GetRolesMockRepo struct {
-	mock.Mock
-}
-
-func (m *GetRolesMockRepo) FindUserRoles(ctx context.Context, filter model.UserRoleFilter) ([]*model.UserRole, error) {
-	args := m.Called(ctx, filter)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]*model.UserRole), args.Error(1)
-}
-
-func (m *GetRolesMockRepo) HasAnySystemRole(ctx context.Context, userID, namespace string, roles []string) (bool, error) {
-	args := m.Called(ctx, userID, namespace, roles)
-	return args.Bool(0), args.Error(1)
-}
-func (m *GetRolesMockRepo) HasSystemRole(ctx context.Context, u, n, r string) (bool, error) {
-	// Not explicitly used in list, but standard interface
-	return false, nil
-}
-
-// Implement other interface methods
-func (m *GetRolesMockRepo) UpsertUserRole(ctx context.Context, role *model.UserRole) error {
-	return nil
-}
-func (m *GetRolesMockRepo) CreateUserRole(ctx context.Context, role *model.UserRole) error {
-	return nil
-}
-func (m *GetRolesMockRepo) GetSystemOwner(ctx context.Context, ns string) (*model.UserRole, error) {
-	return nil, nil
-}
-func (m *GetRolesMockRepo) DeleteUserRole(ctx context.Context, ns, u, s, d string) error { return nil }
-func (m *GetRolesMockRepo) EnsureIndexes(ctx context.Context) error                      { return nil }
-func (m *GetRolesMockRepo) TransferSystemOwner(ctx context.Context, ns, o, n string) error {
-	return nil
-}
-func (m *GetRolesMockRepo) CountSystemOwners(ctx context.Context, ns string) (int64, error) {
-	return 0, nil
-}
+// GetRolesMockRepo usage is replaced by shared MockRBACRepository in mock_repo.go
 
 func TestGetUserRolesList(t *testing.T) {
 	// API: GET /user_roles
 
 	t.Run("list system members success and return 200", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(GetRolesMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.GET("/user_roles", h.GetUserRoles)
@@ -97,7 +58,7 @@ func TestGetUserRolesList(t *testing.T) {
 
 	t.Run("list system members filtered by namespace success and return 200", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(GetRolesMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.GET("/user_roles", h.GetUserRoles)
@@ -123,7 +84,7 @@ func TestGetUserRolesList(t *testing.T) {
 
 	t.Run("list members missing scope parameter and return 400", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(GetRolesMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.GET("/user_roles", h.GetUserRoles)
@@ -135,7 +96,7 @@ func TestGetUserRolesList(t *testing.T) {
 	t.Run("list system members missing namespace parameter (if required) and return 400", func(t *testing.T) {
 		// Assuming system scope requires namespace according to this test request
 		e := SetupServer()
-		mockRepo := new(GetRolesMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.GET("/user_roles", h.GetUserRoles)
@@ -151,7 +112,7 @@ func TestGetUserRolesList(t *testing.T) {
 	t.Run("list scope=system but provide resource_type/resource_id and return 400", func(t *testing.T) {
 		// Mixed params invalid?
 		e := SetupServer()
-		mockRepo := new(GetRolesMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.GET("/user_roles", h.GetUserRoles)
@@ -175,7 +136,7 @@ func TestGetUserRolesList(t *testing.T) {
 
 	t.Run("list members unauthorized and return 401", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(GetRolesMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.GET("/user_roles", h.GetUserRoles)
@@ -186,7 +147,7 @@ func TestGetUserRolesList(t *testing.T) {
 
 	t.Run("list system members forbidden (missing platform.system.get_member) and return 403", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(GetRolesMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.GET("/user_roles", h.GetUserRoles)
@@ -204,7 +165,7 @@ func TestGetUserRolesList(t *testing.T) {
 
 	t.Run("list members internal error and return 500", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(GetRolesMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.GET("/user_roles", h.GetUserRoles)
@@ -221,7 +182,7 @@ func TestGetUserRolesList(t *testing.T) {
 		// Usually list endpoints return empty list if not allowed, OR 403 if whole list access is denied.
 		// Test expects 403.
 		e := SetupServer()
-		mockRepo := new(GetRolesMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.GET("/user_roles", h.GetUserRoles)
@@ -236,7 +197,7 @@ func TestGetUserRolesList(t *testing.T) {
 
 	t.Run("list system members response all namespace are same as query", func(t *testing.T) {
 		e := SetupServer()
-		mockRepo := new(GetRolesMockRepo)
+		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.GET("/user_roles", h.GetUserRoles)

@@ -123,7 +123,7 @@ func (s *Service) TransferSystemOwner(ctx context.Context, callerID string, req 
 
 	// 3. Perform Transfer (Transaction)
 	// New owner is req.UserID
-	err = s.Repo.TransferSystemOwner(ctx, req.Namespace, callerID, req.UserID)
+	err = s.Repo.TransferSystemOwner(ctx, req.Namespace, callerID, req.UserID, callerID)
 	if err != nil {
 		// Map errors if needed, or return generic
 		return err
