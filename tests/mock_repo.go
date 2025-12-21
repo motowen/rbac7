@@ -58,12 +58,32 @@ func (m *MockRBACRepository) UpsertUserRole(ctx context.Context, role *model.Use
 	return args.Error(0)
 }
 
-func (m *MockRBACRepository) DeleteUserRole(ctx context.Context, namespace, userID, scope, deletedBy string) error {
-	args := m.Called(ctx, namespace, userID, scope, deletedBy)
+func (m *MockRBACRepository) DeleteUserRole(ctx context.Context, namespace, userID, scope, resourceID, resourceType, deletedBy string) error {
+	args := m.Called(ctx, namespace, userID, scope, resourceID, resourceType, deletedBy)
 	return args.Error(0)
 }
 
 func (m *MockRBACRepository) CountSystemOwners(ctx context.Context, namespace string) (int64, error) {
 	args := m.Called(ctx, namespace)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (m *MockRBACRepository) HasResourceRole(ctx context.Context, userID, namespace, resourceID, resourceType, role string) (bool, error) {
+	args := m.Called(ctx, userID, namespace, resourceID, resourceType, role)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockRBACRepository) HasAnyResourceRole(ctx context.Context, userID, namespace, resourceID, resourceType string, roles []string) (bool, error) {
+	args := m.Called(ctx, userID, namespace, resourceID, resourceType, roles)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockRBACRepository) TransferResourceOwner(ctx context.Context, namespace, resourceID, resourceType, oldOwnerID, newOwnerID, updatedBy string) error {
+	args := m.Called(ctx, namespace, resourceID, resourceType, oldOwnerID, newOwnerID, updatedBy)
+	return args.Error(0)
+}
+
+func (m *MockRBACRepository) CountResourceOwners(ctx context.Context, namespace, resourceID, resourceType string) (int64, error) {
+	args := m.Called(ctx, namespace, resourceID, resourceType)
 	return args.Get(0).(int64), args.Error(1)
 }

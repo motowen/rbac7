@@ -5,10 +5,11 @@ import (
 )
 
 type Config struct {
-	MongoURI            string
-	Port                string
-	DBName              string
-	UserRolesCollection string
+	MongoURI                string
+	Port                    string
+	DBName                  string
+	UserRolesCollection     string
+	ResourceRolesCollection string
 }
 
 func LoadConfig() *Config {
@@ -23,10 +24,11 @@ func LoadConfig() *Config {
 	}
 
 	return &Config{
-		MongoURI:            mongoURI,
-		Port:                port,
-		DBName:              "rbac_db", // Could be env var too
-		UserRolesCollection: getEnv("COLLECTION_USER_ROLES", "user_roles"),
+		MongoURI:                mongoURI,
+		Port:                    port,
+		DBName:                  "rbac_db", // Could be env var too
+		UserRolesCollection:     getEnv("COLLECTION_USER_ROLES", "user_roles"),
+		ResourceRolesCollection: getEnv("COLLECTION_RESOURCE_ROLES", "user_resource_roles"),
 	}
 }
 

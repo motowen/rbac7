@@ -30,8 +30,13 @@ const (
 	PermSystemAddOwner      = "platform.system.add_owner"
 	PermSystemTransferOwner = "platform.system.transfer_owner"
 
-	PermSystemResourceCreate = "system.resource.create"
-	PermSystemResourceRead   = "system.resource.read"
+	PermResourceDashboardRead          = "resource.dashboard.read"
+	PermResourceDashboardUpdate        = "resource.dashboard.update"
+	PermResourceDashboardDelete        = "resource.dashboard.delete"
+	PermResourceDashboardAddMember     = "resource.dashboard.add_member"
+	PermResourceDashboardRemoveMember  = "resource.dashboard.remove_member"
+	PermResourceDashboardGetMember     = "resource.dashboard.get_member"
+	PermResourceDashboardTransferOwner = "resource.dashboard.transfer_owner"
 )
 
 // User Types

@@ -34,6 +34,9 @@ type UserRole struct {
 	Role      string `bson:"role"`
 	Scope     string `bson:"scope"`
 	Namespace string `bson:"namespace,omitempty"`
+	// Resource Scoping
+	ResourceID   string `bson:"resource_id,omitempty"`
+	ResourceType string `bson:"resource_type,omitempty"`
 
 	// Audit Fields
 	CreatedAt time.Time  `bson:"created_at"`
@@ -45,8 +48,27 @@ type UserRole struct {
 }
 
 type UserRoleFilter struct {
-	UserID    string
-	Namespace string
-	Role      string
-	Scope     string
+	UserID       string
+	Namespace    string
+	Role         string
+	Scope        string
+	ResourceID   string
+	ResourceType string
+}
+
+// Resource Scope Requests
+type ResourceUserRole struct {
+	UserID       string `json:"user_id"`
+	UserType     string `json:"user_type"`
+	Role         string `json:"role"`
+	Scope        string `json:"scope"` // Should be 'resource'
+	Namespace    string `json:"namespace"`
+	ResourceID   string `json:"resource_id"`
+	ResourceType string `json:"resource_type"`
+}
+
+type ResourceOwnerUpsertRequest struct {
+	UserID       string `json:"user_id"`
+	ResourceID   string `json:"resource_id"`
+	ResourceType string `json:"resource_type"`
 }

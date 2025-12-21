@@ -22,6 +22,15 @@ const (
 	PermSystemResourceDelete        = "system.resource.delete"
 	PermSystemResourceUpdate        = "system.resource.update"
 	PermSystemResourcePublish       = "system.resource.publish"
+
+	// Resource Scope Permissions (Dashboard)
+	PermResourceDashboardRead          = "resource.dashboard.read"
+	PermResourceDashboardUpdate        = "resource.dashboard.update"
+	PermResourceDashboardDelete        = "resource.dashboard.delete"
+	PermResourceDashboardAddMember     = "resource.dashboard.add_member"
+	PermResourceDashboardRemoveMember  = "resource.dashboard.remove_member"
+	PermResourceDashboardGetMember     = "resource.dashboard.get_member"
+	PermResourceDashboardTransferOwner = "resource.dashboard.transfer_owner"
 )
 
 // SystemRolePermissions maps System Role Names to their Prmissions
@@ -71,6 +80,34 @@ var SystemRolePermissions = map[string][]string{
 	},
 }
 
+// ResourceRolePermissions maps Resource Role Names to their Permissions (Dashboard)
+var ResourceRolePermissions = map[string][]string{
+	"owner": {
+		PermResourceDashboardRead,
+		PermResourceDashboardUpdate,
+		PermResourceDashboardDelete,
+		PermResourceDashboardAddMember,
+		PermResourceDashboardRemoveMember,
+		PermResourceDashboardGetMember,
+		PermResourceDashboardTransferOwner,
+	},
+	"admin": {
+		PermResourceDashboardRead,
+		PermResourceDashboardUpdate,
+		PermResourceDashboardDelete,
+		PermResourceDashboardAddMember,
+		PermResourceDashboardRemoveMember,
+		PermResourceDashboardGetMember,
+	},
+	"editor": {
+		PermResourceDashboardRead,
+		PermResourceDashboardUpdate,
+	},
+	"viewer": {
+		PermResourceDashboardRead,
+	},
+}
+
 // GetRolesWithPermission returns a list of role names (in system scope) that possess the given permission.
 func GetRolesWithPermission(permission string) []string {
 	var roles []string
@@ -87,6 +124,30 @@ func GetRolesWithPermission(permission string) []string {
 	return roles
 }
 
+// GetResourceRolesWithPermission returns a list of role names (in resource scope) that possess the given permission.
+func GetResourceRolesWithPermission(permission string) []string {
+	var roles []string
+	for role, perms := range ResourceRolePermissions {
+		for _, p := range perms {
+			if p == permission {
+				roles = append(roles, role)
+				break
+			}
+		}
+	}
+	sort.Strings(roles)
+	return roles
+}
+
+// CheckResourcePermission checks if the user has any role in the resource that grants the required permission.
+func CheckResourcePermission(ctx context.Context, repo repository.RBACRepository, userID, namespace, resourceID, resourceType, permission string) (bool, error) {
+	requiredRoles := GetResourceRolesWithPermission(permission)
+	if len(requiredRoles) == 0 {
+		return false, nil
+	}
+	return repo.HasAnyResourceRole(ctx, userID, namespace, resourceID, resourceType, requiredRoles)
+}
+
 // CheckSystemPermission checks if the user has any role in the system namespace that grants the required permission.
 func CheckSystemPermission(ctx context.Context, repo repository.RBACRepository, userID, namespace, permission string) (bool, error) {
 	requiredRoles := GetRolesWithPermission(permission)
@@ -99,24 +160,26 @@ func CheckSystemPermission(ctx context.Context, repo repository.RBACRepository, 
 // CheckRolesHavePermission checks if any of the provided user roles grant the required permission.
 // This is useful when roles are already loaded (e.g. GetUserRolesMe).
 func CheckRolesHavePermission(roles []*model.UserRole, permission string) bool {
-	// 1. Get all roles that have this permission
-	allowedRoles := GetRolesWithPermission(permission)
-	if len(allowedRoles) == 0 {
-		return false
-	}
+	// 1. Get all roles that have this permission (System)
+	allowedSystemRoles := GetRolesWithPermission(permission)
+	// 2. Get all roles that have this permission (Resource)
+	allowedResourceRoles := GetResourceRolesWithPermission(permission)
 
-	// 2. Create a map for O(1) lookup
 	allowedMap := make(map[string]bool)
-	for _, r := range allowedRoles {
-		allowedMap[r] = true
+	for _, r := range allowedSystemRoles {
+		allowedMap["system:"+r] = true
+	}
+	for _, r := range allowedResourceRoles {
+		allowedMap["resource:"+r] = true
 	}
 
-	// 3. Check if any of the user's roles matching the system scope are in the allow list
 	for _, role := range roles {
-		// Assumption: This check is primarily for System Scope permissions.
-		// If we extend to Resource scope, we might need to check role.Scope.
 		if role.Scope == model.ScopeSystem {
-			if allowedMap[role.Role] {
+			if allowedMap["system:"+role.Role] {
+				return true
+			}
+		} else if role.Scope == model.ScopeResource {
+			if allowedMap["resource:"+role.Role] {
 				return true
 			}
 		}

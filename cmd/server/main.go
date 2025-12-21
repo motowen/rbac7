@@ -38,7 +38,7 @@ func main() {
 	db := client.Database(cfg.DBName)
 
 	// 3. Init Layers
-	repo := repository.NewMongoRepository(db, cfg.UserRolesCollection)
+	repo := repository.NewMongoRepository(db, cfg.UserRolesCollection, cfg.ResourceRolesCollection)
 
 	// Ensure Indexes
 	if err := repo.EnsureIndexes(context.Background()); err != nil {
