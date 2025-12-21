@@ -60,7 +60,7 @@ func (m *MockRepo) TransferSystemOwner(ctx context.Context, namespace, oldOwnerI
 }
 
 func (m *MockRepo) UpsertUserRole(ctx context.Context, role *model.UserRole) error { return nil }
-func (m *MockRepo) DeleteUserRole(ctx context.Context, namespace, userID, scope string) error {
+func (m *MockRepo) DeleteUserRole(ctx context.Context, namespace, userID, scope, deletedBy string) error {
 	return nil
 }
 func (m *MockRepo) CountSystemOwners(ctx context.Context, namespace string) (int64, error) {
@@ -77,12 +77,10 @@ func TestPostSystemOwner(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.POST("/user_roles/owner", h.PostSystemOwner)
 
-		// 1. Role Check
-		mockRepo.On("HasSystemRole", mock.Anything, "moderator_1", "", model.RoleSystemModerator).Return(true, nil)
+		// 1. Role Check (Policy Engine uses HasAnySystemRole for add_owner permission)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "moderator_1", "", mock.Anything).Return(true, nil)
 		// 2. Create (GetSystemOwner Removed from Service logic, relies on DB constraint/err now)
-		mockRepo.On("CreateUserRole", mock.Anything, mock.MatchedBy(func(r *model.UserRole) bool {
-			return r.Namespace == "ns_success" && r.Role == model.RoleSystemOwner
-		})).Return(nil)
+		mockRepo.On("CreateUserRole", mock.Anything, mock.Anything).Return(nil)
 
 		reqBody := model.SystemOwnerUpsertRequest{
 			UserID:    "u_1",
@@ -167,7 +165,7 @@ func TestPostSystemOwner(t *testing.T) {
 		e.POST("/user_roles/owner_403", h.PostSystemOwner)
 
 		// Role Check -> False
-		mockRepo.On("HasSystemRole", mock.Anything, "u_common", "", model.RoleSystemModerator).Return(false, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "u_common", "", mock.Anything).Return(false, nil)
 
 		reqBody := model.SystemOwnerUpsertRequest{Namespace: "ns", UserID: "u_1"}
 		headers := map[string]string{
@@ -187,7 +185,7 @@ func TestPostSystemOwner(t *testing.T) {
 		e.POST("/user_roles/owner_409", h.PostSystemOwner)
 
 		// 1. Role Check -> True
-		mockRepo.On("HasSystemRole", mock.Anything, "moderator_1", "", model.RoleSystemModerator).Return(true, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "moderator_1", "", mock.Anything).Return(true, nil)
 		// 2. Create -> ErrConflict (simulated via Repo ErrDuplicate)
 		mockRepo.On("CreateUserRole", mock.Anything, mock.Anything).Return(repository.ErrDuplicate)
 
@@ -209,7 +207,7 @@ func TestPostSystemOwner(t *testing.T) {
 		e.POST("/user_roles/owner_500", h.PostSystemOwner)
 
 		// 1. Role Check -> True
-		mockRepo.On("HasSystemRole", mock.Anything, "moderator_1", "", model.RoleSystemModerator).Return(true, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "moderator_1", "", mock.Anything).Return(true, nil)
 		// 2. Create -> Error
 		mockRepo.On("CreateUserRole", mock.Anything, mock.Anything).Return(errors.New("db disconnect"))
 

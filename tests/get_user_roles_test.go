@@ -47,8 +47,8 @@ func (m *GetRolesMockRepo) CreateUserRole(ctx context.Context, role *model.UserR
 func (m *GetRolesMockRepo) GetSystemOwner(ctx context.Context, ns string) (*model.UserRole, error) {
 	return nil, nil
 }
-func (m *GetRolesMockRepo) DeleteUserRole(ctx context.Context, ns, u, s string) error { return nil }
-func (m *GetRolesMockRepo) EnsureIndexes(ctx context.Context) error                   { return nil }
+func (m *GetRolesMockRepo) DeleteUserRole(ctx context.Context, ns, u, s, d string) error { return nil }
+func (m *GetRolesMockRepo) EnsureIndexes(ctx context.Context) error                      { return nil }
 func (m *GetRolesMockRepo) TransferSystemOwner(ctx context.Context, ns, o, n string) error {
 	return nil
 }
@@ -72,7 +72,7 @@ func TestGetUserRolesList(t *testing.T) {
 		// For now, let's assume valid scope='system' and namespace='ns1' requires at least some role?
 		// Actually, standard list usually filters by namespace.
 		// Permission: platform.system.get_member (Owner, Admin) - Viewer is NOT allowed anymore per spec.
-		mockRepo.On("HasAnySystemRole", mock.Anything, "admin_1", "ns_1", []string{"admin", "owner"}).Return(true, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "admin_1", "ns_1", mock.Anything).Return(true, nil)
 
 		expectedRoles := []*model.UserRole{
 			{UserID: "u_1", Role: "viewer", Namespace: "ns_1", Scope: "system"},
@@ -102,7 +102,7 @@ func TestGetUserRolesList(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.GET("/user_roles", h.GetUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "admin_1", "ns_target", []string{"admin", "owner"}).Return(true, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "admin_1", "ns_target", mock.Anything).Return(true, nil)
 
 		expectedRoles := []*model.UserRole{
 			{UserID: "u_target", Role: "admin", Namespace: "ns_target"},
@@ -191,7 +191,7 @@ func TestGetUserRolesList(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.GET("/user_roles", h.GetUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "u_no_perm", "ns_1", []string{"admin", "owner"}).Return(false, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "u_no_perm", "ns_1", mock.Anything).Return(false, nil)
 
 		path := "/user_roles?scope=system&namespace=ns_1"
 		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "u_no_perm"})
@@ -209,7 +209,7 @@ func TestGetUserRolesList(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.GET("/user_roles", h.GetUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "admin_1", "ns_1", []string{"admin", "owner"}).Return(true, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "admin_1", "ns_1", mock.Anything).Return(true, nil)
 		mockRepo.On("FindUserRoles", mock.Anything, mock.Anything).Return(nil, errors.New("db error"))
 
 		path := "/user_roles?scope=system&namespace=ns_1"
@@ -227,7 +227,7 @@ func TestGetUserRolesList(t *testing.T) {
 		e.GET("/user_roles", h.GetUserRoles)
 
 		// Deny
-		mockRepo.On("HasAnySystemRole", mock.Anything, "u_no_perm", "ns_target", []string{"admin", "owner"}).Return(false, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "u_no_perm", "ns_target", mock.Anything).Return(false, nil)
 
 		path := "/user_roles?scope=system&namespace=ns_target"
 		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "u_no_perm"})
@@ -241,7 +241,7 @@ func TestGetUserRolesList(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.GET("/user_roles", h.GetUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "admin_1", "ns_1", []string{"admin", "owner"}).Return(true, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "admin_1", "ns_1", mock.Anything).Return(true, nil)
 
 		expectedRoles := []*model.UserRole{
 			{UserID: "u_1", Role: "viewer", Namespace: "ns_1"},

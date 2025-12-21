@@ -7,10 +7,10 @@ servers:
   - url: /api/v1
 
 tags:
-  - name: Common
-    description: Shared APIs across scopes
   - name: System
-    description: System scope management
+    description: System scope management (Assign/Transfer Owner, Assign/Delete Role)
+  - name: Common
+    description: Shared APIs (Get User Roles)
   - name: Resource
     description: Resource scope management
 
@@ -23,7 +23,7 @@ paths:
       description: |
         Retrieve the roles of the current logged-in user.
 
-        - scope=system requires permission: `platform.system.read`
+        - scope=system requires permission: `platform.system.read` (Strict check against user's roles)
         - scope=resource requires permission: `resource.{resource_type}.read`
           (e.g. `resource.widget.read`, `resource.dashboard.read`)
       parameters:
@@ -110,6 +110,7 @@ paths:
         Get all users with roles.
 
         - scope=system requires permission: `platform.system.get_member`
+          (Note: Listing system members to decide on role assignments)
         - scope=resource requires permission: `resource.{resource_type}.get_member`
           (e.g. `resource.dashboard.get_member`)
       parameters:

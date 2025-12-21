@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"rbac7/internal/rbac/model"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -29,8 +30,8 @@ type RBACRepository interface {
 	TransferSystemOwner(ctx context.Context, namespace, oldOwnerID, newOwnerID string) error
 	// Upsert a user role (Create or Update)
 	UpsertUserRole(ctx context.Context, role *model.UserRole) error
-	// Delete a user role
-	DeleteUserRole(ctx context.Context, namespace, userID, scope string) error
+	// Delete a user role (Soft Delete)
+	DeleteUserRole(ctx context.Context, namespace, userID, scope, deletedBy string) error
 	// Count owners in a system
 	CountSystemOwners(ctx context.Context, namespace string) (int64, error)
 }
@@ -58,13 +59,30 @@ func (r *MongoRepository) TransferSystemOwner(ctx context.Context, namespace, ol
 	callback := func(sessCtx mongo.SessionContext) (interface{}, error) {
 		// 1. Demote Old Owner to Admin
 		filterOld := bson.M{
-			"user_id":   oldOwnerID,
-			"user_type": model.UserTypeMember,
-			"scope":     model.ScopeSystem,
-			"namespace": namespace,
-			"role":      model.RoleSystemOwner,
+			"user_id":    oldOwnerID,
+			"user_type":  model.UserTypeMember,
+			"scope":      model.ScopeSystem,
+			"namespace":  namespace,
+			"role":       model.RoleSystemOwner,
+			"deleted_at": nil,
 		}
-		updateOld := bson.M{"$set": bson.M{"role": model.RoleSystemAdmin}}
+
+		now := time.Now()
+		// We assume caller ID isn't passed here easily without breaking sig,
+		// but typically Transfer is done by an admin/owner.
+		// For now, we focus on the fields we have or can infer.
+		// Detailed audit for Transfer might need signature update too.
+		// Let's assume UpdatedBy comes from context or we skip it here if not passed.
+		// Actually Model has UpdatedBy. We should ideally update Transfer signature too?
+		// User requirement "create/update/delete all need log".
+		// Let's stick to Soft Delete logic here.
+
+		updateOld := bson.M{
+			"$set": bson.M{
+				"role":       model.RoleSystemAdmin,
+				"updated_at": now,
+			},
+		}
 
 		resOld, err := r.Collection.UpdateOne(sessCtx, filterOld, updateOld)
 		if err != nil {
@@ -76,6 +94,12 @@ func (r *MongoRepository) TransferSystemOwner(ctx context.Context, namespace, ol
 		}
 
 		// 2. Promote New Owner (Upsert to handle if they are already a member or not)
+		// Logic: If user exists (even if soft deleted?), we should resurrect?
+		// Requirement: "Deleted then added back... transfer owner api becomes owner"
+		// So we must match even if deleted? Or match by ID and overwrite?
+		// If we use Upsert=true, and filter by UserID, we will match.
+		// If they were soft-deleted, we need to unset deleted_at.
+
 		filterNew := bson.M{
 			"user_id":   newOwnerID,
 			"user_type": model.UserTypeMember,
@@ -84,8 +108,14 @@ func (r *MongoRepository) TransferSystemOwner(ctx context.Context, namespace, ol
 		}
 		updateNew := bson.M{
 			"$set": bson.M{
-				"role":      model.RoleSystemOwner,
-				"user_type": model.UserTypeMember, // Ensure user type
+				"role":       model.RoleSystemOwner,
+				"user_type":  model.UserTypeMember,
+				"updated_at": now,
+				"created_at": now, // SetOnInsert would be better but simple set is ok for upsert logic collision
+			},
+			"$unset": bson.M{
+				"deleted_at": "",
+				"deleted_by": "",
 			},
 		}
 		opts := options.Update().SetUpsert(true)
@@ -126,8 +156,9 @@ func (r *MongoRepository) EnsureIndexes(ctx context.Context) error {
 			SetUnique(true).
 			SetName("unique_system_owner").
 			SetPartialFilterExpression(bson.M{
-				"scope": model.ScopeSystem,
-				"role":  model.RoleSystemOwner,
+				"scope":      model.ScopeSystem,
+				"role":       model.RoleSystemOwner,
+				"deleted_at": nil, // Important for soft delete
 			}),
 	}
 
@@ -137,9 +168,10 @@ func (r *MongoRepository) EnsureIndexes(ctx context.Context) error {
 
 func (r *MongoRepository) GetSystemOwner(ctx context.Context, namespace string) (*model.UserRole, error) {
 	filter := bson.M{
-		"scope":     model.ScopeSystem,
-		"namespace": namespace,
-		"role":      model.RoleSystemOwner,
+		"scope":      model.ScopeSystem,
+		"namespace":  namespace,
+		"role":       model.RoleSystemOwner,
+		"deleted_at": nil,
 	}
 	var role model.UserRole
 	err := r.Collection.FindOne(ctx, filter).Decode(&role)
@@ -153,6 +185,8 @@ func (r *MongoRepository) GetSystemOwner(ctx context.Context, namespace string) 
 }
 
 func (r *MongoRepository) CreateUserRole(ctx context.Context, role *model.UserRole) error {
+	role.CreatedAt = time.Now()
+	role.UpdatedAt = time.Now()
 	_, err := r.Collection.InsertOne(ctx, role)
 	if err != nil {
 		if mongo.IsDuplicateKeyError(err) {
@@ -171,34 +205,62 @@ func (r *MongoRepository) UpsertUserRole(ctx context.Context, role *model.UserRo
 		"namespace": role.Namespace, // Unique per user/scope/namespace
 	}
 
-	update := bson.M{"$set": role}
+	now := time.Now()
+	role.UpdatedAt = now
+	// For CreatedAt, we want setOnInsert.
+	// For logic simplicity with replacement, we might lose original CreatedAt if we just "$set": role.
+	// Better to use $set for fields and $setOnInsert for CreatedAt.
+
+	update := bson.M{
+		"$set": bson.M{
+			"role":       role.Role,
+			"updated_at": now,
+			"updated_by": role.UpdatedBy,
+			"created_by": role.CreatedBy, // If new
+		},
+		"$setOnInsert": bson.M{
+			"created_at": now,
+		},
+		"$unset": bson.M{
+			"deleted_at": "",
+			"deleted_by": "",
+		},
+	}
 	opts := options.Update().SetUpsert(true)
 
 	_, err := r.Collection.UpdateOne(ctx, filter, update, opts)
 	return err
 }
 
-func (r *MongoRepository) DeleteUserRole(ctx context.Context, namespace, userID, scope string) error {
+func (r *MongoRepository) DeleteUserRole(ctx context.Context, namespace, userID, scope, deletedBy string) error {
 	filter := bson.M{
-		"user_id":   userID,
-		"scope":     scope,
-		"namespace": namespace,
+		"user_id":    userID,
+		"scope":      scope,
+		"namespace":  namespace,
+		"deleted_at": nil,
 	}
-	res, err := r.Collection.DeleteOne(ctx, filter)
+	update := bson.M{
+		"$set": bson.M{
+			"deleted_at": time.Now(),
+			"deleted_by": deletedBy,
+		},
+	}
+	res, err := r.Collection.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return err
 	}
-	if res.DeletedCount == 0 {
-		return mongo.ErrNoDocuments // Or handle as success? handler expects 404 if not found?
+	if res.MatchedCount == 0 {
+		return mongo.ErrNoDocuments
 	}
 	return nil
 }
 
 func (r *MongoRepository) CountSystemOwners(ctx context.Context, namespace string) (int64, error) {
 	filter := bson.M{
-		"scope":     model.ScopeSystem,
-		"namespace": namespace,
-		"role":      model.RoleSystemOwner,
+		"scope":      model.ScopeSystem,
+		"namespace":  namespace,
+		"role":       model.RoleSystemOwner,
+		"deleted_at": nil,
 	}
 	return r.Collection.CountDocuments(ctx, filter)
 }
@@ -207,9 +269,10 @@ func (r *MongoRepository) HasSystemRole(ctx context.Context, userID, namespace, 
 	// For performance, we add limit 1
 	opts := options.Count().SetLimit(1)
 	filter := bson.M{
-		"user_id": userID,
-		"scope":   model.ScopeSystem,
-		"role":    role,
+		"user_id":    userID,
+		"scope":      model.ScopeSystem,
+		"role":       role,
+		"deleted_at": nil,
 	}
 	if namespace != "" {
 		filter["namespace"] = namespace
@@ -227,9 +290,10 @@ func (r *MongoRepository) HasAnySystemRole(ctx context.Context, userID, namespac
 	}
 	opts := options.Count().SetLimit(1)
 	filter := bson.M{
-		"user_id": userID,
-		"scope":   model.ScopeSystem,
-		"role":    bson.M{"$in": roles},
+		"user_id":    userID,
+		"scope":      model.ScopeSystem,
+		"role":       bson.M{"$in": roles},
+		"deleted_at": nil,
 	}
 	if namespace != "" {
 		filter["namespace"] = namespace
@@ -242,7 +306,9 @@ func (r *MongoRepository) HasAnySystemRole(ctx context.Context, userID, namespac
 }
 
 func (r *MongoRepository) FindUserRoles(ctx context.Context, filter model.UserRoleFilter) ([]*model.UserRole, error) {
-	query := bson.M{}
+	query := bson.M{
+		"deleted_at": nil,
+	}
 	if filter.UserID != "" {
 		query["user_id"] = filter.UserID
 	}

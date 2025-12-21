@@ -4,9 +4,20 @@ import (
 	"rbac7/internal/rbac/handler"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 func RegisterRoutes(e *echo.Echo, h *handler.SystemHandler) {
+	// Enable CORS for Swagger UI interaction
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"*"},
+		AllowMethods: []string{echo.GET, echo.PUT, echo.POST, echo.DELETE, echo.OPTIONS},
+		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, "authentication", "x-user-id"},
+	}))
+
+	// Serve Swagger Spec
+	e.File("/docs/rbac.yaml", "docs/rbac.yaml")
+
 	// Prefix from rbac.yaml: /api/v1
 	v1 := e.Group("/api/v1")
 

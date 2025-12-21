@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"log"
 	"rbac7/internal/rbac/model"
 	"rbac7/internal/rbac/repository"
 
@@ -57,6 +58,8 @@ func (s *Service) AssignSystemOwner(ctx context.Context, callerID string, req mo
 		Scope:     model.ScopeSystem,
 		Namespace: req.Namespace,
 		UserType:  model.UserTypeMember, // Defaulting to member as per likely requirement
+		CreatedBy: callerID,             // Audit
+		UpdatedBy: callerID,
 	}
 
 	err = s.Repo.CreateUserRole(ctx, newRole)
@@ -66,6 +69,8 @@ func (s *Service) AssignSystemOwner(ctx context.Context, callerID string, req mo
 		}
 		return err
 	}
+
+	log.Printf("Audit: System Owner Assigned. Caller=%s, Target=%s, Namespace=%s", callerID, req.UserID, req.Namespace)
 
 	return nil
 }
@@ -118,6 +123,8 @@ func (s *Service) TransferSystemOwner(ctx context.Context, callerID string, req 
 		return err
 	}
 
+	log.Printf("Audit: System Owner Transferred. Caller=%s, NewOwner=%s, OldOwner=%s, Namespace=%s", callerID, req.UserID, callerID, req.Namespace)
+
 	return nil
 }
 
@@ -169,11 +176,18 @@ func (s *Service) AssignSystemUserRole(ctx context.Context, callerID string, req
 		Scope:     model.ScopeSystem,
 		Namespace: req.Namespace,
 		UserType:  req.UserType,
+		CreatedBy: callerID,
+		UpdatedBy: callerID,
 	}
 	if role.UserType == "" {
 		role.UserType = model.UserTypeMember
 	}
-	return s.Repo.UpsertUserRole(ctx, role)
+	if err := s.Repo.UpsertUserRole(ctx, role); err != nil {
+		return err
+	}
+
+	log.Printf("Audit: System User Role Assigned. Caller=%s, Target=%s, Role=%s, Namespace=%s", callerID, req.UserID, req.Role, req.Namespace)
+	return nil
 }
 
 func (s *Service) DeleteSystemUserRole(ctx context.Context, callerID, namespace, userID string) error {
@@ -207,13 +221,15 @@ func (s *Service) DeleteSystemUserRole(ctx context.Context, callerID, namespace,
 		}
 	}
 
-	err = s.Repo.DeleteUserRole(ctx, namespace, userID, model.ScopeSystem)
+	err = s.Repo.DeleteUserRole(ctx, namespace, userID, model.ScopeSystem, callerID)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil
 		}
 		return err
 	}
+
+	log.Printf("Audit: System User Role Deleted. Caller=%s, Target=%s, Namespace=%s", callerID, userID, namespace)
 	return nil
 }
 

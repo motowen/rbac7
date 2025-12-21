@@ -39,7 +39,7 @@ func (m *GetMeMockRepo) CreateUserRole(ctx context.Context, role *model.UserRole
 func (m *GetMeMockRepo) GetSystemOwner(ctx context.Context, ns string) (*model.UserRole, error) {
 	return nil, nil
 }
-func (m *GetMeMockRepo) DeleteUserRole(ctx context.Context, ns, u, s string) error      { return nil }
+func (m *GetMeMockRepo) DeleteUserRole(ctx context.Context, ns, u, s, d string) error   { return nil }
 func (m *GetMeMockRepo) EnsureIndexes(ctx context.Context) error                        { return nil }
 func (m *GetMeMockRepo) TransferSystemOwner(ctx context.Context, ns, o, n string) error { return nil }
 func (m *GetMeMockRepo) CountSystemOwners(ctx context.Context, ns string) (int64, error) {

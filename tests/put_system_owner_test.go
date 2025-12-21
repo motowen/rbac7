@@ -66,7 +66,7 @@ func (m *PutOwnerMockRepo) TransferSystemOwner(ctx context.Context, namespace, o
 func (m *PutOwnerMockRepo) UpsertUserRole(ctx context.Context, role *model.UserRole) error {
 	return nil
 }
-func (m *PutOwnerMockRepo) DeleteUserRole(ctx context.Context, namespace, userID, scope string) error {
+func (m *PutOwnerMockRepo) DeleteUserRole(ctx context.Context, namespace, userID, scope, deletedBy string) error {
 	return nil
 }
 func (m *PutOwnerMockRepo) CountSystemOwners(ctx context.Context, namespace string) (int64, error) {
@@ -82,7 +82,10 @@ func TestPutSystemOwner(t *testing.T) {
 		e.PUT("/user_roles/owner", h.PutSystemOwner)
 
 		// 1. Service calls GetSystemOwner to verify caller is owner
+		// 1. Service calls GetSystemOwner to verify caller is owner
 		ownerRole := &model.UserRole{UserID: "owner_1", Role: model.RoleSystemOwner}
+		// Permission Check (Platform.system.transfer_owner)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "ns_1", []string{"owner"}).Return(true, nil)
 		mockRepo.On("GetSystemOwner", mock.Anything, "ns_1").Return(ownerRole, nil)
 
 		// 2. Transfer
@@ -107,6 +110,7 @@ func TestPutSystemOwner(t *testing.T) {
 		e.PUT("/user_roles/owner_admin", h.PutSystemOwner)
 
 		ownerRole := &model.UserRole{UserID: "owner_1", Role: model.RoleSystemOwner}
+		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "ns_1", []string{"owner"}).Return(true, nil)
 		mockRepo.On("GetSystemOwner", mock.Anything, "ns_1").Return(ownerRole, nil)
 		mockRepo.On("TransferSystemOwner", mock.Anything, "ns_1", "owner_1", "new_owner").Return(nil)
 
@@ -164,8 +168,9 @@ func TestPutSystemOwner(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.PUT("/user_roles/owner_403", h.PutSystemOwner)
 
-		currentOwner := &model.UserRole{UserID: "real_owner", Role: model.RoleSystemOwner}
-		mockRepo.On("GetSystemOwner", mock.Anything, "ns_1").Return(currentOwner, nil)
+		// Permission Check -> False
+		mockRepo.On("HasAnySystemRole", mock.Anything, "fake_owner", "ns_1", []string{"owner"}).Return(false, nil)
+		// GetSystemOwner is NOT called if permission denied
 
 		reqBody := model.SystemOwnerUpsertRequest{UserID: "new_owner", Namespace: "ns_1"}
 		headers := map[string]string{"authentication": "Bearer t", "x-user-id": "fake_owner"}
@@ -181,6 +186,7 @@ func TestPutSystemOwner(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.PUT("/user_roles/owner_404", h.PutSystemOwner)
 
+		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "ns_missing", []string{"owner"}).Return(true, nil)
 		mockRepo.On("GetSystemOwner", mock.Anything, "ns_missing").Return(nil, nil)
 
 		reqBody := model.SystemOwnerUpsertRequest{UserID: "new_owner", Namespace: "ns_missing"}
@@ -198,6 +204,7 @@ func TestPutSystemOwner(t *testing.T) {
 		e.PUT("/user_roles/owner_500", h.PutSystemOwner)
 
 		ownerRole := &model.UserRole{UserID: "owner_1", Role: model.RoleSystemOwner}
+		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "ns_1", []string{"owner"}).Return(true, nil)
 		mockRepo.On("GetSystemOwner", mock.Anything, "ns_1").Return(ownerRole, nil)
 		mockRepo.On("TransferSystemOwner", mock.Anything, "ns_1", "owner_1", "new_owner").Return(errors.New("db error"))
 

@@ -1,5 +1,7 @@
 package model
 
+import "time"
+
 type SystemUserRole struct {
 	UserID    string `json:"user_id" bson:"user_id"`
 	UserType  string `json:"user_type" bson:"user_type"`
@@ -33,7 +35,14 @@ type UserRole struct {
 	Role      string `bson:"role"`
 	Scope     string `bson:"scope"`
 	Namespace string `bson:"namespace,omitempty"`
-	// Add other fields as needed
+
+	// Audit Fields
+	CreatedAt time.Time  `bson:"created_at"`
+	UpdatedAt time.Time  `bson:"updated_at"`
+	DeletedAt *time.Time `bson:"deleted_at,omitempty"`
+	CreatedBy string     `bson:"created_by,omitempty"`
+	UpdatedBy string     `bson:"updated_by,omitempty"`
+	DeletedBy string     `bson:"deleted_by,omitempty"`
 }
 
 type UserRoleFilter struct {
