@@ -38,7 +38,6 @@ func NewService(repo repository.RBACRepository) *Service {
 
 func (s *Service) AssignSystemOwner(ctx context.Context, callerID string, req model.SystemOwnerUpsertRequest) error {
 	req.Namespace = strings.ToUpper(req.Namespace)
-	req.Role = strings.ToLower(req.Role) // Should be 'owner', but safe to normalize
 	// 0. Validate Caller & Input
 	if err := s.validateRequest(callerID, req); err != nil {
 		return err

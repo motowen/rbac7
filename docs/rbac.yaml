@@ -259,6 +259,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '500':
           $ref: '#/components/responses/InternalServerError'
 
@@ -453,12 +455,30 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: "unauthorized"
+              message: "Unauthorized"
     Forbidden:
       description: Forbidden (permission denied)
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: "forbidden"
+              message: "Permission denied"
+    Conflict:
+      description: Conflict (resource already exists)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: "conflict"
+              message: "System owner or role already exists"
     InternalServerError:
       description: Internal server error (DB read/write failure or unexpected error)
       content:
@@ -548,10 +568,6 @@ components:
         user_id:
           type: string
           example: u_1
-        role:
-          type: string
-          enum: [owner]
-          default: owner
         namespace:
           type: string
           example: namespace_1

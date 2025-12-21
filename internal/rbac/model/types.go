@@ -12,7 +12,6 @@ type SystemUserRole struct {
 
 type SystemOwnerUpsertRequest struct {
 	UserID    string `json:"user_id"`
-	Role      string `json:"role"`
 	Namespace string `json:"namespace"`
 }
 
