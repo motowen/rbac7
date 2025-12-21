@@ -58,9 +58,9 @@ func TestDeleteSystemUserRole(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.DELETE("/user_roles", h.DeleteUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "ns_1", mock.Anything).Return(true, nil)
-		mockRepo.On("GetSystemOwner", mock.Anything, "ns_1").Return(nil, nil)
-		mockRepo.On("DeleteUserRole", mock.Anything, "ns_1", "u_2", "system", "owner_1").Return(nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "NS_1", mock.Anything).Return(true, nil)
+		mockRepo.On("GetSystemOwner", mock.Anything, "NS_1").Return(nil, nil)
+		mockRepo.On("DeleteUserRole", mock.Anything, "NS_1", "u_2", "system", "owner_1").Return(nil)
 
 		rec := PerformRequest(e, http.MethodDelete, "/user_roles?namespace=ns_1&user_id=u_2", nil, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -96,11 +96,11 @@ func TestDeleteSystemUserRole(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.DELETE("/user_roles_own", h.DeleteUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "ns_1", mock.Anything).Return(true, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "NS_1", mock.Anything).Return(true, nil)
 
 		ownerRole := &model.UserRole{UserID: "u_target", Role: model.RoleSystemOwner}
-		mockRepo.On("GetSystemOwner", mock.Anything, "ns_1").Return(ownerRole, nil)
-		mockRepo.On("CountSystemOwners", mock.Anything, "ns_1").Return(1, nil)
+		mockRepo.On("GetSystemOwner", mock.Anything, "NS_1").Return(ownerRole, nil)
+		mockRepo.On("CountSystemOwners", mock.Anything, "NS_1").Return(1, nil)
 
 		rec := PerformRequest(e, http.MethodDelete, "/user_roles_own?namespace=ns_1&user_id=u_target", nil, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
 		assert.Equal(t, http.StatusForbidden, rec.Code)
@@ -113,7 +113,7 @@ func TestDeleteSystemUserRole(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.DELETE("/user_roles_403", h.DeleteUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "u_common", "ns_1", mock.Anything).Return(false, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "u_common", "NS_1", mock.Anything).Return(false, nil)
 
 		rec := PerformRequest(e, http.MethodDelete, "/user_roles_403?namespace=ns_1&user_id=u_2", nil, map[string]string{"x-user-id": "u_common", "authentication": "t"})
 		assert.Equal(t, http.StatusForbidden, rec.Code)
@@ -126,7 +126,7 @@ func TestDeleteSystemUserRole(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.DELETE("/user_roles_403_reveal", h.DeleteUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "u_common", "ns_1", mock.Anything).Return(false, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "u_common", "NS_1", mock.Anything).Return(false, nil)
 
 		// Note: Service checks auth FIRST before checking if target user exists or is owner.
 		// So it returns 403 immediately without checking GetAll or specific user role.
@@ -143,10 +143,10 @@ func TestDeleteSystemUserRole(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.DELETE("/user_roles_idempotent", h.DeleteUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "ns_1", mock.Anything).Return(true, nil)
-		mockRepo.On("GetSystemOwner", mock.Anything, "ns_1").Return(nil, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "NS_1", mock.Anything).Return(true, nil)
+		mockRepo.On("GetSystemOwner", mock.Anything, "NS_1").Return(nil, nil)
 		// Repo returns ErrNoDocuments -> Service converts to nil/success
-		mockRepo.On("DeleteUserRole", mock.Anything, "ns_1", "u_2", "system", "owner_1").Return(mongo.ErrNoDocuments)
+		mockRepo.On("DeleteUserRole", mock.Anything, "NS_1", "u_2", "system", "owner_1").Return(mongo.ErrNoDocuments)
 
 		rec := PerformRequest(e, http.MethodDelete, "/user_roles_idempotent?namespace=ns_1&user_id=u_2", nil, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -159,9 +159,9 @@ func TestDeleteSystemUserRole(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.DELETE("/user_roles_500", h.DeleteUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "ns_1", mock.Anything).Return(true, nil)
-		mockRepo.On("GetSystemOwner", mock.Anything, "ns_1").Return(nil, nil)
-		mockRepo.On("DeleteUserRole", mock.Anything, "ns_1", "u_2", "system", "owner_1").Return(errors.New("db error"))
+		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "NS_1", mock.Anything).Return(true, nil)
+		mockRepo.On("GetSystemOwner", mock.Anything, "NS_1").Return(nil, nil)
+		mockRepo.On("DeleteUserRole", mock.Anything, "NS_1", "u_2", "system", "owner_1").Return(errors.New("db error"))
 
 		rec := PerformRequest(e, http.MethodDelete, "/user_roles_500?namespace=ns_1&user_id=u_2", nil, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)

@@ -72,13 +72,13 @@ func TestGetUserRolesList(t *testing.T) {
 		// For now, let's assume valid scope='system' and namespace='ns1' requires at least some role?
 		// Actually, standard list usually filters by namespace.
 		// Permission: platform.system.get_member (Owner, Admin) - Viewer is NOT allowed anymore per spec.
-		mockRepo.On("HasAnySystemRole", mock.Anything, "admin_1", "ns_1", mock.Anything).Return(true, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "admin_1", "NS_1", mock.Anything).Return(true, nil)
 
 		expectedRoles := []*model.UserRole{
-			{UserID: "u_1", Role: "viewer", Namespace: "ns_1", Scope: "system"},
+			{UserID: "u_1", Role: "viewer", Namespace: "NS_1", Scope: "system"},
 		}
 		mockRepo.On("FindUserRoles", mock.Anything, mock.MatchedBy(func(f model.UserRoleFilter) bool {
-			return f.Namespace == "ns_1" && f.Scope == "system"
+			return f.Namespace == "NS_1" && f.Scope == "system"
 		})).Return(expectedRoles, nil)
 
 		params := url.Values{}
@@ -102,13 +102,13 @@ func TestGetUserRolesList(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.GET("/user_roles", h.GetUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "admin_1", "ns_target", mock.Anything).Return(true, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "admin_1", "NS_TARGET", mock.Anything).Return(true, nil)
 
 		expectedRoles := []*model.UserRole{
-			{UserID: "u_target", Role: "admin", Namespace: "ns_target"},
+			{UserID: "u_target", Role: "admin", Namespace: "NS_TARGET"},
 		}
 		mockRepo.On("FindUserRoles", mock.Anything, mock.MatchedBy(func(f model.UserRoleFilter) bool {
-			return f.Namespace == "ns_target"
+			return f.Namespace == "NS_TARGET"
 		})).Return(expectedRoles, nil)
 
 		path := "/user_roles?scope=system&namespace=ns_target"
@@ -191,7 +191,7 @@ func TestGetUserRolesList(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.GET("/user_roles", h.GetUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "u_no_perm", "ns_1", mock.Anything).Return(false, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "u_no_perm", "NS_1", mock.Anything).Return(false, nil)
 
 		path := "/user_roles?scope=system&namespace=ns_1"
 		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "u_no_perm"})
@@ -209,7 +209,7 @@ func TestGetUserRolesList(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.GET("/user_roles", h.GetUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "admin_1", "ns_1", mock.Anything).Return(true, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "admin_1", "NS_1", mock.Anything).Return(true, nil)
 		mockRepo.On("FindUserRoles", mock.Anything, mock.Anything).Return(nil, errors.New("db error"))
 
 		path := "/user_roles?scope=system&namespace=ns_1"
@@ -227,7 +227,7 @@ func TestGetUserRolesList(t *testing.T) {
 		e.GET("/user_roles", h.GetUserRoles)
 
 		// Deny
-		mockRepo.On("HasAnySystemRole", mock.Anything, "u_no_perm", "ns_target", mock.Anything).Return(false, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "u_no_perm", "NS_TARGET", mock.Anything).Return(false, nil)
 
 		path := "/user_roles?scope=system&namespace=ns_target"
 		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "u_no_perm"})
@@ -241,18 +241,18 @@ func TestGetUserRolesList(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.GET("/user_roles", h.GetUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "admin_1", "ns_1", mock.Anything).Return(true, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "admin_1", "NS_1", mock.Anything).Return(true, nil)
 
 		expectedRoles := []*model.UserRole{
-			{UserID: "u_1", Role: "viewer", Namespace: "ns_1"},
-			{UserID: "u_2", Role: "admin", Namespace: "ns_1"},
+			{UserID: "u_1", Role: "viewer", Namespace: "NS_1"},
+			{UserID: "u_2", Role: "admin", Namespace: "NS_1"},
 		}
 		mockRepo.On("FindUserRoles", mock.Anything, mock.Anything).Return(expectedRoles, nil)
 
 		path := "/user_roles?scope=system&namespace=ns_1"
 		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "admin_1"})
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Contains(t, rec.Body.String(), "ns_1")
+		assert.Contains(t, rec.Body.String(), "NS_1")
 		assert.NotContains(t, rec.Body.String(), "ns_other")
 	})
 

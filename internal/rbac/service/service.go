@@ -6,6 +6,7 @@ import (
 	"log"
 	"rbac7/internal/rbac/model"
 	"rbac7/internal/rbac/repository"
+	"strings"
 
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -36,6 +37,8 @@ func NewService(repo repository.RBACRepository) *Service {
 }
 
 func (s *Service) AssignSystemOwner(ctx context.Context, callerID string, req model.SystemOwnerUpsertRequest) error {
+	req.Namespace = strings.ToUpper(req.Namespace)
+	req.Role = strings.ToLower(req.Role) // Should be 'owner', but safe to normalize
 	// 0. Validate Caller & Input
 	if err := s.validateRequest(callerID, req); err != nil {
 		return err
@@ -76,6 +79,7 @@ func (s *Service) AssignSystemOwner(ctx context.Context, callerID string, req mo
 }
 
 func (s *Service) TransferSystemOwner(ctx context.Context, callerID string, req model.SystemOwnerUpsertRequest) error {
+	req.Namespace = strings.ToUpper(req.Namespace)
 	// 0. Validate Caller & Input
 	if err := s.validateRequest(callerID, req); err != nil {
 		return err
@@ -129,6 +133,11 @@ func (s *Service) TransferSystemOwner(ctx context.Context, callerID string, req 
 }
 
 func (s *Service) AssignSystemUserRole(ctx context.Context, callerID string, req model.SystemUserRole) error {
+	req.Namespace = strings.ToUpper(req.Namespace)
+	req.Role = strings.ToLower(req.Role)
+	req.UserType = strings.ToLower(req.UserType)
+	req.Scope = strings.ToLower(req.Scope) // Though usually 'system', but if passed in req?
+
 	if err := s.validateCallerAndNamespace(callerID, req.Namespace); err != nil {
 		return err
 	}
@@ -191,6 +200,7 @@ func (s *Service) AssignSystemUserRole(ctx context.Context, callerID string, req
 }
 
 func (s *Service) DeleteSystemUserRole(ctx context.Context, callerID, namespace, userID string) error {
+	namespace = strings.ToUpper(namespace)
 	if err := s.validateCallerAndNamespace(callerID, namespace); err != nil {
 		return err
 	}
@@ -234,6 +244,7 @@ func (s *Service) DeleteSystemUserRole(ctx context.Context, callerID, namespace,
 }
 
 func (s *Service) GetUserRolesMe(ctx context.Context, callerID, scope string) ([]*model.UserRole, error) {
+	scope = strings.ToLower(scope)
 	if callerID == "" {
 		return nil, ErrUnauthorized
 	}
@@ -258,6 +269,10 @@ func (s *Service) GetUserRolesMe(ctx context.Context, callerID, scope string) ([
 }
 
 func (s *Service) GetUserRoles(ctx context.Context, callerID string, filter model.UserRoleFilter) ([]*model.UserRole, error) {
+	filter.Namespace = strings.ToUpper(filter.Namespace)
+	filter.Role = strings.ToLower(filter.Role)
+	filter.Scope = strings.ToLower(filter.Scope)
+
 	if callerID == "" {
 		return nil, ErrUnauthorized
 	}

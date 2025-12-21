@@ -65,13 +65,13 @@ func TestResurrectionFlows(t *testing.T) {
 		e.PUT("/user_roles/owner", h.PutSystemOwner)
 
 		// Setup: Caller is current owner
-		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "ns_1", mock.Anything).Return(true, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "NS_1", mock.Anything).Return(true, nil)
 		ownerRole := &model.UserRole{UserID: "owner_1", Role: model.RoleSystemOwner}
-		mockRepo.On("GetSystemOwner", mock.Anything, "ns_1").Return(ownerRole, nil)
+		mockRepo.On("GetSystemOwner", mock.Anything, "NS_1").Return(ownerRole, nil)
 
 		// Expect Transfer call. The Repo implementation handles the actual "unset deleted_at" logic.
 		// Detailed repo tests would be needed to verify DB state, but here we verify flow allows it.
-		mockRepo.On("TransferSystemOwner", mock.Anything, "ns_1", "owner_1", "deleted_user").Return(nil)
+		mockRepo.On("TransferSystemOwner", mock.Anything, "NS_1", "owner_1", "deleted_user").Return(nil)
 
 		reqBody := model.SystemOwnerUpsertRequest{UserID: "deleted_user", Namespace: "ns_1"}
 		rec := PerformRequest(e, http.MethodPut, "/user_roles/owner", reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
@@ -87,8 +87,8 @@ func TestResurrectionFlows(t *testing.T) {
 		e.POST("/user_roles", h.PostUserRoles)
 
 		// Caller has permission
-		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "ns_1", []string{"admin", "owner"}).Return(true, nil)
-		mockRepo.On("GetSystemOwner", mock.Anything, "ns_1").Return(nil, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "NS_1", mock.Anything).Return(true, nil)
+		mockRepo.On("GetSystemOwner", mock.Anything, "NS_1").Return(nil, nil)
 
 		// Expect Upsert. Service sets Audit fields (UpdatedBy etc).
 		mockRepo.On("UpsertUserRole", mock.Anything, mock.MatchedBy(func(r *model.UserRole) bool {
@@ -107,8 +107,8 @@ func TestResurrectionFlows(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.POST("/user_roles_v", h.PostUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "ns_1", []string{"admin", "owner"}).Return(true, nil)
-		mockRepo.On("GetSystemOwner", mock.Anything, "ns_1").Return(nil, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "NS_1", mock.Anything).Return(true, nil)
+		mockRepo.On("GetSystemOwner", mock.Anything, "NS_1").Return(nil, nil)
 
 		mockRepo.On("UpsertUserRole", mock.Anything, mock.MatchedBy(func(r *model.UserRole) bool {
 			return r.UserID == "deleted_user_2" && r.Role == "viewer"

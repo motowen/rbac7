@@ -63,8 +63,8 @@ func TestPostSystemUserRole(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.POST("/user_roles", h.PostUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "ns_1", mock.Anything).Return(true, nil)
-		mockRepo.On("GetSystemOwner", mock.Anything, "ns_1").Return(nil, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "NS_1", mock.Anything).Return(true, nil)
+		mockRepo.On("GetSystemOwner", mock.Anything, "NS_1").Return(nil, nil)
 		mockRepo.On("UpsertUserRole", mock.Anything, mock.MatchedBy(func(r *model.UserRole) bool {
 			return r.Role == "admin" && r.UserID == "u_2"
 		})).Return(nil)
@@ -81,8 +81,8 @@ func TestPostSystemUserRole(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.POST("/user_roles_viewer", h.PostUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "admin_1", "ns_1", mock.Anything).Return(true, nil)
-		mockRepo.On("GetSystemOwner", mock.Anything, "ns_1").Return(nil, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "admin_1", "NS_1", mock.Anything).Return(true, nil)
+		mockRepo.On("GetSystemOwner", mock.Anything, "NS_1").Return(nil, nil)
 		mockRepo.On("UpsertUserRole", mock.Anything, mock.MatchedBy(func(r *model.UserRole) bool {
 			return r.Role == "viewer" && r.UserID == "u_3"
 		})).Return(nil)
@@ -99,8 +99,8 @@ func TestPostSystemUserRole(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.POST("/user_roles_edit", h.PostUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "ns_1", mock.Anything).Return(true, nil)
-		mockRepo.On("GetSystemOwner", mock.Anything, "ns_1").Return(nil, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "NS_1", mock.Anything).Return(true, nil)
+		mockRepo.On("GetSystemOwner", mock.Anything, "NS_1").Return(nil, nil)
 		mockRepo.On("UpsertUserRole", mock.Anything, mock.MatchedBy(func(r *model.UserRole) bool {
 			return r.Role == "viewer" && r.UserID == "u_existing"
 		})).Return(nil)
@@ -117,11 +117,11 @@ func TestPostSystemUserRole(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.POST("/user_roles_downgrade", h.PostUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "ns_1", mock.Anything).Return(true, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "NS_1", mock.Anything).Return(true, nil)
 
 		currentOwner := &model.UserRole{UserID: "owner_1", Role: model.RoleSystemOwner}
-		mockRepo.On("GetSystemOwner", mock.Anything, "ns_1").Return(currentOwner, nil)
-		mockRepo.On("CountSystemOwners", mock.Anything, "ns_1").Return(1, nil)
+		mockRepo.On("GetSystemOwner", mock.Anything, "NS_1").Return(currentOwner, nil)
+		mockRepo.On("CountSystemOwners", mock.Anything, "NS_1").Return(1, nil)
 
 		reqBody := model.SystemUserRole{UserID: "owner_1", Role: "admin", Namespace: "ns_1"}
 		rec := PerformRequest(e, http.MethodPost, "/user_roles_downgrade", reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
@@ -159,7 +159,7 @@ func TestPostSystemUserRole(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.POST("/user_roles_forbidden_caller", h.PostUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "u_common", "ns_1", mock.Anything).Return(false, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "u_common", "NS_1", mock.Anything).Return(false, nil)
 
 		reqBody := model.SystemUserRole{UserID: "u_2", Role: "viewer", Namespace: "ns_1"}
 		rec := PerformRequest(e, http.MethodPost, "/user_roles_forbidden_caller", reqBody, map[string]string{"x-user-id": "u_common", "authentication": "t"})
@@ -210,8 +210,8 @@ func TestPostSystemUserRole(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.POST("/user_roles_500", h.PostUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "ns_1", mock.Anything).Return(true, nil)
-		mockRepo.On("GetSystemOwner", mock.Anything, "ns_1").Return(nil, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "NS_1", mock.Anything).Return(true, nil)
+		mockRepo.On("GetSystemOwner", mock.Anything, "NS_1").Return(nil, nil)
 		mockRepo.On("UpsertUserRole", mock.Anything, mock.Anything).Return(errors.New("db error"))
 
 		reqBody := model.SystemUserRole{UserID: "u_2", Role: "admin", Namespace: "ns_1"}
@@ -225,7 +225,7 @@ func TestPostSystemUserRole(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.POST("/user_roles_auth_error", h.PostUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "ns_1", mock.Anything).Return(false, errors.New("db disconnect"))
+		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "NS_1", mock.Anything).Return(false, errors.New("db disconnect"))
 
 		reqBody := model.SystemUserRole{UserID: "u_2", Role: "admin", Namespace: "ns_1"}
 		rec := PerformRequest(e, http.MethodPost, "/user_roles_auth_error", reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
