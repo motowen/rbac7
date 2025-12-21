@@ -97,6 +97,30 @@ func TestPostSystemOwner(t *testing.T) {
 		mockRepo.AssertExpectations(t)
 	})
 
+	t.Run("assign system owner with whitespace inputs success", func(t *testing.T) {
+		e := SetupServer()
+		mockRepo := new(MockRepo)
+		svc := service.NewService(mockRepo)
+		h := handler.NewSystemHandler(svc)
+		e.POST("/user_roles/owner_trim", h.PostSystemOwner)
+
+		// Expect TRIMMED values in calls
+		mockRepo.On("HasAnySystemRole", mock.Anything, "moderator_1", "", mock.Anything).Return(true, nil)
+		mockRepo.On("CreateUserRole", mock.Anything, mock.MatchedBy(func(r *model.UserRole) bool {
+			return r.Namespace == "NS_TRIM" && r.UserID == "u_trim"
+		})).Return(nil)
+
+		reqBody := model.SystemOwnerUpsertRequest{
+			UserID:    "  u_trim  ",
+			Namespace: "  ns_trim  ",
+		}
+		headers := map[string]string{"authentication": "Bearer token", "x-user-id": "moderator_1"}
+
+		rec := PerformRequest(e, http.MethodPost, "/user_roles/owner_trim", reqBody, headers)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		mockRepo.AssertExpectations(t)
+	})
+
 	t.Run("assign system owner missing namespace and return 400", func(t *testing.T) {
 		e := SetupServer()
 		mockRepo := new(MockRepo)
