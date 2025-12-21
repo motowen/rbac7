@@ -26,7 +26,7 @@ type RBACService interface {
 	DeleteSystemUserRole(ctx context.Context, callerID, namespace, userID string) error
 	GetUserRolesMe(ctx context.Context, callerID, scope string) ([]*model.UserRole, error)
 	GetUserRoles(ctx context.Context, callerID string, filter model.UserRoleFilter) ([]*model.UserRole, error)
-	AssignResourceOwner(ctx context.Context, callerID, namespace string, req model.ResourceOwnerUpsertRequest) error
+	AssignResourceOwner(ctx context.Context, callerID string, req model.ResourceOwnerUpsertRequest) error
 	TransferResourceOwner(ctx context.Context, callerID, namespace string, req model.ResourceOwnerUpsertRequest) error
 	AssignResourceUserRole(ctx context.Context, callerID string, req model.ResourceUserRole) error
 	DeleteResourceUserRole(ctx context.Context, callerID, namespace, resourceID, resourceType, userID string) error
@@ -325,36 +325,27 @@ func (s *Service) validateCallerAndNamespace(callerID, namespace string) error {
 
 // --- Resource Role Management ---
 
-func (s *Service) AssignResourceOwner(ctx context.Context, callerID, namespace string, req model.ResourceOwnerUpsertRequest) error {
-	namespace = strings.ToUpper(strings.TrimSpace(namespace))
+func (s *Service) AssignResourceOwner(ctx context.Context, callerID string, req model.ResourceOwnerUpsertRequest) error {
 	req.UserID = strings.TrimSpace(req.UserID)
 	req.ResourceID = strings.TrimSpace(req.ResourceID)
 	req.ResourceType = strings.ToLower(strings.TrimSpace(req.ResourceType))
 
-	if err := s.validateCallerAndNamespace(callerID, namespace); err != nil {
-		return err
+	if callerID == "" {
+		return ErrUnauthorized
 	}
 	if req.UserID == "" || req.ResourceID == "" || req.ResourceType == "" {
 		return ErrBadRequest
 	}
 
-	// Requirement: Should check if caller has permission to create resources?
-	// To satisfy "Forbidden" test case, we check PermSystemResourceCreate.
-	// Users should have this permission to create objects.
-	canCreate, err := CheckSystemPermission(ctx, s.Repo, callerID, namespace, PermSystemResourceCreate)
-	if err != nil {
-		return err
-	}
-	if !canCreate {
-		return ErrForbidden
-	}
+	// Permission: None required for AssignResourceOwner as per requirements.
+	// Namespace: None required.
 
 	// 1. Create new UserRole
 	newRole := &model.UserRole{
 		UserID:       req.UserID,
 		Role:         model.RoleResourceOwner,
 		Scope:        model.ScopeResource,
-		Namespace:    namespace,
+		Namespace:    "", // No namespace for this operation
 		ResourceID:   req.ResourceID,
 		ResourceType: req.ResourceType,
 		UserType:     model.UserTypeMember,
@@ -362,7 +353,7 @@ func (s *Service) AssignResourceOwner(ctx context.Context, callerID, namespace s
 		UpdatedBy:    callerID,
 	}
 
-	err = s.Repo.CreateUserRole(ctx, newRole)
+	err := s.Repo.CreateUserRole(ctx, newRole)
 	if err != nil {
 		if errors.Is(err, repository.ErrDuplicate) {
 			// If duplicate, it means owner already exists?

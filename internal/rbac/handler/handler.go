@@ -261,8 +261,6 @@ func (h *SystemHandler) PostResourceOwner(c echo.Context) error {
 		return c.JSON(code, body)
 	}
 
-	namespace := c.QueryParam("namespace")
-
 	var req model.ResourceOwnerUpsertRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
@@ -270,7 +268,7 @@ func (h *SystemHandler) PostResourceOwner(c echo.Context) error {
 		})
 	}
 
-	err = h.Service.AssignResourceOwner(c.Request().Context(), callerID, namespace, req)
+	err = h.Service.AssignResourceOwner(c.Request().Context(), callerID, req)
 	if err != nil {
 		code, body := httpError(err)
 		return c.JSON(code, body)
