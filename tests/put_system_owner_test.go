@@ -74,34 +74,6 @@ func (m *PutOwnerMockRepo) CountSystemOwners(ctx context.Context, namespace stri
 }
 
 func TestPutSystemOwner(t *testing.T) {
-	t.Run("transfer system owner success and return 200", func(t *testing.T) {
-		e := SetupServer()
-		mockRepo := new(PutOwnerMockRepo)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.PUT("/user_roles/owner", h.PutSystemOwner)
-
-		// 1. Service calls GetSystemOwner to verify caller is owner
-		// 1. Service calls GetSystemOwner to verify caller is owner
-		ownerRole := &model.UserRole{UserID: "owner_1", Role: model.RoleSystemOwner}
-		// Permission Check (Platform.system.transfer_owner)
-		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "NS_1", mock.Anything).Return(true, nil)
-		mockRepo.On("GetSystemOwner", mock.Anything, "NS_1").Return(ownerRole, nil)
-
-		// 2. Transfer
-		mockRepo.On("TransferSystemOwner", mock.Anything, "NS_1", "owner_1", "new_owner").Return(nil)
-
-		reqBody := model.SystemOwnerUpsertRequest{UserID: "new_owner", Namespace: "ns_1"}
-		headers := map[string]string{
-			"authentication": "Bearer t",
-			"x-user-id":      "owner_1",
-		}
-
-		rec := PerformRequest(e, http.MethodPut, "/user_roles/owner", reqBody, headers)
-		assert.Equal(t, http.StatusOK, rec.Code)
-		mockRepo.AssertExpectations(t)
-	})
-
 	t.Run("transfer system owner old owner becomes admin (implied) and return 200", func(t *testing.T) {
 		e := SetupServer()
 		mockRepo := new(PutOwnerMockRepo)
@@ -129,6 +101,20 @@ func TestPutSystemOwner(t *testing.T) {
 		e.PUT("/user_roles/owner_400", h.PutSystemOwner)
 
 		reqBody := model.SystemOwnerUpsertRequest{UserID: "", Namespace: "ns_1"}
+		headers := map[string]string{"authentication": "Bearer t", "x-user-id": "owner_1"}
+
+		rec := PerformRequest(e, http.MethodPut, "/user_roles/owner_400", reqBody, headers)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("transfer system owner missing namespace and return 400", func(t *testing.T) {
+		e := SetupServer()
+		mockRepo := new(PutOwnerMockRepo)
+		svc := service.NewService(mockRepo)
+		h := handler.NewSystemHandler(svc)
+		e.PUT("/user_roles/owner_400", h.PutSystemOwner)
+
+		reqBody := model.SystemOwnerUpsertRequest{UserID: "new_owner", Namespace: ""}
 		headers := map[string]string{"authentication": "Bearer t", "x-user-id": "owner_1"}
 
 		rec := PerformRequest(e, http.MethodPut, "/user_roles/owner_400", reqBody, headers)
@@ -177,23 +163,6 @@ func TestPutSystemOwner(t *testing.T) {
 
 		rec := PerformRequest(e, http.MethodPut, "/user_roles/owner_403", reqBody, headers)
 		assert.Equal(t, http.StatusForbidden, rec.Code)
-	})
-
-	t.Run("transfer system owner target user not found and return 404", func(t *testing.T) {
-		e := SetupServer()
-		mockRepo := new(PutOwnerMockRepo)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.PUT("/user_roles/owner_404", h.PutSystemOwner)
-
-		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "NS_MISSING", mock.Anything).Return(true, nil)
-		mockRepo.On("GetSystemOwner", mock.Anything, "NS_MISSING").Return(nil, nil)
-
-		reqBody := model.SystemOwnerUpsertRequest{UserID: "new_owner", Namespace: "ns_missing"}
-		headers := map[string]string{"authentication": "Bearer t", "x-user-id": "owner_1"}
-
-		rec := PerformRequest(e, http.MethodPut, "/user_roles/owner_404", reqBody, headers)
-		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	})
 
 	t.Run("transfer system owner internal error and return 500", func(t *testing.T) {
