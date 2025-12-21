@@ -59,6 +59,7 @@ func (r *MongoRepository) TransferSystemOwner(ctx context.Context, namespace, ol
 		// 1. Demote Old Owner to Admin
 		filterOld := bson.M{
 			"user_id":   oldOwnerID,
+			"user_type": model.UserTypeMember,
 			"scope":     model.ScopeSystem,
 			"namespace": namespace,
 			"role":      model.RoleSystemOwner,
@@ -77,6 +78,7 @@ func (r *MongoRepository) TransferSystemOwner(ctx context.Context, namespace, ol
 		// 2. Promote New Owner (Upsert to handle if they are already a member or not)
 		filterNew := bson.M{
 			"user_id":   newOwnerID,
+			"user_type": model.UserTypeMember,
 			"scope":     model.ScopeSystem,
 			"namespace": namespace,
 		}
@@ -164,6 +166,7 @@ func (r *MongoRepository) CreateUserRole(ctx context.Context, role *model.UserRo
 func (r *MongoRepository) UpsertUserRole(ctx context.Context, role *model.UserRole) error {
 	filter := bson.M{
 		"user_id":   role.UserID,
+		"user_type": role.UserType,
 		"scope":     role.Scope,
 		"namespace": role.Namespace, // Unique per user/scope/namespace
 	}
