@@ -45,6 +45,10 @@ func (m *MockRepo) HasAnySystemRole(ctx context.Context, userID, namespace strin
 	return args.Bool(0), args.Error(1)
 }
 
+func (m *MockRepo) FindUserRoles(ctx context.Context, filter model.UserRoleFilter) ([]*model.UserRole, error) {
+	return nil, nil
+}
+
 func (m *MockRepo) EnsureIndexes(ctx context.Context) error {
 	args := m.Called(ctx)
 	return args.Error(0)

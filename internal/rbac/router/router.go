@@ -15,4 +15,6 @@ func RegisterRoutes(e *echo.Echo, h *handler.SystemHandler) {
 	v1.PUT("/user_roles/owner", h.PutSystemOwner)
 	v1.POST("/user_roles", h.PostUserRoles)
 	v1.DELETE("/user_roles", h.DeleteUserRoles)
+	v1.GET("/user_roles/me", h.GetUserRolesMe)
+	v1.GET("/user_roles", h.GetUserRoles)
 }

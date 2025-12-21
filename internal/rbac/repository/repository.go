@@ -21,6 +21,8 @@ type RBACRepository interface {
 	HasSystemRole(ctx context.Context, userID, namespace, role string) (bool, error)
 	// Check if user has ANY of the specified system roles
 	HasAnySystemRole(ctx context.Context, userID, namespace string, roles []string) (bool, error)
+	// Find user roles with filter
+	FindUserRoles(ctx context.Context, filter model.UserRoleFilter) ([]*model.UserRole, error)
 	// Initialize Indexes
 	EnsureIndexes(ctx context.Context) error
 	// Transfer ownership safely using transaction
@@ -234,4 +236,32 @@ func (r *MongoRepository) HasAnySystemRole(ctx context.Context, userID, namespac
 		return false, err
 	}
 	return count > 0, nil
+}
+
+func (r *MongoRepository) FindUserRoles(ctx context.Context, filter model.UserRoleFilter) ([]*model.UserRole, error) {
+	query := bson.M{}
+	if filter.UserID != "" {
+		query["user_id"] = filter.UserID
+	}
+	if filter.Namespace != "" {
+		query["namespace"] = filter.Namespace
+	}
+	if filter.Role != "" {
+		query["role"] = filter.Role
+	}
+	if filter.Scope != "" {
+		query["scope"] = filter.Scope
+	}
+
+	cursor, err := r.Collection.Find(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var roles []*model.UserRole
+	if err = cursor.All(ctx, &roles); err != nil {
+		return nil, err
+	}
+	return roles, nil
 }

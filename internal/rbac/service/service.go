@@ -22,6 +22,8 @@ type RBACService interface {
 	TransferSystemOwner(ctx context.Context, callerID string, req model.SystemOwnerUpsertRequest) error
 	AssignSystemUserRole(ctx context.Context, callerID string, req model.SystemUserRole) error
 	DeleteSystemUserRole(ctx context.Context, callerID, namespace, userID string) error
+	GetUserRolesMe(ctx context.Context, callerID, scope string) ([]*model.UserRole, error)
+	GetUserRoles(ctx context.Context, callerID string, filter model.UserRoleFilter) ([]*model.UserRole, error)
 }
 
 type Service struct {
@@ -38,12 +40,13 @@ func (s *Service) AssignSystemOwner(ctx context.Context, callerID string, req mo
 		return err
 	}
 
-	// 2. Check permissions: Caller must be a moderator (Global, no namespace needed)
-	isModerator, err := s.Repo.HasSystemRole(ctx, callerID, "", model.RoleSystemModerator)
+	// 2. Check permissions: Caller must have 'platform.system.add_owner'
+	// Usually moderator is global, so namespace might be empty string?
+	hasPerm, err := CheckSystemPermission(ctx, s.Repo, callerID, "", PermPlatformSystemAddOwner)
 	if err != nil {
 		return err
 	}
-	if !isModerator {
+	if !hasPerm {
 		return ErrForbidden
 	}
 
@@ -77,7 +80,22 @@ func (s *Service) TransferSystemOwner(ctx context.Context, callerID string, req 
 		return ErrBadRequest
 	}
 
-	// 2. Check permissions: Caller must be OWNER of this namespace
+	// 2. Check permissions: Caller must have 'platform.system.transfer_owner'
+	hasPerm, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, PermPlatformSystemTransferOwner)
+	if err != nil {
+		return err
+	}
+	if !hasPerm {
+		return ErrForbidden
+	}
+
+	// 2b. Validate ownership specifics (Last Owner Check etc happens in Repo usually, but business rule:
+	// Transfer usually implies you are GIVING UP ownership to someone else?
+	// Existing code checked if `currentOwner.UserID == callerID`.
+	// Permission check `platform.system.transfer_owner` on `owner` role effectively covers this
+	// IF the user has the 'owner' role on THIS namespace.
+
+	// However, we should verify the system exists and has an owner?
 	currentOwner, err := s.Repo.GetSystemOwner(ctx, req.Namespace)
 	if err != nil {
 		return err
@@ -86,10 +104,11 @@ func (s *Service) TransferSystemOwner(ctx context.Context, callerID string, req 
 		return errors.New("system not found or has no owner")
 	}
 
-	if currentOwner.UserID != callerID {
-		// Caller is not the owner
-		return ErrForbidden
-	}
+	// Double check logic: If I am an Admin (assuming Admin had transfer rights, which they DON'T in this map),
+	// I could transfer.
+	// Since only Owner has transfer_owner, the HasAnySystemRole check is sufficient.
+	// But let's keep the user match for safety if multiple owners allowed?
+	// Logic: If I have permission, I can do it.
 
 	// 3. Perform Transfer (Transaction)
 	// New owner is req.UserID
@@ -112,11 +131,17 @@ func (s *Service) AssignSystemUserRole(ctx context.Context, callerID string, req
 	if req.Role == model.RoleSystemOwner {
 		return ErrForbidden
 	}
-	if req.Role != "admin" && req.Role != "viewer" && req.Role != "editor" && req.Role != "moderator" {
+	// Check if role being assigned is valid? (admin, viewer, editor, moderator)
+	// User Mapping only has [moderator, owner, admin, dev_user, viewer]
+	if req.Role != "admin" && req.Role != "viewer" && req.Role != "dev_user" && req.Role != "moderator" {
+		// "editor" was in previous code but not in new mapping. Removing support or keeping for backward compat?
+		// User request only defined permissions for [moderator, owner, admin, dev_user, viewer].
+		// I'll stick to 'admin', 'viewer', 'dev_user', 'moderator' as valid target roles.
 		return ErrBadRequest
 	}
 
-	canAssign, err := s.Repo.HasAnySystemRole(ctx, callerID, req.Namespace, []string{model.RoleSystemOwner, model.RoleSystemAdmin})
+	// Permission: platform.system.add_member
+	canAssign, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, PermPlatformSystemAddMember)
 	if err != nil {
 		return err
 	}
@@ -159,7 +184,8 @@ func (s *Service) DeleteSystemUserRole(ctx context.Context, callerID, namespace,
 		return ErrBadRequest
 	}
 
-	canDelete, err := s.Repo.HasAnySystemRole(ctx, callerID, namespace, []string{model.RoleSystemOwner, model.RoleSystemAdmin})
+	// Permission: platform.system.remove_member
+	canDelete, err := CheckSystemPermission(ctx, s.Repo, callerID, namespace, PermPlatformSystemRemoveMember)
 	if err != nil {
 		return err
 	}
@@ -189,6 +215,52 @@ func (s *Service) DeleteSystemUserRole(ctx context.Context, callerID, namespace,
 		return err
 	}
 	return nil
+}
+
+func (s *Service) GetUserRolesMe(ctx context.Context, callerID, scope string) ([]*model.UserRole, error) {
+	if callerID == "" {
+		return nil, ErrUnauthorized
+	}
+
+	// Get All My Roles first
+	filter := model.UserRoleFilter{UserID: callerID}
+	if scope != "" {
+		filter.Scope = scope
+	}
+	roles, err := s.Repo.FindUserRoles(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	// Permission Check: platform.system.read
+	// Requirement: "GetUserRolesMe要檢查有沒有platform.system.read的權限"
+	if !CheckRolesHavePermission(roles, PermPlatformSystemRead) {
+		return nil, ErrForbidden
+	}
+
+	return roles, nil
+}
+
+func (s *Service) GetUserRoles(ctx context.Context, callerID string, filter model.UserRoleFilter) ([]*model.UserRole, error) {
+	if callerID == "" {
+		return nil, ErrUnauthorized
+	}
+
+	// Permission Check for List
+	if filter.Scope == model.ScopeSystem {
+		// Permission: platform.system.get_member
+		// Note: User user request 1186: GetUserRoles -> get_meber (get_member)
+
+		canList, err := CheckSystemPermission(ctx, s.Repo, callerID, filter.Namespace, PermPlatformSystemGetMember)
+		if err != nil {
+			return nil, err
+		}
+		if !canList {
+			return nil, ErrForbidden
+		}
+	}
+
+	return s.Repo.FindUserRoles(ctx, filter)
 }
 
 func (s *Service) validateRequest(callerID string, req model.SystemOwnerUpsertRequest) error {

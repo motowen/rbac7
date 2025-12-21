@@ -49,6 +49,10 @@ func (m *PutOwnerMockRepo) HasAnySystemRole(ctx context.Context, userID, namespa
 	return args.Bool(0), args.Error(1)
 }
 
+func (m *PutOwnerMockRepo) FindUserRoles(ctx context.Context, filter model.UserRoleFilter) ([]*model.UserRole, error) {
+	return nil, nil
+}
+
 func (m *PutOwnerMockRepo) EnsureIndexes(ctx context.Context) error {
 	args := m.Called(ctx)
 	return args.Error(0)

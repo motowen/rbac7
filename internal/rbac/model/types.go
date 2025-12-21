@@ -35,3 +35,10 @@ type UserRole struct {
 	Namespace string `bson:"namespace,omitempty"`
 	// Add other fields as needed
 }
+
+type UserRoleFilter struct {
+	UserID    string
+	Namespace string
+	Role      string
+	Scope     string
+}

@@ -36,6 +36,11 @@ func (m *DeleteMockRepo) HasAnySystemRole(ctx context.Context, userID, namespace
 	args := m.Called(ctx, userID, namespace, roles)
 	return args.Bool(0), args.Error(1)
 }
+
+func (m *DeleteMockRepo) FindUserRoles(ctx context.Context, filter model.UserRoleFilter) ([]*model.UserRole, error) {
+	return nil, nil
+}
+
 func (m *DeleteMockRepo) CountSystemOwners(ctx context.Context, namespace string) (int64, error) {
 	args := m.Called(ctx, namespace)
 	return int64(args.Int(0)), args.Error(1)
@@ -53,7 +58,7 @@ func TestDeleteSystemUserRole(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.DELETE("/user_roles", h.DeleteUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "ns_1", []string{model.RoleSystemOwner, model.RoleSystemAdmin}).Return(true, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "ns_1", []string{"admin", "owner"}).Return(true, nil)
 		mockRepo.On("GetSystemOwner", mock.Anything, "ns_1").Return(nil, nil)
 		mockRepo.On("DeleteUserRole", mock.Anything, "ns_1", "u_2", "system").Return(nil)
 
@@ -91,7 +96,7 @@ func TestDeleteSystemUserRole(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.DELETE("/user_roles_own", h.DeleteUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "ns_1", []string{model.RoleSystemOwner, model.RoleSystemAdmin}).Return(true, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "ns_1", []string{"admin", "owner"}).Return(true, nil)
 
 		ownerRole := &model.UserRole{UserID: "u_target", Role: model.RoleSystemOwner}
 		mockRepo.On("GetSystemOwner", mock.Anything, "ns_1").Return(ownerRole, nil)
@@ -108,7 +113,7 @@ func TestDeleteSystemUserRole(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.DELETE("/user_roles_403", h.DeleteUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "u_common", "ns_1", []string{model.RoleSystemOwner, model.RoleSystemAdmin}).Return(false, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "u_common", "ns_1", []string{"admin", "owner"}).Return(false, nil)
 
 		rec := PerformRequest(e, http.MethodDelete, "/user_roles_403?namespace=ns_1&user_id=u_2", nil, map[string]string{"x-user-id": "u_common", "authentication": "t"})
 		assert.Equal(t, http.StatusForbidden, rec.Code)
@@ -121,7 +126,7 @@ func TestDeleteSystemUserRole(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.DELETE("/user_roles_403_reveal", h.DeleteUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "u_common", "ns_1", []string{model.RoleSystemOwner, model.RoleSystemAdmin}).Return(false, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "u_common", "ns_1", []string{"admin", "owner"}).Return(false, nil)
 
 		// Note: Service checks auth FIRST before checking if target user exists or is owner.
 		// So it returns 403 immediately without checking GetAll or specific user role.
@@ -138,7 +143,7 @@ func TestDeleteSystemUserRole(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.DELETE("/user_roles_idempotent", h.DeleteUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "ns_1", []string{model.RoleSystemOwner, model.RoleSystemAdmin}).Return(true, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "ns_1", []string{"admin", "owner"}).Return(true, nil)
 		mockRepo.On("GetSystemOwner", mock.Anything, "ns_1").Return(nil, nil)
 		// Repo returns ErrNoDocuments -> Service converts to nil/success
 		mockRepo.On("DeleteUserRole", mock.Anything, "ns_1", "u_2", "system").Return(mongo.ErrNoDocuments)
@@ -154,7 +159,7 @@ func TestDeleteSystemUserRole(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.DELETE("/user_roles_500", h.DeleteUserRoles)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "ns_1", []string{model.RoleSystemOwner, model.RoleSystemAdmin}).Return(true, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "ns_1", []string{"admin", "owner"}).Return(true, nil)
 		mockRepo.On("GetSystemOwner", mock.Anything, "ns_1").Return(nil, nil)
 		mockRepo.On("DeleteUserRole", mock.Anything, "ns_1", "u_2", "system").Return(errors.New("db error"))
 
