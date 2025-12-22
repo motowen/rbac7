@@ -30,6 +30,7 @@ type RBACService interface {
 	TransferResourceOwner(ctx context.Context, callerID string, req model.ResourceOwnerUpsertRequest) error
 	AssignResourceUserRole(ctx context.Context, callerID string, req model.ResourceUserRole) error
 	DeleteResourceUserRole(ctx context.Context, callerID, resourceID, resourceType, userID string) error
+	CheckPermission(ctx context.Context, callerID string, req model.CheckPermissionRequest) (bool, error)
 }
 
 type Service struct {
@@ -567,4 +568,31 @@ func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID, resource
 
 	log.Printf("Audit: Resource User Role Deleted. Caller=%s, Target=%s, Resource=%s:%s", callerID, userID, resourceType, resourceID)
 	return nil
+}
+
+func (s *Service) CheckPermission(ctx context.Context, callerID string, req model.CheckPermissionRequest) (bool, error) {
+	if callerID == "" {
+		return false, ErrUnauthorized
+	}
+	req.Permission = strings.TrimSpace(req.Permission)
+	req.Scope = strings.ToLower(strings.TrimSpace(req.Scope))
+
+	if req.Permission == "" || req.Scope == "" {
+		return false, ErrBadRequest
+	}
+
+	if req.Scope == model.ScopeSystem {
+		req.Namespace = strings.ToUpper(strings.TrimSpace(req.Namespace))
+		return CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, req.Permission)
+	} else if req.Scope == model.ScopeResource {
+		req.ResourceID = strings.TrimSpace(req.ResourceID)
+		req.ResourceType = strings.ToLower(strings.TrimSpace(req.ResourceType))
+
+		if req.ResourceID == "" || req.ResourceType == "" {
+			return false, ErrBadRequest
+		}
+		return CheckResourcePermission(ctx, s.Repo, callerID, req.ResourceID, req.ResourceType, req.Permission)
+	}
+
+	return false, ErrBadRequest
 }

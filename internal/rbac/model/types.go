@@ -71,3 +71,15 @@ type ResourceOwnerUpsertRequest struct {
 	ResourceID   string `json:"resource_id"`
 	ResourceType string `json:"resource_type"`
 }
+
+type CheckPermissionRequest struct {
+	Permission   string `json:"permission"`
+	Scope        string `json:"scope"`
+	Namespace    string `json:"namespace"`
+	ResourceID   string `json:"resource_id"`
+	ResourceType string `json:"resource_type"`
+}
+
+type CheckPermissionResponse struct {
+	Allowed bool `json:"allowed"`
+}

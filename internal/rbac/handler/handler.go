@@ -317,3 +317,26 @@ func (h *SystemHandler) DeleteResourceUserRoles(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, map[string]string{"status": "success"})
 }
+
+func (h *SystemHandler) PostPermissionsCheck(c echo.Context) error {
+	callerID, err := h.extractCallerID(c)
+	if err != nil {
+		code, body := httpError(err)
+		return c.JSON(code, body)
+	}
+
+	var req model.CheckPermissionRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "bad_request", Message: "Invalid body"},
+		})
+	}
+
+	allowed, err := h.Service.CheckPermission(c.Request().Context(), callerID, req)
+	if err != nil {
+		code, body := httpError(err)
+		return c.JSON(code, body)
+	}
+
+	return c.JSON(http.StatusOK, model.CheckPermissionResponse{Allowed: allowed})
+}
