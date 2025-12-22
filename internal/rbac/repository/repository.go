@@ -34,14 +34,14 @@ type RBACRepository interface {
 	DeleteUserRole(ctx context.Context, namespace, userID, scope, resourceID, resourceType, deletedBy string) error
 	// Count owners in a system
 	CountSystemOwners(ctx context.Context, namespace string) (int64, error)
-	// Check if user has specific resource role
-	HasResourceRole(ctx context.Context, userID, namespace, resourceID, resourceType, role string) (bool, error)
-	// Check if user has ANY of the specified resource roles
-	HasAnyResourceRole(ctx context.Context, userID, namespace, resourceID, resourceType string, roles []string) (bool, error)
-	// Transfer resource ownership
-	TransferResourceOwner(ctx context.Context, namespace, resourceID, resourceType, oldOwnerID, newOwnerID, updatedBy string) error
 	// Count owners in a resource
-	CountResourceOwners(ctx context.Context, namespace, resourceID, resourceType string) (int64, error)
+	CountResourceOwners(ctx context.Context, resourceID, resourceType string) (int64, error)
+	// Check if user has specific resource role
+	HasResourceRole(ctx context.Context, userID, resourceID, resourceType, role string) (bool, error)
+	// Check if user has ANY of the specified resource roles
+	HasAnyResourceRole(ctx context.Context, userID, resourceID, resourceType string, roles []string) (bool, error)
+	// Transfer resource ownership
+	TransferResourceOwner(ctx context.Context, resourceID, resourceType, oldOwnerID, newOwnerID, updatedBy string) error
 }
 
 type MongoRepository struct {
@@ -133,7 +133,7 @@ func (r *MongoRepository) TransferSystemOwner(ctx context.Context, namespace, ol
 	return err
 }
 
-func (r *MongoRepository) TransferResourceOwner(ctx context.Context, namespace, resourceID, resourceType, oldOwnerID, newOwnerID, updatedBy string) error {
+func (r *MongoRepository) TransferResourceOwner(ctx context.Context, resourceID, resourceType, oldOwnerID, newOwnerID, updatedBy string) error {
 	session, err := r.Client.StartSession()
 	if err != nil {
 		return err
@@ -146,7 +146,6 @@ func (r *MongoRepository) TransferResourceOwner(ctx context.Context, namespace, 
 			"user_id":       oldOwnerID,
 			"user_type":     model.UserTypeMember,
 			"scope":         model.ScopeResource,
-			"namespace":     namespace,
 			"resource_id":   resourceID,
 			"resource_type": resourceType,
 			"role":          model.RoleResourceOwner,
@@ -175,7 +174,6 @@ func (r *MongoRepository) TransferResourceOwner(ctx context.Context, namespace, 
 			"user_id":       newOwnerID,
 			"user_type":     model.UserTypeMember,
 			"scope":         model.ScopeResource,
-			"namespace":     namespace,
 			"resource_id":   resourceID,
 			"resource_type": resourceType,
 		}
@@ -186,9 +184,26 @@ func (r *MongoRepository) TransferResourceOwner(ctx context.Context, namespace, 
 				"updated_at":    now,
 				"updated_by":    updatedBy,
 				"scope":         model.ScopeResource,
-				"namespace":     namespace,
 				"resource_id":   resourceID,
 				"resource_type": resourceType,
+				// "namespace": "", // explicit empty or removed? Removed is better if we want to rely on resource-only indexing
+				// But previously newRole in AssignResourceOwner had Namespace: "". Repository logic should assume empty or ignored?
+				// If index key 'namespace' is still there?
+				// The Resource Owner Unique INdex v2 has "namespace".
+				// IF I remove namespace here, the update might not set namespace, leaving it null or empty?
+				// UpdateOne with Upsert:
+				// If document exists (filter matches), it updates.
+				// If not, it inserts.
+				// If I remove "namespace" from $set, and it's an insert, what is namespace? nil?
+				// My index v2 includes 'namespace'. If inserted as nil, it might break index if index expects string? Or just be nil.
+				// However, `AssignResourceOwner` sets `Namespace: ""`.
+				// `TransferResourceOwner` should strictly deal with ResourceID/Type?
+				// If I remove namespace from arguments, I should probably set it to "" explicitly in the DB update to maintain consistency with `AssignResourceOwner`?
+				// Or does the user want namespace GONE from DB?
+				// The requirement "Remove namespace parameter" usually implies it's not relevant.
+				// If I set "namespace": "", it matches `AssignResourceOwner`.
+				// So I will set "namespace": "" in $set and omit from filter.
+				"namespace": "",
 			},
 			"$setOnInsert": bson.M{
 				"created_at": now,
@@ -264,7 +279,6 @@ func (r *MongoRepository) EnsureIndexes(ctx context.Context) error {
 	idxResourceOwner := mongo.IndexModel{
 		Keys: bson.D{
 			{Key: "scope", Value: 1},
-			{Key: "namespace", Value: 1},
 			{Key: "resource_id", Value: 1},
 			{Key: "resource_type", Value: 1},
 		},
@@ -433,10 +447,9 @@ func (r *MongoRepository) CountSystemOwners(ctx context.Context, namespace strin
 	return r.SystemRoles.CountDocuments(ctx, filter)
 }
 
-func (r *MongoRepository) CountResourceOwners(ctx context.Context, namespace, resourceID, resourceType string) (int64, error) {
+func (r *MongoRepository) CountResourceOwners(ctx context.Context, resourceID, resourceType string) (int64, error) {
 	filter := bson.M{
 		"scope":         model.ScopeResource,
-		"namespace":     namespace,
 		"resource_id":   resourceID,
 		"resource_type": resourceType,
 		"role":          model.RoleResourceOwner,
@@ -445,14 +458,13 @@ func (r *MongoRepository) CountResourceOwners(ctx context.Context, namespace, re
 	return r.ResourceRoles.CountDocuments(ctx, filter)
 }
 
-func (r *MongoRepository) HasResourceRole(ctx context.Context, userID, namespace, resourceID, resourceType, role string) (bool, error) {
+func (r *MongoRepository) HasResourceRole(ctx context.Context, userID, resourceID, resourceType, role string) (bool, error) {
 	opts := options.Count().SetLimit(1)
 	filter := bson.M{
 		"user_id":       userID,
 		"scope":         model.ScopeResource,
 		"role":          role,
 		"deleted_at":    nil,
-		"namespace":     namespace,
 		"resource_id":   resourceID,
 		"resource_type": resourceType,
 	}
@@ -463,7 +475,7 @@ func (r *MongoRepository) HasResourceRole(ctx context.Context, userID, namespace
 	return count > 0, nil
 }
 
-func (r *MongoRepository) HasAnyResourceRole(ctx context.Context, userID, namespace, resourceID, resourceType string, roles []string) (bool, error) {
+func (r *MongoRepository) HasAnyResourceRole(ctx context.Context, userID, resourceID, resourceType string, roles []string) (bool, error) {
 	if len(roles) == 0 {
 		return false, nil
 	}
@@ -473,7 +485,6 @@ func (r *MongoRepository) HasAnyResourceRole(ctx context.Context, userID, namesp
 		"scope":         model.ScopeResource,
 		"role":          bson.M{"$in": roles},
 		"deleted_at":    nil,
-		"namespace":     namespace,
 		"resource_id":   resourceID,
 		"resource_type": resourceType,
 	}

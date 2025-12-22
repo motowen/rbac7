@@ -27,10 +27,10 @@ func TestPostResourceUserRole(t *testing.T) {
 		}
 
 		// Permission Check - No Namespace
-		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "", "r1", "dashboard", mock.Anything).Return(true, nil)
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "r1", "dashboard", mock.Anything).Return(true, nil)
 
 		// Check Duplication (Is Already Owner check)
-		mockRepo.On("HasResourceRole", mock.Anything, "u1", "", "r1", "dashboard", model.RoleResourceOwner).Return(false, nil)
+		mockRepo.On("HasResourceRole", mock.Anything, "u1", "r1", "dashboard", model.RoleResourceOwner).Return(false, nil)
 
 		// CreateRole
 		mockRepo.On("UpsertUserRole", mock.Anything, mock.MatchedBy(func(r *model.UserRole) bool {
@@ -101,7 +101,7 @@ func TestPostResourceUserRole(t *testing.T) {
 		}
 
 		// Permission Check Fails
-		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "", "r1", "dashboard", mock.Anything).Return(false, nil)
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "r1", "dashboard", mock.Anything).Return(false, nil)
 
 		rec := PerformRequest(e, http.MethodPost, "/api/v1/resource_roles", payload, map[string]string{
 			"x-user-id": "caller", "authentication": "t",
@@ -120,9 +120,9 @@ func TestPostResourceUserRole(t *testing.T) {
 			UserID: "u1", Role: "editor", ResourceID: "r1", ResourceType: "dashboard",
 		}
 
-		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "", "r1", "dashboard", mock.Anything).Return(true, nil)
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "r1", "dashboard", mock.Anything).Return(true, nil)
 		// Target is owner
-		mockRepo.On("HasResourceRole", mock.Anything, "u1", "", "r1", "dashboard", model.RoleResourceOwner).Return(true, nil)
+		mockRepo.On("HasResourceRole", mock.Anything, "u1", "r1", "dashboard", model.RoleResourceOwner).Return(true, nil)
 
 		rec := PerformRequest(e, http.MethodPost, "/api/v1/resource_roles", payload, map[string]string{
 			"x-user-id": "caller", "authentication": "t",
@@ -141,8 +141,8 @@ func TestPostResourceUserRole(t *testing.T) {
 			UserID: "u1", Role: "editor", ResourceID: "r1", ResourceType: "dashboard",
 		}
 
-		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "", "r1", "dashboard", mock.Anything).Return(true, nil)
-		mockRepo.On("HasResourceRole", mock.Anything, "u1", "", "r1", "dashboard", model.RoleResourceOwner).Return(false, nil)
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "r1", "dashboard", mock.Anything).Return(true, nil)
+		mockRepo.On("HasResourceRole", mock.Anything, "u1", "r1", "dashboard", model.RoleResourceOwner).Return(false, nil)
 		mockRepo.On("UpsertUserRole", mock.Anything, mock.Anything).Return(errors.New("db fail"))
 
 		rec := PerformRequest(e, http.MethodPost, "/api/v1/resource_roles", payload, map[string]string{

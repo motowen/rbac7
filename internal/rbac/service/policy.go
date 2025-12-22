@@ -140,12 +140,12 @@ func GetResourceRolesWithPermission(permission string) []string {
 }
 
 // CheckResourcePermission checks if the user has any role in the resource that grants the required permission.
-func CheckResourcePermission(ctx context.Context, repo repository.RBACRepository, userID, namespace, resourceID, resourceType, permission string) (bool, error) {
+func CheckResourcePermission(ctx context.Context, repo repository.RBACRepository, userID, resourceID, resourceType, permission string) (bool, error) {
 	requiredRoles := GetResourceRolesWithPermission(permission)
 	if len(requiredRoles) == 0 {
 		return false, nil
 	}
-	return repo.HasAnyResourceRole(ctx, userID, namespace, resourceID, resourceType, requiredRoles)
+	return repo.HasAnyResourceRole(ctx, userID, resourceID, resourceType, requiredRoles)
 }
 
 // CheckSystemPermission checks if the user has any role in the system namespace that grants the required permission.

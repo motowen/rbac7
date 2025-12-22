@@ -24,9 +24,9 @@ func TestDeleteResourceUserRole(t *testing.T) {
 
 		// Namespace removed from URL
 		// Perm check - No namespace
-		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "", "r1", "dashboard", mock.Anything).Return(true, nil)
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "r1", "dashboard", mock.Anything).Return(true, nil)
 		// Check target owner - No namespace
-		mockRepo.On("HasResourceRole", mock.Anything, "u1", "", "r1", "dashboard", model.RoleResourceOwner).Return(false, nil)
+		mockRepo.On("HasResourceRole", mock.Anything, "u1", "r1", "dashboard", model.RoleResourceOwner).Return(false, nil)
 		// Delete - No namespace
 		mockRepo.On("DeleteUserRole", mock.Anything, "", "u1", model.ScopeResource, "r1", "dashboard", "caller").Return(nil)
 
@@ -67,7 +67,7 @@ func TestDeleteResourceUserRole(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.DELETE("/api/v1/resource_roles", h.DeleteResourceUserRoles)
 
-		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "", "r1", "dashboard", mock.Anything).Return(false, nil)
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "r1", "dashboard", mock.Anything).Return(false, nil)
 
 		rec := PerformRequest(e, http.MethodDelete, "/api/v1/resource_roles?user_id=u1&resource_id=r1&resource_type=dashboard", nil, map[string]string{
 			"x-user-id": "caller", "authentication": "t",
@@ -82,9 +82,9 @@ func TestDeleteResourceUserRole(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.DELETE("/api/v1/resource_roles", h.DeleteResourceUserRoles)
 
-		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "", "r1", "dashboard", mock.Anything).Return(true, nil)
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "r1", "dashboard", mock.Anything).Return(true, nil)
 		// Target is owner
-		mockRepo.On("HasResourceRole", mock.Anything, "u1", "", "r1", "dashboard", model.RoleResourceOwner).Return(true, nil)
+		mockRepo.On("HasResourceRole", mock.Anything, "u1", "r1", "dashboard", model.RoleResourceOwner).Return(true, nil)
 
 		rec := PerformRequest(e, http.MethodDelete, "/api/v1/resource_roles?user_id=u1&resource_id=r1&resource_type=dashboard", nil, map[string]string{
 			"x-user-id": "caller", "authentication": "t",
@@ -99,8 +99,8 @@ func TestDeleteResourceUserRole(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.DELETE("/api/v1/resource_roles", h.DeleteResourceUserRoles)
 
-		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "", "r1", "dashboard", mock.Anything).Return(true, nil)
-		mockRepo.On("HasResourceRole", mock.Anything, "u1", "", "r1", "dashboard", model.RoleResourceOwner).Return(false, nil)
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "r1", "dashboard", mock.Anything).Return(true, nil)
+		mockRepo.On("HasResourceRole", mock.Anything, "u1", "r1", "dashboard", model.RoleResourceOwner).Return(false, nil)
 		mockRepo.On("DeleteUserRole", mock.Anything, "", "u1", model.ScopeResource, "r1", "dashboard", "caller").Return(errors.New("db error"))
 
 		rec := PerformRequest(e, http.MethodDelete, "/api/v1/resource_roles?user_id=u1&resource_id=r1&resource_type=dashboard", nil, map[string]string{

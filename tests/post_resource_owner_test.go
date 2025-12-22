@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"rbac7/internal/rbac/handler"
 	"rbac7/internal/rbac/model"
-	"rbac7/internal/rbac/repository"
 	"rbac7/internal/rbac/service"
 	"testing"
 
@@ -23,15 +22,18 @@ func TestPostResourceOwner(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.POST("/api/v1/user_roles/resources/owner", h.PostResourceOwner)
 
-		// Namespace removed
+		// No user_id in payload, caller is implied owner
 		payload := map[string]string{
-			"user_id": "u_new", "resource_id": "r1", "resource_type": "dashboard",
+			"resource_id": "r1", "resource_type": "dashboard",
 		}
 
+		// Expect Count Check
+		mockRepo.On("CountResourceOwners", mock.Anything, "r1", "dashboard").Return(int64(0), nil)
+
 		// Expect assignment
-		// Namespace is empty string ""
+		// UserID == "caller"
 		mockRepo.On("CreateUserRole", mock.Anything, mock.MatchedBy(func(r *model.UserRole) bool {
-			return r.UserID == "u_new" && r.Role == model.RoleResourceOwner && r.ResourceID == "r1" && r.Namespace == ""
+			return r.UserID == "caller" && r.Role == model.RoleResourceOwner && r.ResourceID == "r1" && r.Namespace == ""
 		})).Return(nil)
 
 		rec := PerformRequest(e, http.MethodPost, "/api/v1/user_roles/resources/owner", payload, map[string]string{
@@ -47,8 +49,8 @@ func TestPostResourceOwner(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.POST("/api/v1/user_roles/resources/owner", h.PostResourceOwner)
 
-		// Missing resource_id/type
-		payload := map[string]string{"user_id": "u_new"}
+		// Missing resource_id/type. user_id optional/ignored.
+		payload := map[string]string{"foo": "bar"}
 
 		rec := PerformRequest(e, http.MethodPost, "/api/v1/user_roles/resources/owner", payload, map[string]string{
 			"x-user-id": "caller", "authentication": "t",
@@ -63,7 +65,7 @@ func TestPostResourceOwner(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.POST("/api/v1/user_roles/resources/owner", h.PostResourceOwner)
 
-		payload := map[string]string{"user_id": "u_new", "resource_id": "r1", "resource_type": "dash"}
+		payload := map[string]string{"resource_id": "r1", "resource_type": "dash"}
 		// No x-user-id header
 		rec := PerformRequest(e, http.MethodPost, "/api/v1/user_roles/resources/owner", payload, nil)
 		assert.Equal(t, http.StatusUnauthorized, rec.Code)
@@ -76,10 +78,13 @@ func TestPostResourceOwner(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.POST("/api/v1/user_roles/resources/owner", h.PostResourceOwner)
 
-		payload := map[string]string{"user_id": "u_new", "resource_id": "r1", "resource_type": "dash"}
+		payload := map[string]string{"resource_id": "r1", "resource_type": "dash"}
 
-		// Repo returns ErrDuplicate
-		mockRepo.On("CreateUserRole", mock.Anything, mock.Anything).Return(repository.ErrDuplicate)
+		// Repo returns Count > 0
+		mockRepo.On("CountResourceOwners", mock.Anything, "r1", "dash").Return(int64(1), nil)
+
+		// CreateUserRole shouldn't be called if Count > 0
+		// mockRepo.On("CreateUserRole", mock.Anything, mock.Anything).Return(repository.ErrDuplicate)
 
 		rec := PerformRequest(e, http.MethodPost, "/api/v1/user_roles/resources/owner", payload, map[string]string{
 			"x-user-id": "caller", "authentication": "t",
@@ -94,7 +99,10 @@ func TestPostResourceOwner(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.POST("/api/v1/user_roles/resources/owner", h.PostResourceOwner)
 
-		payload := map[string]string{"user_id": "u_new", "resource_id": "r1", "resource_type": "dash"}
+		payload := map[string]string{"resource_id": "r1", "resource_type": "dash"}
+
+		// Repo returns Count -> 0
+		mockRepo.On("CountResourceOwners", mock.Anything, "r1", "dash").Return(int64(0), nil)
 
 		// Repo returns generic error
 		mockRepo.On("CreateUserRole", mock.Anything, mock.Anything).Return(errors.New("db fail"))

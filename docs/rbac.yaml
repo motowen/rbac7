@@ -305,6 +305,7 @@ paths:
 
         Permission: `resource.{resource_type}.add_owner`
         Example: `resource.dashboard.add_owner`
+        Note: The caller is automatically assigned as the owner.
       parameters:
         - $ref: '#/components/parameters/AuthenticationHeader'
         - $ref: '#/components/parameters/XUserIdHeader'
@@ -313,7 +314,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ResourceOwnerUpsertRequest'
+              $ref: '#/components/schemas/ResourceOwnerAssignRequest'
       responses:
         '200':
           description: Resource owner assigned successfully
@@ -618,6 +619,17 @@ components:
         user_id:
           type: string
           example: u_1
+        resource_type:
+          type: string
+          example: dashboard
+        resource_id:
+          type: string
+          example: r_9876
+
+    ResourceOwnerAssignRequest:
+      type: object
+      required: [resource_type, resource_id]
+      properties:
         resource_type:
           type: string
           example: dashboard

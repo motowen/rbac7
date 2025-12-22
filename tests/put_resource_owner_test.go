@@ -26,9 +26,9 @@ func TestPutResourceOwner(t *testing.T) {
 		}
 
 		// Permission check - No Namespace ("") as per update
-		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "", "r1", "dashboard", mock.Anything).Return(true, nil)
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "r1", "dashboard", mock.Anything).Return(true, nil)
 		// Repo Transfer - No Namespace ("")
-		mockRepo.On("TransferResourceOwner", mock.Anything, "", "r1", "dashboard", "caller", "u_new", "caller").Return(nil)
+		mockRepo.On("TransferResourceOwner", mock.Anything, "r1", "dashboard", "caller", "u_new", "caller").Return(nil)
 
 		rec := PerformRequest(e, http.MethodPut, "/api/v1/user_roles/resources/owner", payload, map[string]string{
 			"x-user-id": "caller", "authentication": "t",
@@ -46,8 +46,8 @@ func TestPutResourceOwner(t *testing.T) {
 		payload := map[string]string{
 			"user_id": "u_new", "resource_id": "r1", "resource_type": "dashboard",
 		}
-		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "", "r1", "dashboard", mock.Anything).Return(true, nil)
-		mockRepo.On("TransferResourceOwner", mock.Anything, "", "r1", "dashboard", "caller", "u_new", "caller").Return(nil)
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "r1", "dashboard", mock.Anything).Return(true, nil)
+		mockRepo.On("TransferResourceOwner", mock.Anything, "r1", "dashboard", "caller", "u_new", "caller").Return(nil)
 
 		rec := PerformRequest(e, http.MethodPut, "/api/v1/user_roles/resources/owner", payload, map[string]string{
 			"x-user-id": "caller", "authentication": "t",
@@ -109,7 +109,7 @@ func TestPutResourceOwner(t *testing.T) {
 		payload := map[string]string{"user_id": "u_new", "resource_id": "r1", "resource_type": "dashboard"}
 
 		// Permission check fails
-		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "", "r1", "dashboard", mock.Anything).Return(false, nil)
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "r1", "dashboard", mock.Anything).Return(false, nil)
 
 		rec := PerformRequest(e, http.MethodPut, "/api/v1/user_roles/resources/owner", payload, map[string]string{
 			"x-user-id": "caller", "authentication": "t",
@@ -127,7 +127,7 @@ func TestPutResourceOwner(t *testing.T) {
 		payload := map[string]string{"user_id": "u_new", "resource_id": "r1", "resource_type": "dashboard"}
 
 		// Permission check fails
-		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "", "r1", "dashboard", mock.Anything).Return(false, nil)
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "r1", "dashboard", mock.Anything).Return(false, nil)
 
 		rec := PerformRequest(e, http.MethodPut, "/api/v1/user_roles/resources/owner", payload, map[string]string{
 			"x-user-id": "caller", "authentication": "t",
@@ -144,8 +144,8 @@ func TestPutResourceOwner(t *testing.T) {
 
 		payload := map[string]string{"user_id": "u_new", "resource_id": "r1", "resource_type": "dashboard"}
 
-		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "", "r1", "dashboard", mock.Anything).Return(true, nil)
-		mockRepo.On("TransferResourceOwner", mock.Anything, "", "r1", "dashboard", "caller", "u_new", "caller").Return(errors.New("db error"))
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "r1", "dashboard", mock.Anything).Return(true, nil)
+		mockRepo.On("TransferResourceOwner", mock.Anything, "r1", "dashboard", "caller", "u_new", "caller").Return(errors.New("db error"))
 
 		rec := PerformRequest(e, http.MethodPut, "/api/v1/user_roles/resources/owner", payload, map[string]string{
 			"x-user-id": "caller", "authentication": "t",
