@@ -354,7 +354,6 @@ func (s *Service) AssignResourceOwner(ctx context.Context, callerID string, req 
 		UserID:       callerID, // Caller becomes owner
 		Role:         model.RoleResourceOwner,
 		Scope:        model.ScopeResource,
-		Namespace:    "", // No namespace for this operation
 		ResourceID:   req.ResourceID,
 		ResourceType: req.ResourceType,
 		UserType:     model.UserTypeMember,

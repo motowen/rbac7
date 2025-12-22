@@ -186,24 +186,6 @@ func (r *MongoRepository) TransferResourceOwner(ctx context.Context, resourceID,
 				"scope":         model.ScopeResource,
 				"resource_id":   resourceID,
 				"resource_type": resourceType,
-				// "namespace": "", // explicit empty or removed? Removed is better if we want to rely on resource-only indexing
-				// But previously newRole in AssignResourceOwner had Namespace: "". Repository logic should assume empty or ignored?
-				// If index key 'namespace' is still there?
-				// The Resource Owner Unique INdex v2 has "namespace".
-				// IF I remove namespace here, the update might not set namespace, leaving it null or empty?
-				// UpdateOne with Upsert:
-				// If document exists (filter matches), it updates.
-				// If not, it inserts.
-				// If I remove "namespace" from $set, and it's an insert, what is namespace? nil?
-				// My index v2 includes 'namespace'. If inserted as nil, it might break index if index expects string? Or just be nil.
-				// However, `AssignResourceOwner` sets `Namespace: ""`.
-				// `TransferResourceOwner` should strictly deal with ResourceID/Type?
-				// If I remove namespace from arguments, I should probably set it to "" explicitly in the DB update to maintain consistency with `AssignResourceOwner`?
-				// Or does the user want namespace GONE from DB?
-				// The requirement "Remove namespace parameter" usually implies it's not relevant.
-				// If I set "namespace": "", it matches `AssignResourceOwner`.
-				// So I will set "namespace": "" in $set and omit from filter.
-				"namespace": "",
 			},
 			"$setOnInsert": bson.M{
 				"created_at": now,
