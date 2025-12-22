@@ -53,7 +53,31 @@ func TestGetUserRolesList(t *testing.T) {
 	})
 
 	t.Run("list resource members success and return 200", func(t *testing.T) {
-		return
+		e := SetupServer()
+		mockRepo := new(MockRBACRepository)
+		svc := service.NewService(mockRepo)
+		h := handler.NewSystemHandler(svc)
+		e.GET("/user_roles", h.GetUserRoles)
+
+		// Permission Check
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "admin_1", "r1", "dashboard", mock.Anything).Return(true, nil)
+
+		expectedRoles := []*model.UserRole{
+			{UserID: "u_1", Role: "viewer", ResourceID: "r1", ResourceType: "dashboard", Scope: "resource"},
+		}
+		mockRepo.On("FindUserRoles", mock.Anything, mock.MatchedBy(func(f model.UserRoleFilter) bool {
+			return f.Scope == "resource" && f.ResourceID == "r1" && f.ResourceType == "dashboard"
+		})).Return(expectedRoles, nil)
+
+		params := url.Values{}
+		params.Add("scope", "resource")
+		params.Add("resource_id", "r1")
+		params.Add("resource_type", "dashboard")
+		path := "/user_roles?" + params.Encode()
+
+		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "admin_1"})
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), "u_1")
 	})
 
 	t.Run("list system members filtered by namespace success and return 200", func(t *testing.T) {
@@ -79,7 +103,30 @@ func TestGetUserRolesList(t *testing.T) {
 	})
 
 	t.Run("list resource members filtered by resource_type success and return 200", func(t *testing.T) {
-		return
+		// As per handler logic, BOTH id and type are required.
+		// Testing with both.
+		e := SetupServer()
+		mockRepo := new(MockRBACRepository)
+		svc := service.NewService(mockRepo)
+		h := handler.NewSystemHandler(svc)
+		e.GET("/user_roles", h.GetUserRoles)
+
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "admin_1", "r2", "dashboard", mock.Anything).Return(true, nil)
+
+		expectedRoles := []*model.UserRole{
+			{UserID: "u_2", Role: "admin", ResourceID: "r2", ResourceType: "dashboard"},
+		}
+		mockRepo.On("FindUserRoles", mock.Anything, mock.Anything).Return(expectedRoles, nil)
+
+		params := url.Values{}
+		params.Add("scope", "resource")
+		params.Add("resource_id", "r2")
+		params.Add("resource_type", "dashboard")
+		path := "/user_roles?" + params.Encode() // Filter by ID/Type
+
+		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "admin_1"})
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), "u_2")
 	})
 
 	t.Run("list members missing scope parameter and return 400", func(t *testing.T) {
@@ -106,7 +153,15 @@ func TestGetUserRolesList(t *testing.T) {
 	})
 
 	t.Run("list resource members missing resource params and return 400", func(t *testing.T) {
-		return // resource case
+		e := SetupServer()
+		mockRepo := new(MockRBACRepository)
+		svc := service.NewService(mockRepo)
+		h := handler.NewSystemHandler(svc)
+		e.GET("/user_roles", h.GetUserRoles)
+
+		// Scope resource, but no ID/Type
+		rec := PerformRequest(e, http.MethodGet, "/user_roles?scope=resource", nil, map[string]string{"x-user-id": "admin_1"})
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
 	t.Run("list scope=system but provide resource_type/resource_id and return 400", func(t *testing.T) {
@@ -123,15 +178,39 @@ func TestGetUserRolesList(t *testing.T) {
 	})
 
 	t.Run("list scope=resource but provide namespace and return 400", func(t *testing.T) {
-		return
+		e := SetupServer()
+		mockRepo := new(MockRBACRepository)
+		svc := service.NewService(mockRepo)
+		h := handler.NewSystemHandler(svc)
+		e.GET("/user_roles", h.GetUserRoles)
+
+		path := "/user_roles?scope=resource&namespace=ns1&resource_id=r1&resource_type=d1"
+		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "admin_1"})
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
 	t.Run("list scope=resource missing only resource_id and return 400", func(t *testing.T) {
-		return
+		e := SetupServer()
+		mockRepo := new(MockRBACRepository)
+		svc := service.NewService(mockRepo)
+		h := handler.NewSystemHandler(svc)
+		e.GET("/user_roles", h.GetUserRoles)
+
+		path := "/user_roles?scope=resource&resource_type=d1"
+		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "admin_1"})
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
 	t.Run("list scope=resource resource_type/resource_id empty string and return 400", func(t *testing.T) {
-		return
+		e := SetupServer()
+		mockRepo := new(MockRBACRepository)
+		svc := service.NewService(mockRepo)
+		h := handler.NewSystemHandler(svc)
+		e.GET("/user_roles", h.GetUserRoles)
+
+		path := "/user_roles?scope=resource&resource_id=&resource_type="
+		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "admin_1"})
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
 	t.Run("list members unauthorized and return 401", func(t *testing.T) {
@@ -160,7 +239,17 @@ func TestGetUserRolesList(t *testing.T) {
 	})
 
 	t.Run("list resource members forbidden (missing resource get_member) and return 403", func(t *testing.T) {
-		return
+		e := SetupServer()
+		mockRepo := new(MockRBACRepository)
+		svc := service.NewService(mockRepo)
+		h := handler.NewSystemHandler(svc)
+		e.GET("/user_roles", h.GetUserRoles)
+
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "u_no", "r1", "d1", mock.Anything).Return(false, nil)
+
+		path := "/user_roles?scope=resource&resource_id=r1&resource_type=d1"
+		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "u_no"})
+		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
 
 	t.Run("list members internal error and return 500", func(t *testing.T) {
@@ -218,6 +307,21 @@ func TestGetUserRolesList(t *testing.T) {
 	})
 
 	t.Run("list resource members response all resource_type/resource_id are same as query", func(t *testing.T) {
-		return
+		e := SetupServer()
+		mockRepo := new(MockRBACRepository)
+		svc := service.NewService(mockRepo)
+		h := handler.NewSystemHandler(svc)
+		e.GET("/user_roles", h.GetUserRoles)
+
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "admin_1", "r1", "dashboard", mock.Anything).Return(true, nil)
+		expectedRoles := []*model.UserRole{
+			{UserID: "u_1", Role: "viewer", ResourceID: "r1", ResourceType: "dashboard"},
+		}
+		mockRepo.On("FindUserRoles", mock.Anything, mock.Anything).Return(expectedRoles, nil)
+
+		path := "/user_roles?scope=resource&resource_id=r1&resource_type=dashboard"
+		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "admin_1"})
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), "dashboard")
 	})
 }

@@ -231,7 +231,7 @@ func (r *MongoRepository) EnsureIndexes(ctx context.Context) error {
 		},
 		Options: options.Index().
 			SetUnique(true).
-			SetName("unique_system_owner").
+			SetName("unique_system_owner_v2").
 			SetPartialFilterExpression(bson.M{
 				"scope":      model.ScopeSystem,
 				"role":       model.RoleSystemOwner,

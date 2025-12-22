@@ -328,6 +328,19 @@ func (s *Service) GetUserRoles(ctx context.Context, callerID string, filter mode
 		if !canList {
 			return nil, ErrForbidden
 		}
+	} else if filter.Scope == model.ScopeResource {
+		// Permission: resource.{type}.get_member
+		if filter.ResourceID == "" || filter.ResourceType == "" {
+			return nil, ErrBadRequest // Handler should catch this, but safeguard
+		}
+		perm := "resource." + filter.ResourceType + ".get_member"
+		canList, err := CheckResourcePermission(ctx, s.Repo, callerID, filter.ResourceID, filter.ResourceType, perm)
+		if err != nil {
+			return nil, err
+		}
+		if !canList {
+			return nil, ErrForbidden
+		}
 	}
 
 	return s.Repo.FindUserRoles(ctx, filter)
