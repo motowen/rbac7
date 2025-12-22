@@ -146,55 +146,22 @@ func (h *SystemHandler) GetUserRolesMe(c echo.Context) error {
 		})
 	}
 
-	// Forward scope to service
-	roles, err := h.Service.GetUserRolesMe(c.Request().Context(), callerID, scope)
+	resourceType := c.QueryParam("resource_type")
+	// Test requirement: "get resource roles missing resource_type parameter and return 400"
+	if scope == "resource" && resourceType == "" {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "bad_request", Message: "resource_type is required for resource scope"},
+		})
+	}
+
+	// Forward parameters to service
+	roles, err := h.Service.GetUserRolesMe(c.Request().Context(), callerID, scope, resourceType)
 	if err != nil {
 		code, body := httpError(err)
 		return c.JSON(code, body)
 	}
 
-	// If service returns all roles, we might need to filter by scope here or inside service?
-	// New requirement implies we should check scope. Service method signature currently doesn't accept scope.
-	// But Wait! Tests pass `scope` in URL. The service `GetUserRolesMe` signature is `(ctx, callerID)`.
-	// If we want to filter by scope, we should pass it or filter here.
-	// Let's filter here for now to satisfy tests, or better, update Service signature?
-	// The `GetUserRolesMe` in service currently calls `Repo.FindUserRoles(..., UserID: callerID)`.
-	// This returns ALL roles. If the user asks for scope=system, we should filter.
-	// Actually, the test TestGetUserRolesMe expects filtering or validation?
-	// "get user roles missing scope parameter and return 400" -> This validation is done.
-
-	// But "get user roles invalid scope value" -> 400.
-
-	// Also "get user roles forbidden (missing system read permission)".
-	// The service currently doesn't check permission.
-	// I should probably pass 'scope' to service so it can check relevant permissions.
-
-	// Let's Filter the result by scope if provided?
-	// But `GetUserRolesMe` service method is simple.
-
-	// Actually, let's keep it simple.
-
-	// Filtering result by scope:
-	filteredRoles := make([]*model.UserRole, 0)
-	for _, r := range roles {
-		if r.Scope == scope {
-			filteredRoles = append(filteredRoles, r)
-		}
-	}
-
-	// Wait, if I need to check permissions inside service based on scope, I need to pass scope.
-	// Current Service.GetUserRolesMe(ctx, callerID) doesn't have scope.
-	// Maybe I should update Service.GetUserRolesMe to accept scope?
-	// Or I can check permission here? No, logic belongs in Service.
-
-	// FOR NOW, verifying existing tests logic:
-	// The "missing system read permission" test expects 403.
-	// If I don't implement permission check, it returns 200.
-	// I MUST implement permission check.
-	// To check permission "system read", I need to know we are in "system" scope.
-
-	// I will update Validations in Handler first.
-	return c.JSON(http.StatusOK, filteredRoles)
+	return c.JSON(http.StatusOK, roles)
 }
 
 func (h *SystemHandler) GetUserRoles(c echo.Context) error {

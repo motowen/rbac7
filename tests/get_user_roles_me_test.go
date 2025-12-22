@@ -45,8 +45,28 @@ func TestGetUserRolesMe(t *testing.T) {
 	})
 
 	t.Run("get current user resource roles success and return 200", func(t *testing.T) {
-		// return pass as requested
-		return
+		e := SetupServer()
+		mockRepo := new(MockRBACRepository)
+		svc := service.NewService(mockRepo)
+		h := handler.NewSystemHandler(svc)
+		e.GET("/user_roles/me", h.GetUserRolesMe)
+
+		expectedRoles := []*model.UserRole{
+			{UserID: "u_1", Role: "viewer", ResourceID: "r1", ResourceType: "dashboard", Scope: "resource"},
+		}
+
+		mockRepo.On("FindUserRoles", mock.Anything, mock.MatchedBy(func(f model.UserRoleFilter) bool {
+			return f.UserID == "u_1" && f.Scope == "resource" && f.ResourceType == "dashboard"
+		})).Return(expectedRoles, nil)
+
+		params := url.Values{}
+		params.Add("scope", "resource")
+		params.Add("resource_type", "dashboard")
+		path := "/user_roles/me?" + params.Encode()
+
+		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "u_1"})
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), "viewer")
 	})
 
 	t.Run("get user roles missing scope parameter and return 400", func(t *testing.T) {
@@ -61,8 +81,15 @@ func TestGetUserRolesMe(t *testing.T) {
 	})
 
 	t.Run("get resource roles missing resource_type parameter and return 400", func(t *testing.T) {
-		// return pass (resource case)
-		return
+		e := SetupServer()
+		mockRepo := new(MockRBACRepository)
+		svc := service.NewService(mockRepo)
+		h := handler.NewSystemHandler(svc)
+		e.GET("/user_roles/me", h.GetUserRolesMe)
+
+		path := "/user_roles/me?scope=resource"
+		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "u_1"})
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
 	t.Run("get user roles invalid scope value and return 400", func(t *testing.T) {
@@ -142,8 +169,24 @@ func TestGetUserRolesMe(t *testing.T) {
 	})
 
 	t.Run("get user roles forbidden (missing resource read permission) and return 403", func(t *testing.T) {
-		// return pass (resource case)
-		return
+		e := SetupServer()
+		mockRepo := new(MockRBACRepository)
+		svc := service.NewService(mockRepo)
+		h := handler.NewSystemHandler(svc)
+		e.GET("/user_roles/me", h.GetUserRolesMe)
+
+		// Return empty roles => No read permission => 403
+		mockRepo.On("FindUserRoles", mock.Anything, mock.MatchedBy(func(f model.UserRoleFilter) bool {
+			return f.UserID == "u_banned" && f.Scope == "resource" && f.ResourceType == "dashboard"
+		})).Return([]*model.UserRole{}, nil)
+
+		params := url.Values{}
+		params.Add("scope", "resource")
+		params.Add("resource_type", "dashboard")
+		path := "/user_roles/me?" + params.Encode()
+
+		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "u_banned"})
+		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
 
 	t.Run("get user roles internal server error and return 500", func(t *testing.T) {

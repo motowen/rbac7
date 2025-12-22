@@ -24,7 +24,7 @@ type RBACService interface {
 	TransferSystemOwner(ctx context.Context, callerID string, req model.SystemOwnerUpsertRequest) error
 	AssignSystemUserRole(ctx context.Context, callerID string, req model.SystemUserRole) error
 	DeleteSystemUserRole(ctx context.Context, callerID, namespace, userID string) error
-	GetUserRolesMe(ctx context.Context, callerID, scope string) ([]*model.UserRole, error)
+	GetUserRolesMe(ctx context.Context, callerID, scope, resourceType string) ([]*model.UserRole, error)
 	GetUserRoles(ctx context.Context, callerID string, filter model.UserRoleFilter) ([]*model.UserRole, error)
 	AssignResourceOwner(ctx context.Context, callerID string, req model.ResourceOwnerUpsertRequest) error
 	TransferResourceOwner(ctx context.Context, callerID string, req model.ResourceOwnerUpsertRequest) error
@@ -40,6 +40,61 @@ func NewService(repo repository.RBACRepository) *Service {
 	return &Service{Repo: repo}
 }
 
+func (s *Service) GetUserRolesMe(ctx context.Context, callerID, scope, resourceType string) ([]*model.UserRole, error) {
+	scope = strings.ToLower(strings.TrimSpace(scope))
+	resourceType = strings.ToLower(strings.TrimSpace(resourceType))
+
+	if callerID == "" {
+		return nil, ErrUnauthorized
+	}
+
+	// Get All My Roles first
+	filter := model.UserRoleFilter{UserID: callerID}
+	if scope != "" {
+		filter.Scope = scope
+	}
+	if resourceType != "" {
+		filter.ResourceType = resourceType
+	}
+
+	roles, err := s.Repo.FindUserRoles(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	// Permission Check
+	if scope == model.ScopeSystem {
+		// Requirement: "GetUserRolesMe要檢查有沒有platform.system.read的權限"
+		if !CheckRolesHavePermission(roles, PermPlatformSystemRead) {
+			return nil, ErrForbidden
+		}
+	} else if scope == model.ScopeResource {
+		// For resource scope, check resource read permission
+		// Assuming PermResourceDashboardRead covers general resource reading for dashboard
+		// Use specific permission based on resourceType if possible, else default to dashboard for now or generic check?
+		// Given strict RBAC, let's use the one matching resourceType.
+		perm := "resource." + resourceType + ".read"
+		// If resourceType is empty (listing all), we might need to check if they have ANY read perm?
+		// But handler validation enforces resourceType presence?
+		// If resourceType is present:
+		if resourceType != "" {
+			if !CheckRolesHavePermission(roles, perm) {
+				return nil, ErrForbidden
+			}
+		} else {
+			// If resourceType not provided (e.g. get all my resources), strict check might fail.
+			// But sticking to test requirement "missing resource_type -> 400" in Handler, so resourceType will be present.
+			// Just in case:
+			if !CheckRolesHavePermission(roles, PermResourceDashboardRead) { // Fallback or Fail?
+				// If we have mixed resources, we need mixed check.
+				// But let's assume resourceType is mandatory for 'resource' scope for now.
+				return nil, ErrForbidden
+			}
+		}
+	}
+
+	return roles, nil
+}
 func (s *Service) AssignSystemOwner(ctx context.Context, callerID string, req model.SystemOwnerUpsertRequest) error {
 	// Normalize input: Trim Space then format
 	req.Namespace = strings.ToUpper(strings.TrimSpace(req.Namespace))
@@ -249,31 +304,6 @@ func (s *Service) DeleteSystemUserRole(ctx context.Context, callerID, namespace,
 
 	log.Printf("Audit: System User Role Deleted. Caller=%s, Target=%s, Namespace=%s", callerID, userID, namespace)
 	return nil
-}
-
-func (s *Service) GetUserRolesMe(ctx context.Context, callerID, scope string) ([]*model.UserRole, error) {
-	scope = strings.ToLower(strings.TrimSpace(scope))
-	if callerID == "" {
-		return nil, ErrUnauthorized
-	}
-
-	// Get All My Roles first
-	filter := model.UserRoleFilter{UserID: callerID}
-	if scope != "" {
-		filter.Scope = scope
-	}
-	roles, err := s.Repo.FindUserRoles(ctx, filter)
-	if err != nil {
-		return nil, err
-	}
-
-	// Permission Check: platform.system.read
-	// Requirement: "GetUserRolesMe要檢查有沒有platform.system.read的權限"
-	if !CheckRolesHavePermission(roles, PermPlatformSystemRead) {
-		return nil, ErrForbidden
-	}
-
-	return roles, nil
 }
 
 func (s *Service) GetUserRoles(ctx context.Context, callerID string, filter model.UserRoleFilter) ([]*model.UserRole, error) {
