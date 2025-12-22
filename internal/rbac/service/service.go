@@ -27,9 +27,9 @@ type RBACService interface {
 	GetUserRolesMe(ctx context.Context, callerID, scope string) ([]*model.UserRole, error)
 	GetUserRoles(ctx context.Context, callerID string, filter model.UserRoleFilter) ([]*model.UserRole, error)
 	AssignResourceOwner(ctx context.Context, callerID string, req model.ResourceOwnerUpsertRequest) error
-	TransferResourceOwner(ctx context.Context, callerID, namespace string, req model.ResourceOwnerUpsertRequest) error
+	TransferResourceOwner(ctx context.Context, callerID string, req model.ResourceOwnerUpsertRequest) error
 	AssignResourceUserRole(ctx context.Context, callerID string, req model.ResourceUserRole) error
-	DeleteResourceUserRole(ctx context.Context, callerID, namespace, resourceID, resourceType, userID string) error
+	DeleteResourceUserRole(ctx context.Context, callerID, resourceID, resourceType, userID string) error
 }
 
 type Service struct {
@@ -369,14 +369,13 @@ func (s *Service) AssignResourceOwner(ctx context.Context, callerID string, req 
 	return nil
 }
 
-func (s *Service) TransferResourceOwner(ctx context.Context, callerID, namespace string, req model.ResourceOwnerUpsertRequest) error {
-	namespace = strings.ToUpper(strings.TrimSpace(namespace))
+func (s *Service) TransferResourceOwner(ctx context.Context, callerID string, req model.ResourceOwnerUpsertRequest) error {
 	req.UserID = strings.TrimSpace(req.UserID)
 	req.ResourceID = strings.TrimSpace(req.ResourceID)
 	req.ResourceType = strings.ToLower(strings.TrimSpace(req.ResourceType))
 
-	if err := s.validateCallerAndNamespace(callerID, namespace); err != nil {
-		return err
+	if callerID == "" {
+		return ErrUnauthorized
 	}
 	if req.UserID == "" || req.ResourceID == "" || req.ResourceType == "" {
 		return ErrBadRequest
@@ -386,25 +385,10 @@ func (s *Service) TransferResourceOwner(ctx context.Context, callerID, namespace
 	}
 
 	// Permission: resource.dashboard.transfer_owner (or generic resource.transfer_owner)
-	// We use `PermResourceDashboardTransferOwner` for now as generic example based on user input.
-	// But wait, the map key is "owner" which has "resource.dashboard.transfer_owner".
-	// The permission string itself is usually "resource.dashboard.transfer_owner".
-	// Should we construct permission dynamically based on ResourceType? e.g. "resource.{type}.transfer_owner"?
-	// User Requirement: "Resource Role Permissions: ... resource.dashboard.transfer_owner"
-	// If resource_type is "dashboard", we check that.
-	// If resource_type is "widget", we might check "resource.widget.transfer_owner"?
-	// But `ResourceRolePermissions` map in `policy.go` is defined globally.
-	// Let's assume for now we check based on the specific permission string associated with the action.
-	// Current mappings only show "dashboard" permissions.
-	// I will usage `PermResourceDashboardTransferOwner` for "dashboard".
-	// If `req.ResourceType` is dashboard, we use that. Else?
-	// For MVP/Current Scope, let's look at `PermResourceDashboardTransferOwner`.
-	// Ideally: permission = "resource." + req.ResourceType + ".transfer_owner"
-
 	perm := "resource." + req.ResourceType + ".transfer_owner"
-	// NOTE: If the permission is not in our known list, GetResourceRolesWithPermission might return empty.
 
-	hasPerm, err := CheckResourcePermission(ctx, s.Repo, callerID, namespace, req.ResourceID, req.ResourceType, perm)
+	// No namespace
+	hasPerm, err := CheckResourcePermission(ctx, s.Repo, callerID, "", req.ResourceID, req.ResourceType, perm)
 	if err != nil {
 		return err
 	}
@@ -412,41 +396,11 @@ func (s *Service) TransferResourceOwner(ctx context.Context, callerID, namespace
 		return ErrForbidden
 	}
 
-	// Check if resource has an owner to transfer FROM?
-	// We need to know who the CURRENT owner is to demote them.
-	// Wait, TransferResourceOwner Repo Method takes `oldOwnerID`.
-	// We usually assume the Caller is the Old Owner (since only Owner has transfer permission).
-	// But an Admin MIGHT have permission too (though in our map, Admin does NOT).
-	// If only Owner has permission, then Caller == OldOwner.
-	// But we should lookup the current owner just in case.
-
-	// Repo doesn't have `GetResourceOwner`. We can implement it or just use HasResourceRole check?
-	// Or we assume Caller is the owner.
-	// Let's fetch the current owner to be safe and correct.
-	// I'll need to add `GetResourceOwner` to Repo? Or just `CountResourceOwners`?
-	// `TransferResourceOwner` in Repo takes `oldOwnerID`.
-	// If we don't know `oldOwnerID`, we can't call it?
-	// The repo implementation uses `oldOwnerID` in the filter.
-	// So we MUST know the old owner ID.
-	// Since we don't have GetResourceOwner, we assume Caller is the owner?
-	// But what if Caller is a Super Admin (System Owner)?
-	// System Owner might have permissions on Resource? (Not modeled yet).
-	// Safest bet: The caller MUST be the owner for this operation in this RBAC model.
-	// So oldOwnerID = callerID.
-
+	// Old Owner = Caller (Simplification)
 	oldOwnerID := callerID
 
-	// But wait, what if I am upgrading someone else?
-	// If I am NOT the owner, but has permission (e.g. System Admin), I can't be `oldOwnerID`.
-	// The Repo logic `Demote Old Owner` filters by `user_id: oldOwnerID`.
-	// If I am Admin and I transfer, the REAL Owner won't be demoted if I pass my ID.
-	// So I NEED to find the REAL Owner ID.
-	// I should probably add `GetResourceOwner` to Repo.
-	// Valid workaround: Transfer is strictly "Give MY ownership".
-	// If I am not the owner, I cannot specific "Transfer". I might use "Assign" (force overwrite)?
-	// Let's stick to "Caller is Owner" for Transfer logic for now, as that's standard "Transfer".
-
-	err = s.Repo.TransferResourceOwner(ctx, namespace, req.ResourceID, req.ResourceType, oldOwnerID, req.UserID, callerID)
+	// Namespace is empty string
+	err = s.Repo.TransferResourceOwner(ctx, "", req.ResourceID, req.ResourceType, oldOwnerID, req.UserID, callerID)
 	if err != nil {
 		return err
 	}
@@ -456,15 +410,14 @@ func (s *Service) TransferResourceOwner(ctx context.Context, callerID, namespace
 }
 
 func (s *Service) AssignResourceUserRole(ctx context.Context, callerID string, req model.ResourceUserRole) error {
-	req.Namespace = strings.ToUpper(strings.TrimSpace(req.Namespace))
 	req.Role = strings.ToLower(strings.TrimSpace(req.Role))
 	req.UserType = strings.ToLower(strings.TrimSpace(req.UserType))
 	req.ResourceID = strings.TrimSpace(req.ResourceID)
 	req.ResourceType = strings.ToLower(strings.TrimSpace(req.ResourceType))
 	req.UserID = strings.TrimSpace(req.UserID)
 
-	if err := s.validateCallerAndNamespace(callerID, req.Namespace); err != nil {
-		return err
+	if callerID == "" {
+		return ErrUnauthorized
 	}
 	if req.UserID == "" || req.ResourceID == "" || req.ResourceType == "" {
 		return ErrBadRequest
@@ -479,7 +432,8 @@ func (s *Service) AssignResourceUserRole(ctx context.Context, callerID string, r
 
 	// Permission: resource.{type}.add_member
 	perm := "resource." + req.ResourceType + ".add_member"
-	canAssign, err := CheckResourcePermission(ctx, s.Repo, callerID, req.Namespace, req.ResourceID, req.ResourceType, perm)
+	// No namespace
+	canAssign, err := CheckResourcePermission(ctx, s.Repo, callerID, "", req.ResourceID, req.ResourceType, perm)
 	if err != nil {
 		return err
 	}
@@ -489,7 +443,7 @@ func (s *Service) AssignResourceUserRole(ctx context.Context, callerID string, r
 
 	// Prevent adding duplicate owner? ALready checked Role != Owner.
 	// Check if target user is ALREADY owner?
-	isOwner, err := s.Repo.HasResourceRole(ctx, req.UserID, req.Namespace, req.ResourceID, req.ResourceType, model.RoleResourceOwner)
+	isOwner, err := s.Repo.HasResourceRole(ctx, req.UserID, "", req.ResourceID, req.ResourceType, model.RoleResourceOwner)
 	if err != nil {
 		return err
 	}
@@ -502,7 +456,7 @@ func (s *Service) AssignResourceUserRole(ctx context.Context, callerID string, r
 		UserID:       req.UserID,
 		Role:         req.Role,
 		Scope:        model.ScopeResource,
-		Namespace:    req.Namespace,
+		Namespace:    "", // No namespace
 		ResourceID:   req.ResourceID,
 		ResourceType: req.ResourceType,
 		UserType:     req.UserType,
@@ -520,14 +474,13 @@ func (s *Service) AssignResourceUserRole(ctx context.Context, callerID string, r
 	return nil
 }
 
-func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID, namespace, resourceID, resourceType, userID string) error {
-	namespace = strings.ToUpper(strings.TrimSpace(namespace))
+func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID, resourceID, resourceType, userID string) error {
 	userID = strings.TrimSpace(userID)
 	resourceID = strings.TrimSpace(resourceID)
 	resourceType = strings.ToLower(strings.TrimSpace(resourceType))
 
-	if err := s.validateCallerAndNamespace(callerID, namespace); err != nil {
-		return err
+	if callerID == "" {
+		return ErrUnauthorized
 	}
 	if userID == "" || resourceID == "" || resourceType == "" {
 		return ErrBadRequest
@@ -535,7 +488,8 @@ func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID, namespac
 
 	// Permission: resource.{type}.remove_member
 	perm := "resource." + resourceType + ".remove_member"
-	canDelete, err := CheckResourcePermission(ctx, s.Repo, callerID, namespace, resourceID, resourceType, perm)
+	// No Namespace
+	canDelete, err := CheckResourcePermission(ctx, s.Repo, callerID, "", resourceID, resourceType, perm)
 	if err != nil {
 		return err
 	}
@@ -544,7 +498,7 @@ func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID, namespac
 	}
 
 	// Cannot remove Owner
-	isOwner, err := s.Repo.HasResourceRole(ctx, userID, namespace, resourceID, resourceType, model.RoleResourceOwner)
+	isOwner, err := s.Repo.HasResourceRole(ctx, userID, "", resourceID, resourceType, model.RoleResourceOwner)
 	if err != nil {
 		return err
 	}
@@ -552,7 +506,7 @@ func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID, namespac
 		return ErrForbidden // Cannot remove owner
 	}
 
-	err = s.Repo.DeleteUserRole(ctx, namespace, userID, model.ScopeResource, resourceID, resourceType, callerID)
+	err = s.Repo.DeleteUserRole(ctx, "", userID, model.ScopeResource, resourceID, resourceType, callerID)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil

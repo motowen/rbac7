@@ -285,8 +285,6 @@ func (h *SystemHandler) PutResourceOwner(c echo.Context) error {
 		return c.JSON(code, body)
 	}
 
-	namespace := c.QueryParam("namespace")
-
 	var req model.ResourceOwnerUpsertRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
@@ -294,7 +292,7 @@ func (h *SystemHandler) PutResourceOwner(c echo.Context) error {
 		})
 	}
 
-	err = h.Service.TransferResourceOwner(c.Request().Context(), callerID, namespace, req)
+	err = h.Service.TransferResourceOwner(c.Request().Context(), callerID, req)
 	if err != nil {
 		code, body := httpError(err)
 		return c.JSON(code, body)
@@ -335,12 +333,11 @@ func (h *SystemHandler) DeleteResourceUserRoles(c echo.Context) error {
 		return c.JSON(code, body)
 	}
 
-	namespace := c.QueryParam("namespace")
 	userID := c.QueryParam("user_id")
 	resourceID := c.QueryParam("resource_id")
 	resourceType := c.QueryParam("resource_type")
 
-	err = h.Service.DeleteResourceUserRole(c.Request().Context(), callerID, namespace, resourceID, resourceType, userID)
+	err = h.Service.DeleteResourceUserRole(c.Request().Context(), callerID, resourceID, resourceType, userID)
 	if err != nil {
 		code, body := httpError(err)
 		return c.JSON(code, body)

@@ -25,10 +25,12 @@ func TestPutResourceOwner(t *testing.T) {
 			"user_id": "u_new", "resource_id": "r1", "resource_type": "dashboard",
 		}
 
-		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "NS", "r1", "dashboard", mock.Anything).Return(true, nil)
-		mockRepo.On("TransferResourceOwner", mock.Anything, "NS", "r1", "dashboard", "caller", "u_new", "caller").Return(nil)
+		// Permission check - No Namespace ("") as per update
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "", "r1", "dashboard", mock.Anything).Return(true, nil)
+		// Repo Transfer - No Namespace ("")
+		mockRepo.On("TransferResourceOwner", mock.Anything, "", "r1", "dashboard", "caller", "u_new", "caller").Return(nil)
 
-		rec := PerformRequest(e, http.MethodPut, "/api/v1/user_roles/resources/owner?namespace=NS", payload, map[string]string{
+		rec := PerformRequest(e, http.MethodPut, "/api/v1/user_roles/resources/owner", payload, map[string]string{
 			"x-user-id": "caller", "authentication": "t",
 		})
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -44,10 +46,10 @@ func TestPutResourceOwner(t *testing.T) {
 		payload := map[string]string{
 			"user_id": "u_new", "resource_id": "r1", "resource_type": "dashboard",
 		}
-		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "NS", "r1", "dashboard", mock.Anything).Return(true, nil)
-		mockRepo.On("TransferResourceOwner", mock.Anything, "NS", "r1", "dashboard", "caller", "u_new", "caller").Return(nil)
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "", "r1", "dashboard", mock.Anything).Return(true, nil)
+		mockRepo.On("TransferResourceOwner", mock.Anything, "", "r1", "dashboard", "caller", "u_new", "caller").Return(nil)
 
-		rec := PerformRequest(e, http.MethodPut, "/api/v1/user_roles/resources/owner?namespace=NS", payload, map[string]string{
+		rec := PerformRequest(e, http.MethodPut, "/api/v1/user_roles/resources/owner", payload, map[string]string{
 			"x-user-id": "caller", "authentication": "t",
 		})
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -62,7 +64,7 @@ func TestPutResourceOwner(t *testing.T) {
 
 		payload := map[string]string{"user_id": "u_new"}
 
-		rec := PerformRequest(e, http.MethodPut, "/api/v1/user_roles/resources/owner?namespace=NS", payload, map[string]string{
+		rec := PerformRequest(e, http.MethodPut, "/api/v1/user_roles/resources/owner", payload, map[string]string{
 			"x-user-id": "caller", "authentication": "t",
 		})
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
@@ -79,7 +81,7 @@ func TestPutResourceOwner(t *testing.T) {
 			"user_id": "caller", "resource_id": "r1", "resource_type": "dashboard",
 		}
 
-		rec := PerformRequest(e, http.MethodPut, "/api/v1/user_roles/resources/owner?namespace=NS", payload, map[string]string{
+		rec := PerformRequest(e, http.MethodPut, "/api/v1/user_roles/resources/owner", payload, map[string]string{
 			"x-user-id": "caller", "authentication": "t",
 		})
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
@@ -93,7 +95,7 @@ func TestPutResourceOwner(t *testing.T) {
 		e.PUT("/api/v1/user_roles/resources/owner", h.PutResourceOwner)
 
 		payload := map[string]string{"user_id": "u_new", "resource_id": "r1", "resource_type": "dashboard"}
-		rec := PerformRequest(e, http.MethodPut, "/api/v1/user_roles/resources/owner?namespace=NS", payload, nil)
+		rec := PerformRequest(e, http.MethodPut, "/api/v1/user_roles/resources/owner", payload, nil)
 		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 	})
 
@@ -107,9 +109,9 @@ func TestPutResourceOwner(t *testing.T) {
 		payload := map[string]string{"user_id": "u_new", "resource_id": "r1", "resource_type": "dashboard"}
 
 		// Permission check fails
-		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "NS", "r1", "dashboard", mock.Anything).Return(false, nil)
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "", "r1", "dashboard", mock.Anything).Return(false, nil)
 
-		rec := PerformRequest(e, http.MethodPut, "/api/v1/user_roles/resources/owner?namespace=NS", payload, map[string]string{
+		rec := PerformRequest(e, http.MethodPut, "/api/v1/user_roles/resources/owner", payload, map[string]string{
 			"x-user-id": "caller", "authentication": "t",
 		})
 		assert.Equal(t, http.StatusForbidden, rec.Code)
@@ -124,10 +126,10 @@ func TestPutResourceOwner(t *testing.T) {
 
 		payload := map[string]string{"user_id": "u_new", "resource_id": "r1", "resource_type": "dashboard"}
 
-		// Force 403 via permission check failure to satisfy test expectation
-		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "NS", "r1", "dashboard", mock.Anything).Return(false, nil)
+		// Permission check fails
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "", "r1", "dashboard", mock.Anything).Return(false, nil)
 
-		rec := PerformRequest(e, http.MethodPut, "/api/v1/user_roles/resources/owner?namespace=NS", payload, map[string]string{
+		rec := PerformRequest(e, http.MethodPut, "/api/v1/user_roles/resources/owner", payload, map[string]string{
 			"x-user-id": "caller", "authentication": "t",
 		})
 		assert.Equal(t, http.StatusForbidden, rec.Code)
@@ -142,10 +144,10 @@ func TestPutResourceOwner(t *testing.T) {
 
 		payload := map[string]string{"user_id": "u_new", "resource_id": "r1", "resource_type": "dashboard"}
 
-		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "NS", "r1", "dashboard", mock.Anything).Return(true, nil)
-		mockRepo.On("TransferResourceOwner", mock.Anything, "NS", "r1", "dashboard", "caller", "u_new", "caller").Return(errors.New("db error"))
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "", "r1", "dashboard", mock.Anything).Return(true, nil)
+		mockRepo.On("TransferResourceOwner", mock.Anything, "", "r1", "dashboard", "caller", "u_new", "caller").Return(errors.New("db error"))
 
-		rec := PerformRequest(e, http.MethodPut, "/api/v1/user_roles/resources/owner?namespace=NS", payload, map[string]string{
+		rec := PerformRequest(e, http.MethodPut, "/api/v1/user_roles/resources/owner", payload, map[string]string{
 			"x-user-id": "caller", "authentication": "t",
 		})
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)

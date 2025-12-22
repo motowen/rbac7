@@ -62,7 +62,6 @@ type ResourceUserRole struct {
 	UserType     string `json:"user_type"`
 	Role         string `json:"role"`
 	Scope        string `json:"scope"` // Should be 'resource'
-	Namespace    string `json:"namespace"`
 	ResourceID   string `json:"resource_id"`
 	ResourceType string `json:"resource_type"`
 }
