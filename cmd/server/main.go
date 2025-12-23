@@ -31,7 +31,11 @@ func main() {
 	logger := util.GetLogger()
 
 	// 1. Load Config
-	cfg := config.LoadConfig()
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		logger.Error("Failed to load config", "error", err)
+		os.Exit(1)
+	}
 
 	// 2. Init MongoDB
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -77,9 +81,16 @@ func main() {
 	router.RegisterRoutes(e, h)
 
 	// 5. Start Server with Graceful Shutdown
+	srv := &http.Server{
+		Addr:         ":" + cfg.Port,
+		Handler:      e,
+		ReadTimeout:  cfg.ReadTimeout,
+		WriteTimeout: cfg.WriteTimeout,
+	}
+
 	go func() {
 		logger.Info("Starting server", "port", cfg.Port)
-		if err := e.Start(":" + cfg.Port); err != nil && err != http.ErrServerClosed {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("shutting down the server", "error", err)
 			os.Exit(1)
 		}
@@ -96,9 +107,9 @@ func main() {
 	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Shutdown Echo
-	if err := e.Shutdown(ctx); err != nil {
-		logger.Error("Echo Shutdown Failed", "error", err)
+	// Shutdown Echo/Server
+	if err := srv.Shutdown(ctx); err != nil {
+		logger.Error("Server Shutdown Failed", "error", err)
 	}
 
 	// Disconnect DB

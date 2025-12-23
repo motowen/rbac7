@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"rbac7/internal/rbac/model"
 	"rbac7/internal/rbac/service"
@@ -8,38 +9,29 @@ import (
 
 // Helper to map errors to HTTP status and body
 func httpError(err error) (int, interface{}) {
-	var code string
-	var msg string
-	var status int
-
-	switch err {
-	case service.ErrForbidden:
-		status = http.StatusForbidden
-		code = "forbidden"
-		msg = "Permission denied"
-	case service.ErrConflict:
-		status = http.StatusConflict
-		code = "conflict"
-		msg = "System owner or role already exists"
-	case service.ErrInvalidNamespace:
-		status = http.StatusBadRequest
-		code = "bad_request"
-		msg = "Namespace required"
-	case service.ErrBadRequest:
-		status = http.StatusBadRequest
-		code = "bad_request"
-		msg = "Invalid input"
-	case service.ErrUnauthorized:
-		status = http.StatusUnauthorized
-		code = "unauthorized"
-		msg = "Unauthorized"
-	default:
-		status = http.StatusInternalServerError
-		code = "internal_error"
-		msg = err.Error()
+	if errors.Is(err, service.ErrUnauthorized) {
+		return http.StatusUnauthorized, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "unauthorized", Message: err.Error()},
+		}
+	}
+	if errors.Is(err, service.ErrForbidden) {
+		return http.StatusForbidden, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "forbidden", Message: err.Error()},
+		}
+	}
+	if errors.Is(err, service.ErrConflict) {
+		return http.StatusConflict, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "conflict", Message: err.Error()},
+		}
+	}
+	if errors.Is(err, service.ErrInvalidNamespace) || errors.Is(err, service.ErrBadRequest) {
+		return http.StatusBadRequest, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "bad_request", Message: err.Error()},
+		}
 	}
 
-	return status, model.ErrorResponse{
-		Error: model.ErrorDetail{Code: code, Message: msg},
+	// Fallback
+	return http.StatusInternalServerError, model.ErrorResponse{
+		Error: model.ErrorDetail{Code: "internal_error", Message: "Internal Server Error"},
 	}
 }
