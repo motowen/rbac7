@@ -23,6 +23,7 @@ func RegisterRoutes(e *echo.Echo, h *handler.SystemHandler) {
 
 	// Prefix from rbac.yaml: /api/v1
 	v1 := e.Group("/api/v1")
+	v1.Use(handler.RequestIDMiddleware) // Add Request ID middleware to API routes
 
 	// System Scope Routes
 	v1.POST("/user_roles/owner", h.PostSystemOwner)
