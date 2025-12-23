@@ -18,6 +18,9 @@ func RegisterRoutes(e *echo.Echo, h *handler.SystemHandler) {
 	// Serve Swagger Spec
 	e.File("/docs/rbac.yaml", "docs/rbac.yaml")
 
+	// Health Check
+	e.GET("/health", handler.HealthCheck)
+
 	// Prefix from rbac.yaml: /api/v1
 	v1 := e.Group("/api/v1")
 
