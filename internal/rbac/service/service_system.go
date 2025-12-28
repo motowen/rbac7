@@ -161,9 +161,10 @@ func (s *Service) AssignSystemUserRole(ctx context.Context, callerID string, req
 	return nil
 }
 
-func (s *Service) DeleteSystemUserRole(ctx context.Context, callerID, namespace, userID string) error {
-	namespace = strings.ToUpper(strings.TrimSpace(namespace))
-	userID = strings.TrimSpace(userID)
+func (s *Service) DeleteSystemUserRole(ctx context.Context, callerID string, req model.DeleteSystemUserRoleReq) error {
+	namespace := strings.ToUpper(strings.TrimSpace(req.Namespace))
+	userID := strings.TrimSpace(req.UserID)
+
 	if err := s.validateCallerAndNamespace(callerID, namespace); err != nil {
 		return err
 	}

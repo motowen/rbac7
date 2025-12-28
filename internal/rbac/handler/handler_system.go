@@ -92,6 +92,7 @@ func (h *SystemHandler) PostUserRoles(c echo.Context) error {
 }
 
 // DeleteUserRoles handles DELETE /user_roles (System Scope)
+// DeleteUserRoles handles DELETE /user_roles (System Scope)
 func (h *SystemHandler) DeleteUserRoles(c echo.Context) error {
 	callerID, err := h.extractCallerID(c)
 	if err != nil {
@@ -99,10 +100,23 @@ func (h *SystemHandler) DeleteUserRoles(c echo.Context) error {
 		return c.JSON(code, body)
 	}
 
-	namespace := c.QueryParam("namespace")
-	userID := c.QueryParam("user_id")
+	var req model.DeleteSystemUserRoleReq
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "bad_request", Message: "Invalid parameters"},
+		})
+	}
 
-	err = h.Service.DeleteSystemUserRole(c.Request().Context(), callerID, namespace, userID)
+	if err := req.Validate(); err != nil {
+		if e, ok := err.(*model.ErrorDetail); ok {
+			return c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: *e})
+		}
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "bad_request", Message: err.Error()},
+		})
+	}
+
+	err = h.Service.DeleteSystemUserRole(c.Request().Context(), callerID, req)
 	if err != nil {
 		code, body := httpError(err)
 		return c.JSON(code, body)

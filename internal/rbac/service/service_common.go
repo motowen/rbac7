@@ -20,13 +20,13 @@ type RBACService interface {
 	AssignSystemOwner(ctx context.Context, callerID string, req model.SystemOwnerUpsertRequest) error
 	TransferSystemOwner(ctx context.Context, callerID string, req model.SystemOwnerUpsertRequest) error
 	AssignSystemUserRole(ctx context.Context, callerID string, req model.SystemUserRole) error
-	DeleteSystemUserRole(ctx context.Context, callerID, namespace, userID string) error
-	GetUserRolesMe(ctx context.Context, callerID, scope, resourceType string) ([]*model.UserRole, error)
+	DeleteSystemUserRole(ctx context.Context, callerID string, req model.DeleteSystemUserRoleReq) error
+	GetUserRolesMe(ctx context.Context, callerID string, req model.GetUserRolesMeReq) ([]*model.UserRole, error)
 	GetUserRoles(ctx context.Context, callerID string, filter model.UserRoleFilter) ([]*model.UserRole, error)
 	AssignResourceOwner(ctx context.Context, callerID string, req model.ResourceOwnerUpsertRequest) error
 	TransferResourceOwner(ctx context.Context, callerID string, req model.ResourceOwnerUpsertRequest) error
 	AssignResourceUserRole(ctx context.Context, callerID string, req model.ResourceUserRole) error
-	DeleteResourceUserRole(ctx context.Context, callerID, resourceID, resourceType, userID string) error
+	DeleteResourceUserRole(ctx context.Context, callerID string, req model.DeleteResourceUserRoleReq) error
 	CheckPermission(ctx context.Context, callerID string, req model.CheckPermissionRequest) (bool, error)
 }
 
@@ -38,13 +38,9 @@ func NewService(repo repository.RBACRepository) *Service {
 	return &Service{Repo: repo}
 }
 
-func (s *Service) GetUserRolesMe(ctx context.Context, callerID, scope, resourceType string) ([]*model.UserRole, error) {
-	scope = strings.ToLower(strings.TrimSpace(scope))
-	resourceType = strings.ToLower(strings.TrimSpace(resourceType))
-
-	if callerID == "" {
-		return nil, ErrUnauthorized
-	}
+func (s *Service) GetUserRolesMe(ctx context.Context, callerID string, req model.GetUserRolesMeReq) ([]*model.UserRole, error) {
+	scope := strings.ToLower(strings.TrimSpace(req.Scope))
+	resourceType := strings.ToLower(strings.TrimSpace(req.ResourceType))
 
 	// Get All My Roles first
 	filter := model.UserRoleFilter{UserID: callerID}
@@ -96,10 +92,6 @@ func (s *Service) GetUserRoles(ctx context.Context, callerID string, filter mode
 	filter.Scope = strings.ToLower(strings.TrimSpace(filter.Scope))
 	filter.UserID = strings.TrimSpace(filter.UserID)
 
-	if callerID == "" {
-		return nil, ErrUnauthorized
-	}
-
 	// Permission Check for List
 	if filter.Scope == model.ScopeSystem {
 		// Permission: platform.system.get_member
@@ -131,9 +123,6 @@ func (s *Service) GetUserRoles(ctx context.Context, callerID string, filter mode
 }
 
 func (s *Service) CheckPermission(ctx context.Context, callerID string, req model.CheckPermissionRequest) (bool, error) {
-	if callerID == "" {
-		return false, ErrUnauthorized
-	}
 	req.Permission = strings.TrimSpace(req.Permission)
 	req.Scope = strings.ToLower(strings.TrimSpace(req.Scope))
 

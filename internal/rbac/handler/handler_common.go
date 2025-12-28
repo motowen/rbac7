@@ -31,34 +31,25 @@ func (h *SystemHandler) GetUserRolesMe(c echo.Context) error {
 		return c.JSON(code, body)
 	}
 
-	scope := c.QueryParam("scope")
-	if scope == "" {
+	var req model.GetUserRolesMeReq
+	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			Error: model.ErrorDetail{Code: "bad_request", Message: "scope is required"},
-		})
-	}
-	if scope != model.ScopeSystem && scope != model.ScopeResource {
-		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			Error: model.ErrorDetail{Code: "bad_request", Message: "invalid scope"},
+			Error: model.ErrorDetail{Code: "bad_request", Message: "Invalid parameters"},
 		})
 	}
 
-	resourceType := c.QueryParam("resource_type")
-	// Test requirement: "get resource roles missing resource_type parameter and return 400"
-	if scope == model.ScopeResource && resourceType == "" {
+	if err := req.Validate(); err != nil {
+		// If err is *model.ErrorDetail, we can use it.
+		if e, ok := err.(*model.ErrorDetail); ok {
+			return c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: *e})
+		}
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			Error: model.ErrorDetail{Code: "bad_request", Message: "resource_type is required for resource scope"},
-		})
-	}
-
-	if scope == model.ScopeSystem && resourceType != "" {
-		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			Error: model.ErrorDetail{Code: "bad_request", Message: "resource_type should be empty for system scope"},
+			Error: model.ErrorDetail{Code: "bad_request", Message: err.Error()},
 		})
 	}
 
 	// Forward parameters to service
-	roles, err := h.Service.GetUserRolesMe(c.Request().Context(), callerID, scope, resourceType)
+	roles, err := h.Service.GetUserRolesMe(c.Request().Context(), callerID, req)
 	if err != nil {
 		code, body := httpError(err)
 		return c.JSON(code, body)

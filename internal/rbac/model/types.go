@@ -83,3 +83,8 @@ type CheckPermissionRequest struct {
 type CheckPermissionResponse struct {
 	Allowed bool `json:"allowed"`
 }
+
+// ErrorDetail implements error interface so it can be returned directly
+func (e *ErrorDetail) Error() string {
+	return e.Message
+}

@@ -13,9 +13,6 @@ func (s *Service) validateRequest(callerID string, req model.SystemOwnerUpsertRe
 }
 
 func (s *Service) validateCallerAndNamespace(callerID, namespace string) error {
-	if callerID == "" {
-		return ErrUnauthorized
-	}
 	if namespace == "" {
 		return ErrInvalidNamespace
 	}

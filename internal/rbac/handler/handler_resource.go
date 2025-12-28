@@ -80,6 +80,7 @@ func (h *SystemHandler) PostResourceUserRoles(c echo.Context) error {
 }
 
 // DeleteResourceUserRoles handles DELETE /resource_roles (Remove Member)
+// DeleteResourceUserRoles handles DELETE /resource_roles (Remove Member)
 func (h *SystemHandler) DeleteResourceUserRoles(c echo.Context) error {
 	callerID, err := h.extractCallerID(c)
 	if err != nil {
@@ -87,11 +88,23 @@ func (h *SystemHandler) DeleteResourceUserRoles(c echo.Context) error {
 		return c.JSON(code, body)
 	}
 
-	userID := c.QueryParam("user_id")
-	resourceID := c.QueryParam("resource_id")
-	resourceType := c.QueryParam("resource_type")
+	var req model.DeleteResourceUserRoleReq
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "bad_request", Message: "Invalid parameters"},
+		})
+	}
 
-	err = h.Service.DeleteResourceUserRole(c.Request().Context(), callerID, resourceID, resourceType, userID)
+	if err := req.Validate(); err != nil {
+		if e, ok := err.(*model.ErrorDetail); ok {
+			return c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: *e})
+		}
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "bad_request", Message: err.Error()},
+		})
+	}
+
+	err = h.Service.DeleteResourceUserRole(c.Request().Context(), callerID, req)
 	if err != nil {
 		code, body := httpError(err)
 		return c.JSON(code, body)

@@ -15,9 +15,6 @@ func (s *Service) AssignResourceOwner(ctx context.Context, callerID string, req 
 	req.ResourceID = strings.TrimSpace(req.ResourceID)
 	req.ResourceType = strings.ToLower(strings.TrimSpace(req.ResourceType))
 
-	if callerID == "" {
-		return ErrUnauthorized
-	}
 	if req.ResourceID == "" || req.ResourceType == "" {
 		return ErrBadRequest
 	}
@@ -68,9 +65,6 @@ func (s *Service) TransferResourceOwner(ctx context.Context, callerID string, re
 	req.ResourceID = strings.TrimSpace(req.ResourceID)
 	req.ResourceType = strings.ToLower(strings.TrimSpace(req.ResourceType))
 
-	if callerID == "" {
-		return ErrUnauthorized
-	}
 	if req.UserID == "" || req.ResourceID == "" || req.ResourceType == "" {
 		return ErrBadRequest
 	}
@@ -110,9 +104,6 @@ func (s *Service) AssignResourceUserRole(ctx context.Context, callerID string, r
 	req.ResourceType = strings.ToLower(strings.TrimSpace(req.ResourceType))
 	req.UserID = strings.TrimSpace(req.UserID)
 
-	if callerID == "" {
-		return ErrUnauthorized
-	}
 	if req.UserID == "" || req.ResourceID == "" || req.ResourceType == "" {
 		return ErrBadRequest
 	}
@@ -168,14 +159,11 @@ func (s *Service) AssignResourceUserRole(ctx context.Context, callerID string, r
 	return nil
 }
 
-func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID, resourceID, resourceType, userID string) error {
-	userID = strings.TrimSpace(userID)
-	resourceID = strings.TrimSpace(resourceID)
-	resourceType = strings.ToLower(strings.TrimSpace(resourceType))
+func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID string, req model.DeleteResourceUserRoleReq) error {
+	userID := strings.TrimSpace(req.UserID)
+	resourceID := strings.TrimSpace(req.ResourceID)
+	resourceType := strings.ToLower(strings.TrimSpace(req.ResourceType))
 
-	if callerID == "" {
-		return ErrUnauthorized
-	}
 	if userID == "" || resourceID == "" || resourceType == "" {
 		return ErrBadRequest
 	}

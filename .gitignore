@@ -16,4 +16,4 @@ bin/
 vendor/
 
 # Exe
-.exe
+*.exe
