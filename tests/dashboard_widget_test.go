@@ -119,4 +119,60 @@ func TestDashboardWidgetPermissions(t *testing.T) {
 		err = reqDashboard.Validate()
 		assert.NoError(t, err)
 	})
+
+	t.Run("Assign Widget Viewer Permission Check", func(t *testing.T) {
+		mockRepo := new(MockRBACRepository)
+		svc := service.NewService(mockRepo)
+		ctx := context.TODO()
+
+		// Expect check for "resource.dashboard.add_widget_viewer" ON PARENT (d1)
+		mockRepo.On("HasAnyResourceRole", ctx, "caller", "d1", "dashboard", mock.Anything).Return(true, nil)
+		// Mock Upsert
+		mockRepo.On("UpsertUserRole", ctx, mock.Anything).Return(nil)
+		// Mock HasResourceRole (Owner check)
+		mockRepo.On("HasResourceRole", ctx, "target", "w1", "dashboard_widget", "owner").Return(false, nil)
+
+		req := model.AssignResourceUserRoleReq{
+			UserID:           "target",
+			Role:             "viewer",
+			ResourceType:     "dashboard_widget",
+			ResourceID:       "w1",
+			ParentResourceID: "d1",
+		}
+
+		err := svc.AssignResourceUserRole(ctx, "caller", req)
+		assert.NoError(t, err)
+
+		mockRepo.AssertExpectations(t)
+	})
+
+	t.Run("Delete Widget Viewer Permission Check", func(t *testing.T) {
+		mockRepo := new(MockRBACRepository)
+		svc := service.NewService(mockRepo)
+		ctx := context.TODO()
+
+		// 1. Mock HasResourceRole(target, viewer) -> true (Target IS a viewer)
+		mockRepo.On("HasResourceRole", ctx, "target", "w1", "dashboard_widget", "viewer").Return(true, nil)
+
+		// 2. Expect check for "resource.dashboard.add_widget_viewer" ON PARENT (d1)
+		mockRepo.On("HasAnyResourceRole", ctx, "caller", "d1", "dashboard", mock.Anything).Return(true, nil)
+
+		// 3. Check Owner (prevent delete owner) -> false
+		mockRepo.On("HasResourceRole", ctx, "target", "w1", "dashboard_widget", "owner").Return(false, nil)
+
+		// 4. Delete
+		mockRepo.On("DeleteUserRole", ctx, "", "target", "resource", "w1", "dashboard_widget", "caller").Return(nil)
+
+		req := model.DeleteResourceUserRoleReq{
+			UserID:           "target",
+			ResourceType:     "dashboard_widget",
+			ResourceID:       "w1",
+			ParentResourceID: "d1",
+		}
+
+		err := svc.DeleteResourceUserRole(ctx, "caller", req)
+		assert.NoError(t, err)
+
+		mockRepo.AssertExpectations(t)
+	})
 }

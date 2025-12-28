@@ -103,10 +103,26 @@ func (s *Service) AssignResourceUserRole(ctx context.Context, callerID string, r
 		return ErrBadRequest
 	}
 
-	// Permission: resource.{type}.add_member
-	perm := "resource." + req.ResourceType + ".add_member"
+	// Permission Check
+	var perm string
+	targetResourceID := req.ResourceID
+	targetResourceType := req.ResourceType
+
+	if req.ResourceType == model.ResourceTypeWidget && req.Role == model.RoleResourceViewer {
+		// Specific permission for adding widget viewer
+		perm = model.PermResourceDashboardAddWidgetViewer
+		// Check on Parent Dashboard
+		if req.ParentResourceID != "" {
+			targetResourceID = req.ParentResourceID
+			targetResourceType = model.ResourceTypeDashboard
+		}
+	} else {
+		// Generic permission: resource.{type}.add_member
+		perm = "resource." + req.ResourceType + ".add_member"
+	}
+
 	// No namespace
-	canAssign, err := CheckResourcePermission(ctx, s.Repo, callerID, req.ResourceID, req.ResourceType, perm)
+	canAssign, err := CheckResourcePermission(ctx, s.Repo, callerID, targetResourceID, targetResourceType, perm)
 	if err != nil {
 		return err
 	}
@@ -152,10 +168,30 @@ func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID string, r
 		return ErrBadRequest
 	}
 
-	// Permission: resource.{type}.remove_member
+	// Determine Permission based on Target Role & Resource Type
 	perm := "resource." + req.ResourceType + ".remove_member"
+	targetResourceID := req.ResourceID
+	targetResourceType := req.ResourceType
+
+	if req.ResourceType == model.ResourceTypeWidget {
+		// Specific check for Widget Viewer removal
+		// check target role...
+		isViewer, err := s.Repo.HasResourceRole(ctx, req.UserID, req.ResourceID, req.ResourceType, model.RoleResourceViewer)
+		if err != nil {
+			return err
+		}
+		if isViewer {
+			perm = model.PermResourceDashboardAddWidgetViewer
+			// Check on Parent Dashboard
+			if req.ParentResourceID != "" {
+				targetResourceID = req.ParentResourceID
+				targetResourceType = model.ResourceTypeDashboard
+			}
+		}
+	}
+
 	// No Namespace
-	canDelete, err := CheckResourcePermission(ctx, s.Repo, callerID, req.ResourceID, req.ResourceType, perm)
+	canDelete, err := CheckResourcePermission(ctx, s.Repo, callerID, targetResourceID, targetResourceType, perm)
 	if err != nil {
 		return err
 	}
