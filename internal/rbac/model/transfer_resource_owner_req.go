@@ -3,9 +3,9 @@ package model
 import "strings"
 
 type TransferResourceOwnerReq struct {
-	UserID       string `json:"user_id"`
-	ResourceID   string `json:"resource_id"`
-	ResourceType string `json:"resource_type"`
+	UserID       string `json:"user_id" validate:"required,min=1,max=50"`
+	ResourceID   string `json:"resource_id" validate:"required,min=1,max=50"`
+	ResourceType string `json:"resource_type" validate:"required,min=1,max=50"`
 }
 
 func (r *TransferResourceOwnerReq) Validate() error {
@@ -13,11 +13,8 @@ func (r *TransferResourceOwnerReq) Validate() error {
 	r.ResourceID = strings.TrimSpace(r.ResourceID)
 	r.ResourceType = strings.ToLower(strings.TrimSpace(r.ResourceType))
 
-	if r.UserID == "" {
-		return &ErrorDetail{Code: "bad_request", Message: "user_id is required"}
-	}
-	if r.ResourceID == "" || r.ResourceType == "" {
-		return &ErrorDetail{Code: "bad_request", Message: "resource params required"}
+	if err := GetValidator().Struct(r); err != nil {
+		return FormatValidationError(err)
 	}
 	return nil
 }

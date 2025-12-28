@@ -3,12 +3,12 @@ package model
 import "strings"
 
 type GetUserRolesReq struct {
-	UserID       string `query:"user_id"`
-	Namespace    string `query:"namespace"`
-	Role         string `query:"role"`
-	Scope        string `query:"scope"`
-	ResourceID   string `query:"resource_id"`
-	ResourceType string `query:"resource_type"`
+	UserID       string `query:"user_id" validate:"omitempty,max=50"`
+	Namespace    string `query:"namespace" validate:"omitempty,max=50"`
+	Role         string `query:"role" validate:"omitempty,max=50"`
+	Scope        string `query:"scope" validate:"required,min=1,max=50"`
+	ResourceID   string `query:"resource_id" validate:"omitempty,max=50"`
+	ResourceType string `query:"resource_type" validate:"omitempty,max=50"`
 }
 
 func (r *GetUserRolesReq) Validate() error {
@@ -19,9 +19,10 @@ func (r *GetUserRolesReq) Validate() error {
 	r.ResourceID = strings.TrimSpace(r.ResourceID)
 	r.ResourceType = strings.ToLower(strings.TrimSpace(r.ResourceType))
 
-	if r.Scope == "" {
-		return &ErrorDetail{Code: "bad_request", Message: "scope is required"}
+	if err := GetValidator().Struct(r); err != nil {
+		return FormatValidationError(err)
 	}
+
 	if r.Scope == ScopeSystem {
 		if r.Namespace == "" {
 			return &ErrorDetail{Code: "bad_request", Message: "namespace required for system scope"}

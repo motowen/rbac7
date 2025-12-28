@@ -3,9 +3,9 @@ package model
 import "strings"
 
 type DeleteResourceUserRoleReq struct {
-	UserID       string `query:"user_id"`
-	ResourceID   string `query:"resource_id"`
-	ResourceType string `query:"resource_type"`
+	UserID       string `query:"user_id" validate:"required,min=1,max=50"`
+	ResourceID   string `query:"resource_id" validate:"required,min=1,max=50"`
+	ResourceType string `query:"resource_type" validate:"required,min=1,max=50"`
 }
 
 func (r *DeleteResourceUserRoleReq) Validate() error {
@@ -13,14 +13,8 @@ func (r *DeleteResourceUserRoleReq) Validate() error {
 	r.ResourceID = strings.TrimSpace(r.ResourceID)
 	r.ResourceType = strings.ToLower(strings.TrimSpace(r.ResourceType))
 
-	if r.UserID == "" {
-		return &ErrorDetail{Code: "bad_request", Message: "user_id is required"}
-	}
-	if r.ResourceID == "" {
-		return &ErrorDetail{Code: "bad_request", Message: "resource_id is required"}
-	}
-	if r.ResourceType == "" {
-		return &ErrorDetail{Code: "bad_request", Message: "resource_type is required"}
+	if err := GetValidator().Struct(r); err != nil {
+		return FormatValidationError(err)
 	}
 	return nil
 }

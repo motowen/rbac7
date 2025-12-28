@@ -3,17 +3,18 @@ package model
 import "strings"
 
 type GetUserRolesMeReq struct {
-	Scope        string `query:"scope"`
-	ResourceType string `query:"resource_type"`
+	Scope        string `query:"scope" validate:"required,min=1,max=50"`
+	ResourceType string `query:"resource_type" validate:"omitempty,max=50"`
 }
 
 func (r *GetUserRolesMeReq) Validate() error {
 	r.Scope = strings.ToLower(strings.TrimSpace(r.Scope))
 	r.ResourceType = strings.ToLower(strings.TrimSpace(r.ResourceType))
 
-	if r.Scope == "" {
-		return &ErrorDetail{Code: "bad_request", Message: "scope is required"}
+	if err := GetValidator().Struct(r); err != nil {
+		return FormatValidationError(err)
 	}
+
 	if r.Scope != ScopeSystem && r.Scope != ScopeResource {
 		return &ErrorDetail{Code: "bad_request", Message: "invalid scope"}
 	}

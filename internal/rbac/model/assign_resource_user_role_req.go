@@ -3,11 +3,11 @@ package model
 import "strings"
 
 type AssignResourceUserRoleReq struct {
-	UserID       string `json:"user_id"`
-	Role         string `json:"role"`
-	ResourceID   string `json:"resource_id"`
-	ResourceType string `json:"resource_type"`
-	UserType     string `json:"user_type"` // Optional
+	UserID       string `json:"user_id" validate:"required,min=1,max=50"`
+	Role         string `json:"role" validate:"required,min=1,max=50"`
+	ResourceID   string `json:"resource_id" validate:"required,min=1,max=50"`
+	ResourceType string `json:"resource_type" validate:"required,min=1,max=50"`
+	UserType     string `json:"user_type" validate:"omitempty,max=50"` // Optional
 }
 
 func (r *AssignResourceUserRoleReq) Validate() error {
@@ -17,17 +17,8 @@ func (r *AssignResourceUserRoleReq) Validate() error {
 	r.ResourceType = strings.ToLower(strings.TrimSpace(r.ResourceType))
 	r.UserType = strings.ToLower(strings.TrimSpace(r.UserType))
 
-	if r.UserID == "" {
-		return &ErrorDetail{Code: "bad_request", Message: "user_id is required"}
-	}
-	if r.Role == "" {
-		return &ErrorDetail{Code: "bad_request", Message: "role is required"}
-	}
-	if r.ResourceID == "" {
-		return &ErrorDetail{Code: "bad_request", Message: "resource_id is required"}
-	}
-	if r.ResourceType == "" {
-		return &ErrorDetail{Code: "bad_request", Message: "resource_type is required"}
+	if err := GetValidator().Struct(r); err != nil {
+		return FormatValidationError(err)
 	}
 	return nil
 }

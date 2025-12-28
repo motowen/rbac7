@@ -3,19 +3,16 @@ package model
 import "strings"
 
 type DeleteSystemUserRoleReq struct {
-	Namespace string `query:"namespace"`
-	UserID    string `query:"user_id"`
+	Namespace string `query:"namespace" validate:"required,min=1,max=50"`
+	UserID    string `query:"user_id" validate:"required,min=1,max=50"`
 }
 
 func (r *DeleteSystemUserRoleReq) Validate() error {
 	r.Namespace = strings.ToUpper(strings.TrimSpace(r.Namespace))
 	r.UserID = strings.TrimSpace(r.UserID)
 
-	if r.Namespace == "" {
-		return &ErrorDetail{Code: "bad_request", Message: "namespace is required"}
-	}
-	if r.UserID == "" {
-		return &ErrorDetail{Code: "bad_request", Message: "user_id is required"}
+	if err := GetValidator().Struct(r); err != nil {
+		return FormatValidationError(err)
 	}
 	return nil
 }

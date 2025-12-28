@@ -3,11 +3,11 @@ package model
 import "strings"
 
 type CheckPermissionReq struct {
-	Permission   string `json:"permission"`
-	Scope        string `json:"scope"`
-	Namespace    string `json:"namespace"`
-	ResourceID   string `json:"resource_id"`
-	ResourceType string `json:"resource_type"`
+	Permission   string `json:"permission" validate:"required,min=1,max=100"`
+	Scope        string `json:"scope" validate:"required,min=1,max=50"`
+	Namespace    string `json:"namespace" validate:"omitempty,max=50"`
+	ResourceID   string `json:"resource_id" validate:"omitempty,max=50"`
+	ResourceType string `json:"resource_type" validate:"omitempty,max=50"`
 }
 
 func (r *CheckPermissionReq) Validate() error {
@@ -17,12 +17,10 @@ func (r *CheckPermissionReq) Validate() error {
 	r.ResourceID = strings.TrimSpace(r.ResourceID)
 	r.ResourceType = strings.ToLower(strings.TrimSpace(r.ResourceType))
 
-	if r.Permission == "" {
-		return &ErrorDetail{Code: "bad_request", Message: "permission is required"}
+	if err := GetValidator().Struct(r); err != nil {
+		return FormatValidationError(err)
 	}
-	if r.Scope == "" {
-		return &ErrorDetail{Code: "bad_request", Message: "scope is required"}
-	}
+
 	if r.Scope == ScopeResource && (r.ResourceID == "" || r.ResourceType == "") {
 		return &ErrorDetail{Code: "bad_request", Message: "resource params required for resource scope"}
 	}
