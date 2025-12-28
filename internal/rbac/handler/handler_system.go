@@ -3,7 +3,6 @@ package handler
 import (
 	"net/http"
 	"rbac7/internal/rbac/model"
-	"rbac7/internal/rbac/service"
 
 	"github.com/labstack/echo/v4"
 )
@@ -17,17 +16,20 @@ func (h *SystemHandler) PostSystemOwner(c echo.Context) error {
 		return c.JSON(code, body)
 	}
 
-	// If auth missing (redundant check if callerID is empty check covers it, but keeping for safety)
-	auth := c.Request().Header.Get("authentication")
-	if auth == "" {
-		code, body := httpError(service.ErrUnauthorized)
-		return c.JSON(code, body)
-	}
-
-	var req model.SystemOwnerUpsertRequest
+	// 2. Bind
+	var req model.AssignSystemOwnerReq
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
 			Error: model.ErrorDetail{Code: "bad_request", Message: "Invalid body"},
+		})
+	}
+
+	if err := req.Validate(); err != nil {
+		if e, ok := err.(*model.ErrorDetail); ok {
+			return c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: *e})
+		}
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "bad_request", Message: err.Error()},
 		})
 	}
 
@@ -50,10 +52,19 @@ func (h *SystemHandler) PutSystemOwner(c echo.Context) error {
 	}
 
 	// 2. Bind
-	var req model.SystemOwnerUpsertRequest
+	var req model.TransferSystemOwnerReq
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
 			Error: model.ErrorDetail{Code: "bad_request", Message: "Invalid body"},
+		})
+	}
+
+	if err := req.Validate(); err != nil {
+		if e, ok := err.(*model.ErrorDetail); ok {
+			return c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: *e})
+		}
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "bad_request", Message: err.Error()},
 		})
 	}
 
@@ -75,10 +86,19 @@ func (h *SystemHandler) PostUserRoles(c echo.Context) error {
 		return c.JSON(code, body)
 	}
 
-	var req model.SystemUserRole
+	var req model.AssignSystemUserRoleReq
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
 			Error: model.ErrorDetail{Code: "bad_request", Message: "Invalid body"},
+		})
+	}
+
+	if err := req.Validate(); err != nil {
+		if e, ok := err.(*model.ErrorDetail); ok {
+			return c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: *e})
+		}
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "bad_request", Message: err.Error()},
 		})
 	}
 

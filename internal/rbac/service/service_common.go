@@ -5,7 +5,6 @@ import (
 	"errors"
 	"rbac7/internal/rbac/model"
 	"rbac7/internal/rbac/repository"
-	"strings"
 )
 
 var (
@@ -17,17 +16,17 @@ var (
 )
 
 type RBACService interface {
-	AssignSystemOwner(ctx context.Context, callerID string, req model.SystemOwnerUpsertRequest) error
-	TransferSystemOwner(ctx context.Context, callerID string, req model.SystemOwnerUpsertRequest) error
-	AssignSystemUserRole(ctx context.Context, callerID string, req model.SystemUserRole) error
+	AssignSystemOwner(ctx context.Context, callerID string, req model.AssignSystemOwnerReq) error
+	TransferSystemOwner(ctx context.Context, callerID string, req model.TransferSystemOwnerReq) error
+	AssignSystemUserRole(ctx context.Context, callerID string, req model.AssignSystemUserRoleReq) error
 	DeleteSystemUserRole(ctx context.Context, callerID string, req model.DeleteSystemUserRoleReq) error
 	GetUserRolesMe(ctx context.Context, callerID string, req model.GetUserRolesMeReq) ([]*model.UserRole, error)
-	GetUserRoles(ctx context.Context, callerID string, filter model.UserRoleFilter) ([]*model.UserRole, error)
-	AssignResourceOwner(ctx context.Context, callerID string, req model.ResourceOwnerUpsertRequest) error
-	TransferResourceOwner(ctx context.Context, callerID string, req model.ResourceOwnerUpsertRequest) error
-	AssignResourceUserRole(ctx context.Context, callerID string, req model.ResourceUserRole) error
+	GetUserRoles(ctx context.Context, callerID string, req model.GetUserRolesReq) ([]*model.UserRole, error)
+	AssignResourceOwner(ctx context.Context, callerID string, req model.AssignResourceOwnerReq) error
+	TransferResourceOwner(ctx context.Context, callerID string, req model.TransferResourceOwnerReq) error
+	AssignResourceUserRole(ctx context.Context, callerID string, req model.AssignResourceUserRoleReq) error
 	DeleteResourceUserRole(ctx context.Context, callerID string, req model.DeleteResourceUserRoleReq) error
-	CheckPermission(ctx context.Context, callerID string, req model.CheckPermissionRequest) (bool, error)
+	CheckPermission(ctx context.Context, callerID string, req model.CheckPermissionReq) (bool, error)
 }
 
 type Service struct {
@@ -39,16 +38,13 @@ func NewService(repo repository.RBACRepository) *Service {
 }
 
 func (s *Service) GetUserRolesMe(ctx context.Context, callerID string, req model.GetUserRolesMeReq) ([]*model.UserRole, error) {
-	scope := strings.ToLower(strings.TrimSpace(req.Scope))
-	resourceType := strings.ToLower(strings.TrimSpace(req.ResourceType))
-
 	// Get All My Roles first
 	filter := model.UserRoleFilter{UserID: callerID}
-	if scope != "" {
-		filter.Scope = scope
+	if req.Scope != "" {
+		filter.Scope = req.Scope
 	}
-	if resourceType != "" {
-		filter.ResourceType = resourceType
+	if req.ResourceType != "" {
+		filter.ResourceType = req.ResourceType
 	}
 
 	roles, err := s.Repo.FindUserRoles(ctx, filter)
@@ -57,17 +53,17 @@ func (s *Service) GetUserRolesMe(ctx context.Context, callerID string, req model
 	}
 
 	// Permission Check
-	if scope == model.ScopeSystem {
+	if req.Scope == model.ScopeSystem {
 		// Requirement: "GetUserRolesMe要檢查有沒有platform.system.read的權限"
 		if !CheckRolesHavePermission(roles, PermPlatformSystemRead) {
 			return nil, ErrForbidden
 		}
-	} else if scope == model.ScopeResource {
+	} else if req.Scope == model.ScopeResource {
 		// For resource scope, check resource read permission
 		// Given strict RBAC, let's use the one matching resourceType.
-		perm := "resource." + resourceType + ".read"
+		perm := "resource." + req.ResourceType + ".read"
 		// If resourceType is present:
-		if resourceType != "" {
+		if req.ResourceType != "" {
 			if !CheckRolesHavePermission(roles, perm) {
 				return nil, ErrForbidden
 			}
@@ -86,31 +82,26 @@ func (s *Service) GetUserRolesMe(ctx context.Context, callerID string, req model
 	return roles, nil
 }
 
-func (s *Service) GetUserRoles(ctx context.Context, callerID string, filter model.UserRoleFilter) ([]*model.UserRole, error) {
-	filter.Namespace = strings.ToUpper(strings.TrimSpace(filter.Namespace))
-	filter.Role = strings.ToLower(strings.TrimSpace(filter.Role))
-	filter.Scope = strings.ToLower(strings.TrimSpace(filter.Scope))
-	filter.UserID = strings.TrimSpace(filter.UserID)
-
+func (s *Service) GetUserRoles(ctx context.Context, callerID string, req model.GetUserRolesReq) ([]*model.UserRole, error) {
 	// Permission Check for List
-	if filter.Scope == model.ScopeSystem {
+	if req.Scope == model.ScopeSystem {
 		// Permission: platform.system.get_member
 		// Note: User user request 1186: GetUserRoles -> get_meber (get_member)
 
-		canList, err := CheckSystemPermission(ctx, s.Repo, callerID, filter.Namespace, PermPlatformSystemGetMember)
+		canList, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, PermPlatformSystemGetMember)
 		if err != nil {
 			return nil, err
 		}
 		if !canList {
 			return nil, ErrForbidden
 		}
-	} else if filter.Scope == model.ScopeResource {
+	} else if req.Scope == model.ScopeResource {
 		// Permission: resource.{type}.get_member
-		if filter.ResourceID == "" || filter.ResourceType == "" {
+		if req.ResourceID == "" || req.ResourceType == "" {
 			return nil, ErrBadRequest // Handler should catch this, but safeguard
 		}
-		perm := "resource." + filter.ResourceType + ".get_member"
-		canList, err := CheckResourcePermission(ctx, s.Repo, callerID, filter.ResourceID, filter.ResourceType, perm)
+		perm := "resource." + req.ResourceType + ".get_member"
+		canList, err := CheckResourcePermission(ctx, s.Repo, callerID, req.ResourceID, req.ResourceType, perm)
 		if err != nil {
 			return nil, err
 		}
@@ -119,23 +110,28 @@ func (s *Service) GetUserRoles(ctx context.Context, callerID string, filter mode
 		}
 	}
 
+	filter := model.UserRoleFilter{
+		UserID:       req.UserID,
+		Namespace:    req.Namespace,
+		Role:         req.Role,
+		Scope:        req.Scope,
+		ResourceID:   req.ResourceID,
+		ResourceType: req.ResourceType,
+	}
+
 	return s.Repo.FindUserRoles(ctx, filter)
 }
 
-func (s *Service) CheckPermission(ctx context.Context, callerID string, req model.CheckPermissionRequest) (bool, error) {
-	req.Permission = strings.TrimSpace(req.Permission)
-	req.Scope = strings.ToLower(strings.TrimSpace(req.Scope))
+func (s *Service) CheckPermission(ctx context.Context, callerID string, req model.CheckPermissionReq) (bool, error) {
+	// Validation already done in handler/struct validate, but trim is useful helper.
 
 	if req.Permission == "" || req.Scope == "" {
 		return false, ErrBadRequest
 	}
 
 	if req.Scope == model.ScopeSystem {
-		req.Namespace = strings.ToUpper(strings.TrimSpace(req.Namespace))
 		return CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, req.Permission)
 	} else if req.Scope == model.ScopeResource {
-		req.ResourceID = strings.TrimSpace(req.ResourceID)
-		req.ResourceType = strings.ToLower(strings.TrimSpace(req.ResourceType))
 
 		if req.ResourceID == "" || req.ResourceType == "" {
 			return false, ErrBadRequest

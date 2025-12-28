@@ -15,10 +15,19 @@ func (h *SystemHandler) PostResourceOwner(c echo.Context) error {
 		return c.JSON(code, body)
 	}
 
-	var req model.ResourceOwnerUpsertRequest
+	var req model.AssignResourceOwnerReq
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
 			Error: model.ErrorDetail{Code: "bad_request", Message: "Invalid body"},
+		})
+	}
+
+	if err := req.Validate(); err != nil {
+		if e, ok := err.(*model.ErrorDetail); ok {
+			return c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: *e})
+		}
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "bad_request", Message: err.Error()},
 		})
 	}
 
@@ -39,10 +48,19 @@ func (h *SystemHandler) PutResourceOwner(c echo.Context) error {
 		return c.JSON(code, body)
 	}
 
-	var req model.ResourceOwnerUpsertRequest
+	var req model.TransferResourceOwnerReq
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
 			Error: model.ErrorDetail{Code: "bad_request", Message: "Invalid body"},
+		})
+	}
+
+	if err := req.Validate(); err != nil {
+		if e, ok := err.(*model.ErrorDetail); ok {
+			return c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: *e})
+		}
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "bad_request", Message: err.Error()},
 		})
 	}
 
@@ -63,10 +81,19 @@ func (h *SystemHandler) PostResourceUserRoles(c echo.Context) error {
 		return c.JSON(code, body)
 	}
 
-	var req model.ResourceUserRole
+	var req model.AssignResourceUserRoleReq
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
 			Error: model.ErrorDetail{Code: "bad_request", Message: "Invalid body"},
+		})
+	}
+
+	if err := req.Validate(); err != nil {
+		if e, ok := err.(*model.ErrorDetail); ok {
+			return c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: *e})
+		}
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "bad_request", Message: err.Error()},
 		})
 	}
 

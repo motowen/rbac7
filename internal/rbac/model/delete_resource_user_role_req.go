@@ -1,19 +1,6 @@
 package model
 
-type DeleteSystemUserRoleReq struct {
-	Namespace string `query:"namespace"`
-	UserID    string `query:"user_id"`
-}
-
-func (r *DeleteSystemUserRoleReq) Validate() error {
-	if r.Namespace == "" {
-		return &ErrorDetail{Code: "bad_request", Message: "namespace is required"}
-	}
-	if r.UserID == "" {
-		return &ErrorDetail{Code: "bad_request", Message: "user_id is required"}
-	}
-	return nil
-}
+import "strings"
 
 type DeleteResourceUserRoleReq struct {
 	UserID       string `query:"user_id"`
@@ -22,6 +9,10 @@ type DeleteResourceUserRoleReq struct {
 }
 
 func (r *DeleteResourceUserRoleReq) Validate() error {
+	r.UserID = strings.TrimSpace(r.UserID)
+	r.ResourceID = strings.TrimSpace(r.ResourceID)
+	r.ResourceType = strings.ToLower(strings.TrimSpace(r.ResourceType))
+
 	if r.UserID == "" {
 		return &ErrorDetail{Code: "bad_request", Message: "user_id is required"}
 	}

@@ -6,18 +6,15 @@ import (
 	"log"
 	"rbac7/internal/rbac/model"
 	"rbac7/internal/rbac/repository"
-	"strings"
 
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func (s *Service) AssignSystemOwner(ctx context.Context, callerID string, req model.SystemOwnerUpsertRequest) error {
-	// Normalize input: Trim Space then format
-	req.Namespace = strings.ToUpper(strings.TrimSpace(req.Namespace))
-	req.UserID = strings.TrimSpace(req.UserID)
-	// 0. Validate Caller & Input
-	if err := s.validateRequest(callerID, req); err != nil {
-		return err
+func (s *Service) AssignSystemOwner(ctx context.Context, callerID string, req model.AssignSystemOwnerReq) error {
+	// 1. Validation already handled by caller using req.Validate()
+
+	if req.UserID == "" {
+		return ErrBadRequest
 	}
 
 	// 2. Check permissions: Caller must have 'platform.system.add_owner'
@@ -54,12 +51,10 @@ func (s *Service) AssignSystemOwner(ctx context.Context, callerID string, req mo
 	return nil
 }
 
-func (s *Service) TransferSystemOwner(ctx context.Context, callerID string, req model.SystemOwnerUpsertRequest) error {
-	req.Namespace = strings.ToUpper(strings.TrimSpace(req.Namespace))
-	req.UserID = strings.TrimSpace(req.UserID)
-	// 0. Validate Caller & Input
-	if err := s.validateRequest(callerID, req); err != nil {
-		return err
+func (s *Service) TransferSystemOwner(ctx context.Context, callerID string, req model.TransferSystemOwnerReq) error {
+
+	if req.Namespace == "" || req.UserID == "" {
+		return ErrBadRequest
 	}
 	// Cannot transfer to self
 	if req.UserID == callerID {
@@ -97,16 +92,10 @@ func (s *Service) TransferSystemOwner(ctx context.Context, callerID string, req 
 	return nil
 }
 
-func (s *Service) AssignSystemUserRole(ctx context.Context, callerID string, req model.SystemUserRole) error {
-	req.Namespace = strings.ToUpper(strings.TrimSpace(req.Namespace))
-	req.Role = strings.ToLower(strings.TrimSpace(req.Role))
-	req.UserType = strings.ToLower(strings.TrimSpace(req.UserType))
-	req.Scope = strings.ToLower(strings.TrimSpace(req.Scope))
-	req.UserID = strings.TrimSpace(req.UserID)
+func (s *Service) AssignSystemUserRole(ctx context.Context, callerID string, req model.AssignSystemUserRoleReq) error {
 
-	if err := s.validateCallerAndNamespace(callerID, req.Namespace); err != nil {
-		return err
-	}
+	// Note: Scope is implied to be System
+
 	if req.UserID == "" {
 		return ErrBadRequest
 	}
@@ -162,18 +151,16 @@ func (s *Service) AssignSystemUserRole(ctx context.Context, callerID string, req
 }
 
 func (s *Service) DeleteSystemUserRole(ctx context.Context, callerID string, req model.DeleteSystemUserRoleReq) error {
-	namespace := strings.ToUpper(strings.TrimSpace(req.Namespace))
-	userID := strings.TrimSpace(req.UserID)
 
-	if err := s.validateCallerAndNamespace(callerID, namespace); err != nil {
+	if err := s.validateCallerAndNamespace(callerID, req.Namespace); err != nil {
 		return err
 	}
-	if userID == "" {
+	if req.UserID == "" {
 		return ErrBadRequest
 	}
 
 	// Permission: platform.system.remove_member
-	canDelete, err := CheckSystemPermission(ctx, s.Repo, callerID, namespace, PermPlatformSystemRemoveMember)
+	canDelete, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, PermPlatformSystemRemoveMember)
 	if err != nil {
 		return err
 	}
@@ -181,12 +168,12 @@ func (s *Service) DeleteSystemUserRole(ctx context.Context, callerID string, req
 		return ErrForbidden
 	}
 
-	currentOwner, err := s.Repo.GetSystemOwner(ctx, namespace)
+	currentOwner, err := s.Repo.GetSystemOwner(ctx, req.Namespace)
 	if err != nil {
 		return err
 	}
-	if currentOwner != nil && currentOwner.UserID == userID {
-		count, err := s.Repo.CountSystemOwners(ctx, namespace)
+	if currentOwner != nil && currentOwner.UserID == req.UserID {
+		count, err := s.Repo.CountSystemOwners(ctx, req.Namespace)
 		if err != nil {
 			return err
 		}
@@ -195,7 +182,7 @@ func (s *Service) DeleteSystemUserRole(ctx context.Context, callerID string, req
 		}
 	}
 
-	err = s.Repo.DeleteUserRole(ctx, namespace, userID, model.ScopeSystem, "", "", callerID)
+	err = s.Repo.DeleteUserRole(ctx, req.Namespace, req.UserID, model.ScopeSystem, "", "", callerID)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil
@@ -203,6 +190,6 @@ func (s *Service) DeleteSystemUserRole(ctx context.Context, callerID string, req
 		return err
 	}
 
-	log.Printf("Audit: System User Role Deleted. Caller=%s, Target=%s, Namespace=%s", callerID, userID, namespace)
+	log.Printf("Audit: System User Role Deleted. Caller=%s, Target=%s, Namespace=%s", callerID, req.UserID, req.Namespace)
 	return nil
 }

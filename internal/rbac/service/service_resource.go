@@ -6,15 +6,11 @@ import (
 	"log"
 	"rbac7/internal/rbac/model"
 	"rbac7/internal/rbac/repository"
-	"strings"
 
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func (s *Service) AssignResourceOwner(ctx context.Context, callerID string, req model.ResourceOwnerUpsertRequest) error {
-	req.ResourceID = strings.TrimSpace(req.ResourceID)
-	req.ResourceType = strings.ToLower(strings.TrimSpace(req.ResourceType))
-
+func (s *Service) AssignResourceOwner(ctx context.Context, callerID string, req model.AssignResourceOwnerReq) error {
 	if req.ResourceID == "" || req.ResourceType == "" {
 		return ErrBadRequest
 	}
@@ -60,11 +56,7 @@ func (s *Service) AssignResourceOwner(ctx context.Context, callerID string, req 
 	return nil
 }
 
-func (s *Service) TransferResourceOwner(ctx context.Context, callerID string, req model.ResourceOwnerUpsertRequest) error {
-	req.UserID = strings.TrimSpace(req.UserID)
-	req.ResourceID = strings.TrimSpace(req.ResourceID)
-	req.ResourceType = strings.ToLower(strings.TrimSpace(req.ResourceType))
-
+func (s *Service) TransferResourceOwner(ctx context.Context, callerID string, req model.TransferResourceOwnerReq) error {
 	if req.UserID == "" || req.ResourceID == "" || req.ResourceType == "" {
 		return ErrBadRequest
 	}
@@ -97,12 +89,8 @@ func (s *Service) TransferResourceOwner(ctx context.Context, callerID string, re
 	return nil
 }
 
-func (s *Service) AssignResourceUserRole(ctx context.Context, callerID string, req model.ResourceUserRole) error {
-	req.Role = strings.ToLower(strings.TrimSpace(req.Role))
-	req.UserType = strings.ToLower(strings.TrimSpace(req.UserType))
-	req.ResourceID = strings.TrimSpace(req.ResourceID)
-	req.ResourceType = strings.ToLower(strings.TrimSpace(req.ResourceType))
-	req.UserID = strings.TrimSpace(req.UserID)
+func (s *Service) AssignResourceUserRole(ctx context.Context, callerID string, req model.AssignResourceUserRoleReq) error {
+	// Scope implied Resource
 
 	if req.UserID == "" || req.ResourceID == "" || req.ResourceType == "" {
 		return ErrBadRequest
@@ -160,18 +148,14 @@ func (s *Service) AssignResourceUserRole(ctx context.Context, callerID string, r
 }
 
 func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID string, req model.DeleteResourceUserRoleReq) error {
-	userID := strings.TrimSpace(req.UserID)
-	resourceID := strings.TrimSpace(req.ResourceID)
-	resourceType := strings.ToLower(strings.TrimSpace(req.ResourceType))
-
-	if userID == "" || resourceID == "" || resourceType == "" {
+	if req.UserID == "" || req.ResourceID == "" || req.ResourceType == "" {
 		return ErrBadRequest
 	}
 
 	// Permission: resource.{type}.remove_member
-	perm := "resource." + resourceType + ".remove_member"
+	perm := "resource." + req.ResourceType + ".remove_member"
 	// No Namespace
-	canDelete, err := CheckResourcePermission(ctx, s.Repo, callerID, resourceID, resourceType, perm)
+	canDelete, err := CheckResourcePermission(ctx, s.Repo, callerID, req.ResourceID, req.ResourceType, perm)
 	if err != nil {
 		return err
 	}
@@ -180,7 +164,7 @@ func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID string, r
 	}
 
 	// Cannot remove Owner
-	isOwner, err := s.Repo.HasResourceRole(ctx, userID, resourceID, resourceType, model.RoleResourceOwner)
+	isOwner, err := s.Repo.HasResourceRole(ctx, req.UserID, req.ResourceID, req.ResourceType, model.RoleResourceOwner)
 	if err != nil {
 		return err
 	}
@@ -188,7 +172,7 @@ func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID string, r
 		return ErrForbidden // Cannot remove owner
 	}
 
-	err = s.Repo.DeleteUserRole(ctx, "", userID, model.ScopeResource, resourceID, resourceType, callerID)
+	err = s.Repo.DeleteUserRole(ctx, "", req.UserID, model.ScopeResource, req.ResourceID, req.ResourceType, callerID)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil
@@ -196,6 +180,6 @@ func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID string, r
 		return err
 	}
 
-	log.Printf("Audit: Resource User Role Deleted. Caller=%s, Target=%s, Resource=%s:%s", callerID, userID, resourceType, resourceID)
+	log.Printf("Audit: Resource User Role Deleted. Caller=%s, Target=%s, Resource=%s:%s", callerID, req.UserID, req.ResourceType, req.ResourceID)
 	return nil
 }

@@ -65,51 +65,23 @@ func (h *SystemHandler) GetUserRoles(c echo.Context) error {
 		return c.JSON(code, body)
 	}
 
-	filter := model.UserRoleFilter{
-		UserID:       c.QueryParam("user_id"),
-		Namespace:    c.QueryParam("namespace"),
-		Role:         c.QueryParam("role"),
-		Scope:        c.QueryParam("scope"),
-		ResourceID:   c.QueryParam("resource_id"),
-		ResourceType: c.QueryParam("resource_type"),
-	}
-
-	if filter.Scope == "" {
+	var req model.GetUserRolesReq
+	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			Error: model.ErrorDetail{Code: "bad_request", Message: "scope is required"},
+			Error: model.ErrorDetail{Code: "bad_request", Message: "Invalid parameters"},
 		})
 	}
 
-	if filter.Scope == model.ScopeSystem {
-		if filter.Namespace == "" {
-			return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-				Error: model.ErrorDetail{Code: "bad_request", Message: "namespace required for system scope"},
-			})
+	if err := req.Validate(); err != nil {
+		if e, ok := err.(*model.ErrorDetail); ok {
+			return c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: *e})
 		}
-		// Check mixed params? "list scope=system but provide resource_type/resource_id"
-		if filter.ResourceID != "" || filter.ResourceType != "" {
-			return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-				Error: model.ErrorDetail{Code: "bad_request", Message: "invalid parameters for system scope"},
-			})
-		}
-	} else if filter.Scope == "resource" {
-		if filter.Namespace != "" {
-			return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-				Error: model.ErrorDetail{Code: "bad_request", Message: "namespace not allowed for resource scope"},
-			})
-		}
-		if filter.ResourceID == "" || filter.ResourceType == "" {
-			return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-				Error: model.ErrorDetail{Code: "bad_request", Message: "resource_id and resource_type required for resource scope"},
-			})
-		}
-	} else {
-		// Invalid scope
-		// Not explicitly tested but good practice? Or rely on defaults?
-		// "list members missing scope parameter" -> 400 (Handled).
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "bad_request", Message: err.Error()},
+		})
 	}
 
-	roles, err := h.Service.GetUserRoles(c.Request().Context(), callerID, filter)
+	roles, err := h.Service.GetUserRoles(c.Request().Context(), callerID, req)
 	if err != nil {
 		code, body := httpError(err)
 		return c.JSON(code, body)
@@ -124,10 +96,19 @@ func (h *SystemHandler) PostPermissionsCheck(c echo.Context) error {
 		return c.JSON(code, body)
 	}
 
-	var req model.CheckPermissionRequest
+	var req model.CheckPermissionReq
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
 			Error: model.ErrorDetail{Code: "bad_request", Message: "Invalid body"},
+		})
+	}
+
+	if err := req.Validate(); err != nil {
+		if e, ok := err.(*model.ErrorDetail); ok {
+			return c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: *e})
+		}
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "bad_request", Message: err.Error()},
 		})
 	}
 

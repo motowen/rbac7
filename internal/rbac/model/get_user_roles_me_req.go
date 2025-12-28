@@ -1,11 +1,16 @@
 package model
 
+import "strings"
+
 type GetUserRolesMeReq struct {
 	Scope        string `query:"scope"`
 	ResourceType string `query:"resource_type"`
 }
 
 func (r *GetUserRolesMeReq) Validate() error {
+	r.Scope = strings.ToLower(strings.TrimSpace(r.Scope))
+	r.ResourceType = strings.ToLower(strings.TrimSpace(r.ResourceType))
+
 	if r.Scope == "" {
 		return &ErrorDetail{Code: "bad_request", Message: "scope is required"}
 	}
