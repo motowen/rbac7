@@ -11,6 +11,89 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+type MongoRepository struct {
+	SystemRoles   *mongo.Collection
+	ResourceRoles *mongo.Collection
+	Client        *mongo.Client // Added Client for transactions
+}
+
+func NewMongoRepository(db *mongo.Database, systemCollectionName, resourceCollectionName string) *MongoRepository {
+	repo := &MongoRepository{
+		SystemRoles:   db.Collection(systemCollectionName),
+		ResourceRoles: db.Collection(resourceCollectionName),
+		Client:        db.Client(),
+	}
+	return repo
+}
+
+func (r *MongoRepository) EnsureIndexes(ctx context.Context) error {
+	// 1. System Roles Index: (user_id, user_type, scope, namespace) unique
+	// "uniq_user_per_namespace_scope"
+	idxSystemUnique := mongo.IndexModel{
+		Keys: bson.D{
+			{Key: "user_id", Value: 1},
+			{Key: "user_type", Value: 1},
+			{Key: "scope", Value: 1},
+			{Key: "namespace", Value: 1},
+		},
+		Options: options.Index().SetUnique(true).SetName("uniq_user_per_namespace_scope"),
+	}
+
+	// 2. System Owner Index: (scope, namespace, role) unique where role="owner"
+	idxSystemOwner := mongo.IndexModel{
+		Keys: bson.D{
+			{Key: "scope", Value: 1},
+			{Key: "namespace", Value: 1},
+		},
+		Options: options.Index().
+			SetUnique(true).
+			SetName("unique_system_owner_v2").
+			SetPartialFilterExpression(bson.M{
+				"scope":      model.ScopeSystem,
+				"role":       model.RoleSystemOwner,
+				"deleted_at": nil,
+			}),
+	}
+
+	_, err := r.SystemRoles.Indexes().CreateMany(ctx, []mongo.IndexModel{idxSystemUnique, idxSystemOwner})
+	if err != nil {
+		return err
+	}
+
+	// 3. Resource Roles Index: (user_id, user_type, scope, resource_type, resource_id) unique
+	// "uniq_user_per_resource_scope"
+	idxResourceUnique := mongo.IndexModel{
+		Keys: bson.D{
+			{Key: "user_id", Value: 1},
+			{Key: "user_type", Value: 1},
+			{Key: "scope", Value: 1},
+			{Key: "resource_type", Value: 1},
+			{Key: "resource_id", Value: 1},
+		},
+		Options: options.Index().SetUnique(true).SetName("uniq_user_per_resource_scope"),
+	}
+
+	// 4. Resource Owner Unique Index
+	idxResourceOwner := mongo.IndexModel{
+		Keys: bson.D{
+			{Key: "scope", Value: 1},
+			{Key: "resource_id", Value: 1},
+			{Key: "resource_type", Value: 1},
+		},
+		Options: options.Index().
+			SetUnique(true).
+			SetName("unique_resource_owner").
+			SetPartialFilterExpression(bson.M{
+				"scope":      model.ScopeResource,
+				"role":       model.RoleResourceOwner,
+				"deleted_at": nil,
+			}),
+	}
+
+	_, err = r.ResourceRoles.Indexes().CreateMany(ctx, []mongo.IndexModel{idxResourceUnique, idxResourceOwner})
+	return err
+}
+
 func (r *MongoRepository) CreateUserRole(ctx context.Context, role *model.UserRole) error {
 	role.CreatedAt = time.Now()
 	role.UpdatedAt = time.Now()
@@ -207,81 +290,4 @@ func (r *MongoRepository) FindUserRoles(ctx context.Context, filter model.UserRo
 	}
 
 	return allRoles, nil
-}
-
-func (r *MongoRepository) HasResourceRole(ctx context.Context, userID, resourceID, resourceType, role string) (bool, error) {
-	opts := options.Count().SetLimit(1)
-	filter := bson.M{
-		"user_id":       userID,
-		"scope":         model.ScopeResource,
-		"role":          role,
-		"deleted_at":    nil,
-		"resource_id":   resourceID,
-		"resource_type": resourceType,
-	}
-	count, err := r.ResourceRoles.CountDocuments(ctx, filter, opts)
-	if err != nil {
-		return false, err
-	}
-	return count > 0, nil
-}
-
-func (r *MongoRepository) HasAnyResourceRole(ctx context.Context, userID, resourceID, resourceType string, roles []string) (bool, error) {
-	if len(roles) == 0 {
-		return false, nil
-	}
-	opts := options.Count().SetLimit(1)
-	filter := bson.M{
-		"user_id":       userID,
-		"scope":         model.ScopeResource,
-		"role":          bson.M{"$in": roles},
-		"deleted_at":    nil,
-		"resource_id":   resourceID,
-		"resource_type": resourceType,
-	}
-	count, err := r.ResourceRoles.CountDocuments(ctx, filter, opts)
-	if err != nil {
-		return false, err
-	}
-	return count > 0, nil
-}
-
-func (r *MongoRepository) HasSystemRole(ctx context.Context, userID, namespace, role string) (bool, error) {
-	// For performance, we add limit 1
-	opts := options.Count().SetLimit(1)
-	filter := bson.M{
-		"user_id":    userID,
-		"scope":      model.ScopeSystem,
-		"role":       role,
-		"deleted_at": nil,
-	}
-	if namespace != "" {
-		filter["namespace"] = namespace
-	}
-	count, err := r.SystemRoles.CountDocuments(ctx, filter, opts)
-	if err != nil {
-		return false, err
-	}
-	return count > 0, nil
-}
-
-func (r *MongoRepository) HasAnySystemRole(ctx context.Context, userID, namespace string, roles []string) (bool, error) {
-	if len(roles) == 0 {
-		return false, nil
-	}
-	opts := options.Count().SetLimit(1)
-	filter := bson.M{
-		"user_id":    userID,
-		"scope":      model.ScopeSystem,
-		"role":       bson.M{"$in": roles},
-		"deleted_at": nil,
-	}
-	if namespace != "" {
-		filter["namespace"] = namespace
-	}
-	count, err := r.SystemRoles.CountDocuments(ctx, filter, opts)
-	if err != nil {
-		return false, err
-	}
-	return count > 0, nil
 }
