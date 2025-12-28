@@ -31,7 +31,7 @@ func TestDeleteSystemUserRole(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 	})
 
-	t.Run("remove system member missing parameters and return 400", func(t *testing.T) {
+	t.Run("remove system member missing user_id and return 400", func(t *testing.T) {
 		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
@@ -40,6 +40,18 @@ func TestDeleteSystemUserRole(t *testing.T) {
 
 		// Missing user_id
 		rec := PerformRequest(e, http.MethodDelete, "/user_roles_bad?namespace=ns_1", nil, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("remove system member missing namespace and return 400", func(t *testing.T) {
+		e := SetupServer()
+		mockRepo := new(MockRBACRepository)
+		svc := service.NewService(mockRepo)
+		h := handler.NewSystemHandler(svc)
+		e.DELETE("/user_roles_bad", h.DeleteUserRoles)
+
+		// Missing namespace
+		rec := PerformRequest(e, http.MethodDelete, "/user_roles_bad?user_id=u_2", nil, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 

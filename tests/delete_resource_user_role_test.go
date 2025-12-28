@@ -22,12 +22,8 @@ func TestDeleteResourceUserRole(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.DELETE("/api/v1/resource_roles", h.DeleteResourceUserRoles)
 
-		// Namespace removed from URL
-		// Perm check - No namespace
 		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "r1", "dashboard", mock.Anything).Return(true, nil)
-		// Check target owner - No namespace
 		mockRepo.On("HasResourceRole", mock.Anything, "u1", "r1", "dashboard", model.RoleResourceOwner).Return(false, nil)
-		// Delete - No namespace
 		mockRepo.On("DeleteUserRole", mock.Anything, "", "u1", model.ScopeResource, "r1", "dashboard", "caller").Return(nil)
 
 		rec := PerformRequest(e, http.MethodDelete, "/api/v1/resource_roles?user_id=u1&resource_id=r1&resource_type=dashboard", nil, map[string]string{
@@ -36,14 +32,40 @@ func TestDeleteResourceUserRole(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 	})
 
-	t.Run("delete resource user role missing parameters and return 400", func(t *testing.T) {
+	t.Run("delete resource user role missing user_id and return 400", func(t *testing.T) {
 		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
 		e.DELETE("/api/v1/resource_roles", h.DeleteResourceUserRoles)
 
-		rec := PerformRequest(e, http.MethodDelete, "/api/v1/resource_roles?user_id=u1", nil, map[string]string{
+		rec := PerformRequest(e, http.MethodDelete, "/api/v1/resource_roles?resource_id=r1&resource_type=dashboard", nil, map[string]string{
+			"x-user-id": "caller", "authentication": "t",
+		})
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("delete resource user role missing resource_id and return 400", func(t *testing.T) {
+		e := SetupServer()
+		mockRepo := new(MockRBACRepository)
+		svc := service.NewService(mockRepo)
+		h := handler.NewSystemHandler(svc)
+		e.DELETE("/api/v1/resource_roles", h.DeleteResourceUserRoles)
+
+		rec := PerformRequest(e, http.MethodDelete, "/api/v1/resource_roles?user_id=u1&resource_type=dashboard", nil, map[string]string{
+			"x-user-id": "caller", "authentication": "t",
+		})
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("delete resource user role missing resource_type and return 400", func(t *testing.T) {
+		e := SetupServer()
+		mockRepo := new(MockRBACRepository)
+		svc := service.NewService(mockRepo)
+		h := handler.NewSystemHandler(svc)
+		e.DELETE("/api/v1/resource_roles", h.DeleteResourceUserRoles)
+
+		rec := PerformRequest(e, http.MethodDelete, "/api/v1/resource_roles?resource_id=r1&resource_type=dashboard", nil, map[string]string{
 			"x-user-id": "caller", "authentication": "t",
 		})
 		assert.Equal(t, http.StatusBadRequest, rec.Code)

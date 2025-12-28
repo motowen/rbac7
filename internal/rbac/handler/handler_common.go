@@ -37,7 +37,7 @@ func (h *SystemHandler) GetUserRolesMe(c echo.Context) error {
 			Error: model.ErrorDetail{Code: "bad_request", Message: "scope is required"},
 		})
 	}
-	if scope != model.ScopeSystem && scope != "resource" {
+	if scope != model.ScopeSystem && scope != model.ScopeResource {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
 			Error: model.ErrorDetail{Code: "bad_request", Message: "invalid scope"},
 		})
@@ -45,9 +45,15 @@ func (h *SystemHandler) GetUserRolesMe(c echo.Context) error {
 
 	resourceType := c.QueryParam("resource_type")
 	// Test requirement: "get resource roles missing resource_type parameter and return 400"
-	if scope == "resource" && resourceType == "" {
+	if scope == model.ScopeResource && resourceType == "" {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
 			Error: model.ErrorDetail{Code: "bad_request", Message: "resource_type is required for resource scope"},
+		})
+	}
+
+	if scope == model.ScopeSystem && resourceType != "" {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "bad_request", Message: "resource_type should be empty for system scope"},
 		})
 	}
 

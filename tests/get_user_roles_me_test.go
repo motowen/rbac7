@@ -92,6 +92,18 @@ func TestGetUserRolesMe(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
+	t.Run("get system user roles having resource_type parameter and return 400", func(t *testing.T) {
+		e := SetupServer()
+		mockRepo := new(MockRBACRepository)
+		svc := service.NewService(mockRepo)
+		h := handler.NewSystemHandler(svc)
+		e.GET("/user_roles/me", h.GetUserRolesMe)
+
+		path := "/user_roles/me?scope=system&resource_type=dashboard"
+		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "u_1"})
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
 	t.Run("get user roles invalid scope value and return 400", func(t *testing.T) {
 		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
