@@ -87,3 +87,8 @@ func (m *MockRBACRepository) CountResourceOwners(ctx context.Context, resourceID
 	args := m.Called(ctx, resourceID, resourceType)
 	return args.Get(0).(int64), args.Error(1)
 }
+
+func (m *MockRBACRepository) CountResourceRoles(ctx context.Context, resourceID, resourceType string) (int64, error) {
+	args := m.Called(ctx, resourceID, resourceType)
+	return args.Get(0).(int64), args.Error(1)
+}

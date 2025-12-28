@@ -31,6 +31,12 @@ const (
 	PermResourceDashboardRemoveMember  = "resource.dashboard.remove_member"
 	PermResourceDashboardGetMember     = "resource.dashboard.get_member"
 	PermResourceDashboardTransferOwner = "resource.dashboard.transfer_owner"
+
+	// Dashboard Widget Permissions
+	PermResourceDashboardAddWidget       = "resource.dashboard.add_widget"
+	PermResourceDashboardRemoveWidget    = "resource.dashboard.remove_widget"
+	PermResourceDashboardAddWidgetViewer = "resource.dashboard.add_widget_viewer"
+	PermResourceDashboardWidgetRead      = "resource.dashboard_widget.read"
 )
 
 // SystemRolePermissions maps System Role Names to their Prmissions
@@ -90,6 +96,9 @@ var ResourceRolePermissions = map[string][]string{
 		PermResourceDashboardRemoveMember,
 		PermResourceDashboardGetMember,
 		PermResourceDashboardTransferOwner,
+		PermResourceDashboardAddWidget,
+		PermResourceDashboardRemoveWidget,
+		PermResourceDashboardAddWidgetViewer,
 	},
 	"admin": {
 		PermResourceDashboardRead,
@@ -98,14 +107,40 @@ var ResourceRolePermissions = map[string][]string{
 		PermResourceDashboardAddMember,
 		PermResourceDashboardRemoveMember,
 		PermResourceDashboardGetMember,
+		PermResourceDashboardAddWidget,
+		PermResourceDashboardRemoveWidget,
+		PermResourceDashboardAddWidgetViewer,
 	},
 	"editor": {
 		PermResourceDashboardRead,
 		PermResourceDashboardUpdate,
+		PermResourceDashboardAddWidget,
+		PermResourceDashboardRemoveWidget,
+		PermResourceDashboardAddWidgetViewer,
 	},
 	"viewer": {
 		PermResourceDashboardRead,
 	},
+}
+
+// Ensure "viewer" role on a dashboard_widget has read access
+// We reuse ResourceRolePermissions for dashboard_widget scope as requested.
+// BUT we need to make sure PermResourceDashboardWidgetRead is mapped.
+// Since the user requested "dashboard_widget" as a type, we might need a separate map or append to this one?
+// The prompt says "reuse Resource Scope".
+// Let's add PermResourceDashboardWidgetRead to "viewer" so it applies generally?
+// Or better, distinct handling. Ideally "viewer" implies read.
+// Let's add it to all roles for now to be safe, or just viewer.
+func init() {
+	// Dynamically append widget read to all standard roles if they don't have it?
+	// Or explicitly add it above.
+	// Since "dashboard_widget" is a resource type, "viewer" on "dashboard_widget" should grant "resource.dashboard_widget.read".
+	// The current map structure is generic for "Resource Roles".
+	// We can add the permission to the lists.
+	ResourceRolePermissions["owner"] = append(ResourceRolePermissions["owner"], PermResourceDashboardWidgetRead)
+	ResourceRolePermissions["admin"] = append(ResourceRolePermissions["admin"], PermResourceDashboardWidgetRead)
+	ResourceRolePermissions["editor"] = append(ResourceRolePermissions["editor"], PermResourceDashboardWidgetRead)
+	ResourceRolePermissions["viewer"] = append(ResourceRolePermissions["viewer"], PermResourceDashboardWidgetRead)
 }
 
 // GetRolesWithPermission returns a list of role names (in system scope) that possess the given permission.

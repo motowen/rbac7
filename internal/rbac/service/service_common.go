@@ -135,6 +135,46 @@ func (s *Service) CheckPermission(ctx context.Context, callerID string, req mode
 		if req.ResourceID == "" || req.ResourceType == "" {
 			return false, ErrBadRequest
 		}
+
+		// Dashboard Widget Inheritance Logic
+		if req.ResourceType == "dashboard_widget" {
+			// 1. Check if specific roles exist on this widget (Whitelist)
+			count, err := s.Repo.CountResourceRoles(ctx, req.ResourceID, req.ResourceType)
+			if err != nil {
+				return false, err
+			}
+
+			if count > 0 {
+				// Whitelist Mode: Strict check on the widget itself.
+				return CheckResourcePermission(ctx, s.Repo, callerID, req.ResourceID, req.ResourceType, req.Permission)
+			}
+
+			// 2. Inheritance Mode: Check Parent Dashboard permissions
+			// Only if NO roles are assigned to the widget (Public/Inherited)
+			if req.ParentResourceID == "" {
+				// If parent ID is missing, we can't check parent.
+				// Fail safe: Deny or assume strict check failed (which it did, since count=0 means no roles).
+				// However, if count=0, user definitely has NO role on widget.
+				// So we MUST return denied if no parent ID.
+				return false, ErrBadRequest // Parent ID required for inheritance check
+			}
+
+			// Check if user has "resource.dashboard.read" (or similar) on the Parent Dashboard
+			// Map widget permission to dashboard permission?
+			// Assumption: If I want "read" on widget, I need "read" on dashboard.
+			targetPerm := req.Permission
+			if targetPerm == model.PermResourceDashboardWidgetRead {
+				// Map to Dashboard Read
+				targetPerm = model.PermResourceDashboardRead
+			}
+			// Note: For "ADD" widget, the permission is checked against the DASHBOARD directly in the handler or caller?
+			// Actually, "Process Dashboard Widget" usually involves checking "dashboard" permissions.
+			// But here we are checking permission ON THE WIDGET resource.
+			// If it's a read operation, we check parent.
+
+			return CheckResourcePermission(ctx, s.Repo, callerID, req.ParentResourceID, "dashboard", targetPerm)
+		}
+
 		return CheckResourcePermission(ctx, s.Repo, callerID, req.ResourceID, req.ResourceType, req.Permission)
 	}
 
