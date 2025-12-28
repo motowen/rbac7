@@ -151,14 +151,6 @@ func (s *Service) AssignSystemUserRole(ctx context.Context, callerID string, req
 }
 
 func (s *Service) DeleteSystemUserRole(ctx context.Context, callerID string, req model.DeleteSystemUserRoleReq) error {
-
-	if err := s.validateCallerAndNamespace(callerID, req.Namespace); err != nil {
-		return err
-	}
-	if req.UserID == "" {
-		return ErrBadRequest
-	}
-
 	// Permission: platform.system.remove_member
 	canDelete, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, PermPlatformSystemRemoveMember)
 	if err != nil {

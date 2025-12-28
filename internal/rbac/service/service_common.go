@@ -124,7 +124,6 @@ func (s *Service) GetUserRoles(ctx context.Context, callerID string, req model.G
 
 func (s *Service) CheckPermission(ctx context.Context, callerID string, req model.CheckPermissionReq) (bool, error) {
 	// Validation already done in handler/struct validate, but trim is useful helper.
-
 	if req.Permission == "" || req.Scope == "" {
 		return false, ErrBadRequest
 	}
