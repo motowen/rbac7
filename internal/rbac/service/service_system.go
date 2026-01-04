@@ -17,9 +17,14 @@ func (s *Service) AssignSystemOwner(ctx context.Context, callerID string, req mo
 		return ErrBadRequest
 	}
 
-	// 2. Check permissions: Caller must have 'platform.system.add_owner'
+	// 2. Check permissions via Policy
+	perm, _, err := s.PolicyEngine.GetPermission("assign_system_owner", nil)
+	if err != nil {
+		return err
+	}
+
 	// Usually moderator is global, so namespace might be empty string?
-	hasPerm, err := CheckSystemPermission(ctx, s.Repo, callerID, "", PermPlatformSystemAddOwner)
+	hasPerm, err := CheckSystemPermission(ctx, s.Repo, callerID, "", perm)
 	if err != nil {
 		return err
 	}
@@ -61,8 +66,12 @@ func (s *Service) TransferSystemOwner(ctx context.Context, callerID string, req 
 		return ErrBadRequest
 	}
 
-	// 2. Check permissions: Caller must have 'platform.system.transfer_owner'
-	hasPerm, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, PermPlatformSystemTransferOwner)
+	// 2. Check permissions via Policy
+	perm, _, err := s.PolicyEngine.GetPermission("transfer_system_owner", nil)
+	if err != nil {
+		return err
+	}
+	hasPerm, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, perm)
 	if err != nil {
 		return err
 	}
@@ -107,8 +116,13 @@ func (s *Service) AssignSystemUserRole(ctx context.Context, callerID string, req
 		return ErrBadRequest
 	}
 
-	// Permission: platform.system.add_member
-	canAssign, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, PermPlatformSystemAddMember)
+	// Permission Check via Policy
+	perm, _, err := s.PolicyEngine.GetPermission("assign_system_user_role", nil)
+	if err != nil {
+		return err
+	}
+
+	canAssign, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, perm)
 	if err != nil {
 		return err
 	}
@@ -151,8 +165,12 @@ func (s *Service) AssignSystemUserRole(ctx context.Context, callerID string, req
 }
 
 func (s *Service) DeleteSystemUserRole(ctx context.Context, callerID string, req model.DeleteSystemUserRoleReq) error {
-	// Permission: platform.system.remove_member
-	canDelete, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, PermPlatformSystemRemoveMember)
+	// Permission Check via Policy
+	perm, _, err := s.PolicyEngine.GetPermission("delete_system_user_role", nil)
+	if err != nil {
+		return err
+	}
+	canDelete, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, perm)
 	if err != nil {
 		return err
 	}

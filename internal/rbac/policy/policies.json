@@ -1,0 +1,86 @@
+{
+  "assign_resource_owner": [
+    {
+      "permission": ""
+    }
+  ],
+  "transfer_resource_owner": [
+    {
+      "permission": "resource.{resource_type}.transfer_owner"
+    }
+  ],
+  "assign_resource_user_role": [
+    {
+      "conditions": {
+        "resource_type": "dashboard_widget",
+        "role": "viewer"
+      },
+      "permission": "resource.dashboard.add_widget_viewer",
+      "scope": "parent"
+    },
+    {
+      "permission": "resource.{resource_type}.add_member"
+    }
+  ],
+  "delete_resource_user_role": [
+    {
+      "conditions": {
+        "resource_type": "dashboard_widget",
+        "target_role_is_viewer": true
+      },
+      "permission": "resource.dashboard.add_widget_viewer",
+      "scope": "parent"
+    },
+    {
+      "permission": "resource.{resource_type}.remove_member"
+    }
+  ],
+  "assign_system_owner": [
+    {
+      "permission": "platform.system.add_owner"
+    }
+  ],
+  "transfer_system_owner": [
+    {
+      "permission": "platform.system.transfer_owner"
+    }
+  ],
+  "assign_system_user_role": [
+    {
+      "permission": "platform.system.add_member"
+    }
+  ],
+  "delete_system_user_role": [
+    {
+      "permission": "platform.system.remove_member"
+    }
+  ],
+  "get_user_roles_me": [
+    {
+      "conditions": {
+        "scope": "system"
+      },
+      "permission": "platform.system.read"
+    },
+    {
+      "conditions": {
+        "scope": "resource"
+      },
+      "permission": "resource.{resource_type}.read"
+    }
+  ],
+  "get_user_roles": [
+    {
+      "conditions": {
+        "scope": "system"
+      },
+      "permission": "platform.system.get_member"
+    },
+    {
+      "conditions": {
+        "scope": "resource"
+      },
+      "permission": "resource.{resource_type}.get_member"
+    }
+  ]
+}

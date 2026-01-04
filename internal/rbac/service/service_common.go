@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"rbac7/internal/rbac/model"
+	"rbac7/internal/rbac/policy"
 	"rbac7/internal/rbac/repository"
 )
 
@@ -30,11 +31,15 @@ type RBACService interface {
 }
 
 type Service struct {
-	Repo repository.RBACRepository
+	Repo         repository.RBACRepository
+	PolicyEngine *policy.PolicyEngine
 }
 
 func NewService(repo repository.RBACRepository) *Service {
-	return &Service{Repo: repo}
+	return &Service{
+		Repo:         repo,
+		PolicyEngine: policy.NewPolicyEngine(),
+	}
 }
 
 func (s *Service) GetUserRolesMe(ctx context.Context, callerID string, req model.GetUserRolesMeReq) ([]*model.UserRole, error) {
@@ -53,30 +58,33 @@ func (s *Service) GetUserRolesMe(ctx context.Context, callerID string, req model
 	}
 
 	// Permission Check
-	if req.Scope == model.ScopeSystem {
-		// Requirement: "GetUserRolesMe要檢查有沒有platform.system.read的權限"
-		if !CheckRolesHavePermission(roles, PermPlatformSystemRead) {
-			return nil, ErrForbidden
-		}
-	} else if req.Scope == model.ScopeResource {
-		// For resource scope, check resource read permission
-		// Given strict RBAC, let's use the one matching resourceType.
-		perm := "resource." + req.ResourceType + ".read"
-		// If resourceType is present:
-		if req.ResourceType != "" {
-			if !CheckRolesHavePermission(roles, perm) {
-				return nil, ErrForbidden
-			}
-		} else {
-			// If resourceType not provided (e.g. get all my resources), strict check might fail.
-			// But sticking to test requirement "missing resource_type -> 400" in Handler, so resourceType will be present.
-			// Just in case:
-			if !CheckRolesHavePermission(roles, PermResourceDashboardRead) { // Fallback or Fail?
-				// If we have mixed resources, we need mixed check.
-				// But let's assume resourceType is mandatory for 'resource' scope for now.
-				return nil, ErrForbidden
-			}
-		}
+	// Permission Check via Policy
+	ctxPol := map[string]interface{}{
+		"scope":         req.Scope,
+		"resource_type": req.ResourceType,
+	}
+
+	// Default resource type for resource scope if missing?
+	// The original logic had a fallback check for `PermResourceDashboardRead` if resourceType was empty.
+	// We can handle this by ensuring `req.ResourceType` corresponds to what we want to interpolate,
+	// or by handling the error/defaulting in code.
+	// If req.ResourceType is empty, "resource.{resource_type}.read" becomes "resource..read" which is invalid.
+	if req.Scope == model.ScopeResource && req.ResourceType == "" {
+		// Fallback as per original logic intuition: check for dashboard read? or just fail?
+		// Original logic: if resourceType == "", it did a check for PermResourceDashboardRead.
+		ctxPol["resource_type"] = "dashboard" // Force default?
+	}
+
+	perm, _, err := s.PolicyEngine.GetPermission("get_user_roles_me", ctxPol)
+	if err != nil {
+		// If no policy found (e.g. unknown scope), maybe return error?
+		// But existing logic only checked system/resource.
+		// If scope is empty or invalid, handler might have caught it, or we just error out.
+		return nil, err
+	}
+
+	if !CheckRolesHavePermission(roles, perm) {
+		return nil, ErrForbidden
 	}
 
 	return roles, nil
@@ -84,11 +92,18 @@ func (s *Service) GetUserRolesMe(ctx context.Context, callerID string, req model
 
 func (s *Service) GetUserRoles(ctx context.Context, callerID string, req model.GetUserRolesReq) ([]*model.UserRole, error) {
 	// Permission Check for List
-	if req.Scope == model.ScopeSystem {
-		// Permission: platform.system.get_member
-		// Note: User user request 1186: GetUserRoles -> get_meber (get_member)
+	// Permission Check via Policy
+	ctxPol := map[string]interface{}{
+		"scope":         req.Scope,
+		"resource_type": req.ResourceType,
+	}
+	perm, _, err := s.PolicyEngine.GetPermission("get_user_roles", ctxPol)
+	if err != nil {
+		return nil, err
+	}
 
-		canList, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, PermPlatformSystemGetMember)
+	if req.Scope == model.ScopeSystem {
+		canList, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, perm)
 		if err != nil {
 			return nil, err
 		}
@@ -96,11 +111,9 @@ func (s *Service) GetUserRoles(ctx context.Context, callerID string, req model.G
 			return nil, ErrForbidden
 		}
 	} else if req.Scope == model.ScopeResource {
-		// Permission: resource.{type}.get_member
 		if req.ResourceID == "" || req.ResourceType == "" {
-			return nil, ErrBadRequest // Handler should catch this, but safeguard
+			return nil, ErrBadRequest
 		}
-		perm := "resource." + req.ResourceType + ".get_member"
 		canList, err := CheckResourcePermission(ctx, s.Repo, callerID, req.ResourceID, req.ResourceType, perm)
 		if err != nil {
 			return nil, err

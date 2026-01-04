@@ -64,8 +64,14 @@ func (s *Service) TransferResourceOwner(ctx context.Context, callerID string, re
 		return ErrBadRequest
 	}
 
-	// Permission: resource.dashboard.transfer_owner (or generic resource.transfer_owner)
-	perm := "resource." + req.ResourceType + ".transfer_owner"
+	// Permission Check via Policy Engine
+	ctxPol := map[string]interface{}{
+		"resource_type": req.ResourceType,
+	}
+	perm, _, err := s.PolicyEngine.GetPermission("transfer_resource_owner", ctxPol)
+	if err != nil {
+		return err
+	}
 
 	// No namespace
 	hasPerm, err := CheckResourcePermission(ctx, s.Repo, callerID, req.ResourceID, req.ResourceType, perm)
@@ -103,22 +109,30 @@ func (s *Service) AssignResourceUserRole(ctx context.Context, callerID string, r
 		return ErrBadRequest
 	}
 
-	// Permission Check
-	var perm string
+	// Permission Check via Policy Engine
+	ctxPol := map[string]interface{}{
+		"resource_type": req.ResourceType,
+		"role":          req.Role,
+	}
+	perm, scope, err := s.PolicyEngine.GetPermission("assign_resource_user_role", ctxPol)
+	if err != nil {
+		// Fallback or Error?
+		// If policy missing, it's a server error or potential misconfiguration.
+		return err
+	}
+
 	targetResourceID := req.ResourceID
 	targetResourceType := req.ResourceType
 
-	if req.ResourceType == model.ResourceTypeWidget && req.Role == model.RoleResourceViewer {
-		// Specific permission for adding widget viewer
-		perm = model.PermResourceDashboardAddWidgetViewer
-		// Check on Parent Dashboard
-		if req.ParentResourceID != "" {
+	if scope == "parent" {
+		if req.ResourceType == model.ResourceTypeWidget && req.ParentResourceID != "" {
 			targetResourceID = req.ParentResourceID
 			targetResourceType = model.ResourceTypeDashboard
+		} else {
+			// If scope is parent but Logic for other types not implemented?
+			// Or fail if missing parent ID?
+			// For dashboard_widget logic, this matches.
 		}
-	} else {
-		// Generic permission: resource.{type}.add_member
-		perm = "resource." + req.ResourceType + ".add_member"
 	}
 
 	// No namespace
@@ -169,24 +183,34 @@ func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID string, r
 	}
 
 	// Determine Permission based on Target Role & Resource Type
-	perm := "resource." + req.ResourceType + ".remove_member"
-	targetResourceID := req.ResourceID
-	targetResourceType := req.ResourceType
+	// We need context for policy engine. For delete, we might check target role.
+	ctxPol := map[string]interface{}{
+		"resource_type": req.ResourceType,
+	}
 
 	if req.ResourceType == model.ResourceTypeWidget {
-		// Specific check for Widget Viewer removal
-		// check target role...
+		// Special check for target role
 		isViewer, err := s.Repo.HasResourceRole(ctx, req.UserID, req.ResourceID, req.ResourceType, model.RoleResourceViewer)
 		if err != nil {
 			return err
 		}
 		if isViewer {
-			perm = model.PermResourceDashboardAddWidgetViewer
-			// Check on Parent Dashboard
-			if req.ParentResourceID != "" {
-				targetResourceID = req.ParentResourceID
-				targetResourceType = model.ResourceTypeDashboard
-			}
+			ctxPol["target_role_is_viewer"] = true
+		}
+	}
+
+	perm, scope, err := s.PolicyEngine.GetPermission("delete_resource_user_role", ctxPol)
+	if err != nil {
+		return err
+	}
+
+	targetResourceID := req.ResourceID
+	targetResourceType := req.ResourceType
+
+	if scope == "parent" {
+		if req.ResourceType == model.ResourceTypeWidget && req.ParentResourceID != "" {
+			targetResourceID = req.ParentResourceID
+			targetResourceType = model.ResourceTypeDashboard
 		}
 	}
 
