@@ -111,6 +111,39 @@ func (h *SystemHandler) PostUserRoles(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{"status": "success"})
 }
 
+// PostUserRolesBatch handles POST /user_roles/batch (System Scope)
+func (h *SystemHandler) PostUserRolesBatch(c echo.Context) error {
+	callerID, err := h.extractCallerID(c)
+	if err != nil {
+		code, body := httpError(err)
+		return c.JSON(code, body)
+	}
+
+	var req model.AssignSystemUserRolesReq
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "bad_request", Message: "Invalid body"},
+		})
+	}
+
+	if err := req.Validate(); err != nil {
+		if e, ok := err.(*model.ErrorDetail); ok {
+			return c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: *e})
+		}
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "bad_request", Message: err.Error()},
+		})
+	}
+
+	result, err := h.Service.AssignSystemUserRoles(c.Request().Context(), callerID, req)
+	if err != nil {
+		code, body := httpError(err)
+		return c.JSON(code, body)
+	}
+
+	return c.JSON(http.StatusOK, result)
+}
+
 // DeleteUserRoles handles DELETE /user_roles (System Scope)
 // DeleteUserRoles handles DELETE /user_roles (System Scope)
 func (h *SystemHandler) DeleteUserRoles(c echo.Context) error {

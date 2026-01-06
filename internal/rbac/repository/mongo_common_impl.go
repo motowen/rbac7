@@ -122,6 +122,7 @@ func (r *MongoRepository) UpsertUserRole(ctx context.Context, role *model.UserRo
 		"user_id":   role.UserID,
 		"user_type": role.UserType,
 		"scope":     role.Scope,
+		"role":      bson.M{"$ne": model.RoleSystemOwner}, // Protect owner role
 	}
 	// Add scope specific fields to filter
 	if role.Scope == model.ScopeSystem {
@@ -129,9 +130,10 @@ func (r *MongoRepository) UpsertUserRole(ctx context.Context, role *model.UserRo
 	} else if role.Scope == model.ScopeResource {
 		filter["resource_id"] = role.ResourceID
 		filter["resource_type"] = role.ResourceType
-		// Maybe namespace too? Requirement usually puts resource in namespace.
-		// For unique index 'uniq_user_per_resource_scope', we use resource_id + resource_type.
-		// Namespace might be metadata.
+		// For resource scope, also protect resource owner if needed
+		if role.Scope == model.ScopeResource {
+			filter["role"] = bson.M{"$ne": model.RoleResourceOwner}
+		}
 	}
 
 	now := time.Now()
@@ -143,7 +145,7 @@ func (r *MongoRepository) UpsertUserRole(ctx context.Context, role *model.UserRo
 			"updated_at":    now,
 			"updated_by":    role.UpdatedBy,
 			"created_by":    role.CreatedBy,
-			"namespace":     role.Namespace, // Ensure these are set
+			"namespace":     role.Namespace,
 			"resource_id":   role.ResourceID,
 			"resource_type": role.ResourceType,
 		},
@@ -171,11 +173,120 @@ func (r *MongoRepository) UpsertUserRole(ctx context.Context, role *model.UserRo
 	return err
 }
 
+func (r *MongoRepository) BulkUpsertUserRoles(ctx context.Context, roles []*model.UserRole) (*model.BatchUpsertResult, error) {
+	if len(roles) == 0 {
+		return &model.BatchUpsertResult{SuccessCount: 0, FailedCount: 0}, nil
+	}
+
+	// Assume all roles have the same scope for batch operation
+	scope := roles[0].Scope
+	var coll *mongo.Collection
+	if scope == model.ScopeSystem {
+		coll = r.SystemRoles
+	} else {
+		coll = r.ResourceRoles
+	}
+
+	now := time.Now()
+
+	var writeModels []mongo.WriteModel
+	for _, role := range roles {
+		role.UpdatedAt = now
+
+		filter := bson.M{
+			"user_id":   role.UserID,
+			"user_type": role.UserType,
+			"scope":     role.Scope,
+			"role":      bson.M{"$ne": model.RoleSystemOwner}, // Protect owner role
+		}
+		if scope == model.ScopeSystem {
+			filter["namespace"] = role.Namespace
+		} else {
+			filter["resource_id"] = role.ResourceID
+			filter["resource_type"] = role.ResourceType
+			filter["role"] = bson.M{"$ne": model.RoleResourceOwner}
+		}
+
+		update := bson.M{
+			"$set": bson.M{
+				"role":          role.Role,
+				"updated_at":    now,
+				"updated_by":    role.UpdatedBy,
+				"created_by":    role.CreatedBy,
+				"namespace":     role.Namespace,
+				"resource_id":   role.ResourceID,
+				"resource_type": role.ResourceType,
+			},
+			"$setOnInsert": bson.M{
+				"created_at": now,
+				"user_id":    role.UserID,
+				"user_type":  role.UserType,
+				"scope":      role.Scope,
+			},
+			"$unset": bson.M{
+				"deleted_at": "",
+				"deleted_by": "",
+			},
+		}
+
+		writeModel := mongo.NewUpdateOneModel().
+			SetFilter(filter).
+			SetUpdate(update).
+			SetUpsert(true)
+		writeModels = append(writeModels, writeModel)
+	}
+
+	// Ordered: false allows partial success
+	opts := options.BulkWrite().SetOrdered(false)
+	result, err := coll.BulkWrite(ctx, writeModels, opts)
+
+	batchResult := &model.BatchUpsertResult{
+		SuccessCount: 0,
+		FailedCount:  0,
+		FailedUsers:  []model.FailedUserInfo{},
+	}
+
+	if err != nil {
+		// Check for bulk write exception to get partial results
+		if bulkErr, ok := err.(mongo.BulkWriteException); ok {
+			// Count successes: total - failed
+			totalOps := len(roles)
+			failedOps := len(bulkErr.WriteErrors)
+			batchResult.SuccessCount = totalOps - failedOps
+			batchResult.FailedCount = failedOps
+
+			for _, writeErr := range bulkErr.WriteErrors {
+				idx := writeErr.Index
+				if idx >= 0 && idx < len(roles) {
+					batchResult.FailedUsers = append(batchResult.FailedUsers, model.FailedUserInfo{
+						UserID: roles[idx].UserID,
+						Reason: writeErr.Message,
+					})
+				}
+			}
+			return batchResult, nil // Partial success, no error returned
+		}
+		// Other errors (connection issues, etc.)
+		return nil, err
+	}
+
+	// All succeeded
+	batchResult.SuccessCount = int(result.UpsertedCount + result.ModifiedCount + result.MatchedCount)
+	// Handle case where MatchedCount includes documents that were matched but not modified
+	// For upsert, we consider matched + upserted as success
+	if batchResult.SuccessCount == 0 {
+		batchResult.SuccessCount = len(roles)
+	}
+
+	return batchResult, nil
+}
+
 func (r *MongoRepository) DeleteUserRole(ctx context.Context, namespace, userID, scope, resourceID, resourceType, deletedBy string) error {
 	filter := bson.M{
 		"user_id":    userID,
 		"scope":      scope,
 		"deleted_at": nil,
+		"role":       bson.M{"$ne": model.RoleSystemOwner}, // Protect owner role
 	}
 
 	var coll *mongo.Collection
@@ -185,15 +296,14 @@ func (r *MongoRepository) DeleteUserRole(ctx context.Context, namespace, userID,
 		filter["namespace"] = namespace
 	} else if scope == model.ScopeResource {
 		coll = r.ResourceRoles
-		// For resource roles, we use resource_id + resource_type as composite key usually?
-		// Or do we strictly follow user input?
+		filter["role"] = bson.M{"$ne": model.RoleResourceOwner} // Protect resource owner
+
 		if resourceID != "" {
 			filter["resource_id"] = resourceID
 		}
 		if resourceType != "" {
 			filter["resource_type"] = resourceType
 		}
-		// Namespace might be optional context or part of query?
 		if namespace != "" {
 			filter["namespace"] = namespace
 		}

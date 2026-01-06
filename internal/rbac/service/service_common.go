@@ -19,6 +19,7 @@ type RBACService interface {
 	AssignSystemOwner(ctx context.Context, callerID string, req model.AssignSystemOwnerReq) error
 	TransferSystemOwner(ctx context.Context, callerID string, req model.TransferSystemOwnerReq) error
 	AssignSystemUserRole(ctx context.Context, callerID string, req model.AssignSystemUserRoleReq) error
+	AssignSystemUserRoles(ctx context.Context, callerID string, req model.AssignSystemUserRolesReq) (*model.BatchUpsertResult, error) // Batch
 	DeleteSystemUserRole(ctx context.Context, callerID string, req model.DeleteSystemUserRoleReq) error
 	GetUserRolesMe(ctx context.Context, callerID string, req model.GetUserRolesMeReq) ([]*model.UserRole, error)
 	GetUserRoles(ctx context.Context, callerID string, req model.GetUserRolesReq) ([]*model.UserRole, error)

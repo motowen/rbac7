@@ -18,5 +18,16 @@ func (r *AssignSystemUserRoleReq) Validate() error {
 	if err := GetValidator().Struct(r); err != nil {
 		return FormatValidationError(err)
 	}
+
+	// Business Logic Validation
+	if r.Role == RoleSystemOwner {
+		return &ErrorDetail{Code: "bad_request", Message: "cannot assign system owner role via this API"}
+	}
+
+	// Allowed roles check
+	if !AllowedSystemRoles[r.Role] {
+		return &ErrorDetail{Code: "bad_request", Message: "invalid role: must be one of [admin, viewer, dev_user]"}
+	}
+
 	return nil
 }

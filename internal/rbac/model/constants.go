@@ -14,6 +14,13 @@ const (
 	RoleResourceViewer = "viewer"
 )
 
+// AllowedSystemRoles defines which roles can be assigned for system scope
+var AllowedSystemRoles = map[string]bool{
+	RoleSystemAdmin:  true,
+	RoleSystemViewer: true,
+	RoleSystemDev:    true,
+}
+
 // Scopes
 const (
 	ScopeSystem   = "system"
