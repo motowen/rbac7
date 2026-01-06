@@ -38,6 +38,7 @@ func RegisterRoutes(e *echo.Echo, h *handler.SystemHandler) {
 	v1.POST("/user_roles/resources/owner", h.PostResourceOwner)
 	v1.PUT("/user_roles/resources/owner", h.PutResourceOwner)
 	v1.POST("/user_roles/resources", h.PostResourceUserRoles)
+	v1.POST("/user_roles/resources/batch", h.PostResourceUserRolesBatch)
 	v1.DELETE("/user_roles/resources", h.DeleteResourceUserRoles)
 	v1.POST("/permissions/check", h.PostPermissionsCheck)
 }

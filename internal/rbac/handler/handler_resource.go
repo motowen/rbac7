@@ -139,3 +139,36 @@ func (h *SystemHandler) DeleteResourceUserRoles(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, map[string]string{"status": "success"})
 }
+
+// PostResourceUserRolesBatch handles POST /user_roles/resources/batch (Batch Assign Members)
+func (h *SystemHandler) PostResourceUserRolesBatch(c echo.Context) error {
+	callerID, err := h.extractCallerID(c)
+	if err != nil {
+		code, body := httpError(err)
+		return c.JSON(code, body)
+	}
+
+	var req model.AssignResourceUserRolesReq
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "bad_request", Message: "Invalid body"},
+		})
+	}
+
+	if err := req.Validate(); err != nil {
+		if e, ok := err.(*model.ErrorDetail); ok {
+			return c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: *e})
+		}
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "bad_request", Message: err.Error()},
+		})
+	}
+
+	result, err := h.Service.AssignResourceUserRoles(c.Request().Context(), callerID, req)
+	if err != nil {
+		code, body := httpError(err)
+		return c.JSON(code, body)
+	}
+
+	return c.JSON(http.StatusOK, result)
+}

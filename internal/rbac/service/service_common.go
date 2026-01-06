@@ -26,6 +26,7 @@ type RBACService interface {
 	AssignResourceOwner(ctx context.Context, callerID string, req model.AssignResourceOwnerReq) error
 	TransferResourceOwner(ctx context.Context, callerID string, req model.TransferResourceOwnerReq) error
 	AssignResourceUserRole(ctx context.Context, callerID string, req model.AssignResourceUserRoleReq) error
+	AssignResourceUserRoles(ctx context.Context, callerID string, req model.AssignResourceUserRolesReq) (*model.BatchUpsertResult, error) // Batch
 	DeleteResourceUserRole(ctx context.Context, callerID string, req model.DeleteResourceUserRoleReq) error
 	CheckPermission(ctx context.Context, callerID string, req model.CheckPermissionReq) (bool, error)
 }
