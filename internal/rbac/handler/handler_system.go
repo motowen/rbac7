@@ -25,12 +25,8 @@ func (h *SystemHandler) PostSystemOwner(c echo.Context) error {
 	}
 
 	if err := req.Validate(); err != nil {
-		if e, ok := err.(*model.ErrorDetail); ok {
-			return c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: *e})
-		}
-		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			Error: model.ErrorDetail{Code: "bad_request", Message: err.Error()},
-		})
+		code, body := validationError(err)
+		return c.JSON(code, body)
 	}
 
 	err = h.Service.AssignSystemOwner(c.Request().Context(), callerID, req)
@@ -60,12 +56,8 @@ func (h *SystemHandler) PutSystemOwner(c echo.Context) error {
 	}
 
 	if err := req.Validate(); err != nil {
-		if e, ok := err.(*model.ErrorDetail); ok {
-			return c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: *e})
-		}
-		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			Error: model.ErrorDetail{Code: "bad_request", Message: err.Error()},
-		})
+		code, body := validationError(err)
+		return c.JSON(code, body)
 	}
 
 	// 3. Call Service
@@ -94,12 +86,8 @@ func (h *SystemHandler) PostUserRoles(c echo.Context) error {
 	}
 
 	if err := req.Validate(); err != nil {
-		if e, ok := err.(*model.ErrorDetail); ok {
-			return c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: *e})
-		}
-		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			Error: model.ErrorDetail{Code: "bad_request", Message: err.Error()},
-		})
+		code, body := validationError(err)
+		return c.JSON(code, body)
 	}
 
 	err = h.Service.AssignSystemUserRole(c.Request().Context(), callerID, req)
@@ -127,12 +115,8 @@ func (h *SystemHandler) PostUserRolesBatch(c echo.Context) error {
 	}
 
 	if err := req.Validate(); err != nil {
-		if e, ok := err.(*model.ErrorDetail); ok {
-			return c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: *e})
-		}
-		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			Error: model.ErrorDetail{Code: "bad_request", Message: err.Error()},
-		})
+		code, body := validationError(err)
+		return c.JSON(code, body)
 	}
 
 	result, err := h.Service.AssignSystemUserRoles(c.Request().Context(), callerID, req)
@@ -161,12 +145,8 @@ func (h *SystemHandler) DeleteUserRoles(c echo.Context) error {
 	}
 
 	if err := req.Validate(); err != nil {
-		if e, ok := err.(*model.ErrorDetail); ok {
-			return c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: *e})
-		}
-		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			Error: model.ErrorDetail{Code: "bad_request", Message: err.Error()},
-		})
+		code, body := validationError(err)
+		return c.JSON(code, body)
 	}
 
 	err = h.Service.DeleteSystemUserRole(c.Request().Context(), callerID, req)

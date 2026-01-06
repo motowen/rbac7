@@ -39,13 +39,8 @@ func (h *SystemHandler) GetUserRolesMe(c echo.Context) error {
 	}
 
 	if err := req.Validate(); err != nil {
-		// If err is *model.ErrorDetail, we can use it.
-		if e, ok := err.(*model.ErrorDetail); ok {
-			return c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: *e})
-		}
-		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			Error: model.ErrorDetail{Code: "bad_request", Message: err.Error()},
-		})
+		code, body := validationError(err)
+		return c.JSON(code, body)
 	}
 
 	// Forward parameters to service
@@ -73,12 +68,8 @@ func (h *SystemHandler) GetUserRoles(c echo.Context) error {
 	}
 
 	if err := req.Validate(); err != nil {
-		if e, ok := err.(*model.ErrorDetail); ok {
-			return c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: *e})
-		}
-		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			Error: model.ErrorDetail{Code: "bad_request", Message: err.Error()},
-		})
+		code, body := validationError(err)
+		return c.JSON(code, body)
 	}
 
 	roles, err := h.Service.GetUserRoles(c.Request().Context(), callerID, req)
@@ -104,12 +95,8 @@ func (h *SystemHandler) PostPermissionsCheck(c echo.Context) error {
 	}
 
 	if err := req.Validate(); err != nil {
-		if e, ok := err.(*model.ErrorDetail); ok {
-			return c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: *e})
-		}
-		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			Error: model.ErrorDetail{Code: "bad_request", Message: err.Error()},
-		})
+		code, body := validationError(err)
+		return c.JSON(code, body)
 	}
 
 	allowed, err := h.Service.CheckPermission(c.Request().Context(), callerID, req)

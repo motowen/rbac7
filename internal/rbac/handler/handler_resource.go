@@ -23,12 +23,8 @@ func (h *SystemHandler) PostResourceOwner(c echo.Context) error {
 	}
 
 	if err := req.Validate(); err != nil {
-		if e, ok := err.(*model.ErrorDetail); ok {
-			return c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: *e})
-		}
-		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			Error: model.ErrorDetail{Code: "bad_request", Message: err.Error()},
-		})
+		code, body := validationError(err)
+		return c.JSON(code, body)
 	}
 
 	err = h.Service.AssignResourceOwner(c.Request().Context(), callerID, req)
@@ -56,12 +52,8 @@ func (h *SystemHandler) PutResourceOwner(c echo.Context) error {
 	}
 
 	if err := req.Validate(); err != nil {
-		if e, ok := err.(*model.ErrorDetail); ok {
-			return c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: *e})
-		}
-		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			Error: model.ErrorDetail{Code: "bad_request", Message: err.Error()},
-		})
+		code, body := validationError(err)
+		return c.JSON(code, body)
 	}
 
 	err = h.Service.TransferResourceOwner(c.Request().Context(), callerID, req)
@@ -89,12 +81,8 @@ func (h *SystemHandler) PostResourceUserRoles(c echo.Context) error {
 	}
 
 	if err := req.Validate(); err != nil {
-		if e, ok := err.(*model.ErrorDetail); ok {
-			return c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: *e})
-		}
-		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			Error: model.ErrorDetail{Code: "bad_request", Message: err.Error()},
-		})
+		code, body := validationError(err)
+		return c.JSON(code, body)
 	}
 
 	err = h.Service.AssignResourceUserRole(c.Request().Context(), callerID, req)
@@ -123,12 +111,8 @@ func (h *SystemHandler) DeleteResourceUserRoles(c echo.Context) error {
 	}
 
 	if err := req.Validate(); err != nil {
-		if e, ok := err.(*model.ErrorDetail); ok {
-			return c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: *e})
-		}
-		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			Error: model.ErrorDetail{Code: "bad_request", Message: err.Error()},
-		})
+		code, body := validationError(err)
+		return c.JSON(code, body)
 	}
 
 	err = h.Service.DeleteResourceUserRole(c.Request().Context(), callerID, req)
@@ -156,12 +140,8 @@ func (h *SystemHandler) PostResourceUserRolesBatch(c echo.Context) error {
 	}
 
 	if err := req.Validate(); err != nil {
-		if e, ok := err.(*model.ErrorDetail); ok {
-			return c.JSON(http.StatusBadRequest, model.ErrorResponse{Error: *e})
-		}
-		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			Error: model.ErrorDetail{Code: "bad_request", Message: err.Error()},
-		})
+		code, body := validationError(err)
+		return c.JSON(code, body)
 	}
 
 	result, err := h.Service.AssignResourceUserRoles(c.Request().Context(), callerID, req)
