@@ -150,6 +150,48 @@ func (s *Service) AssignSystemUserRole(ctx context.Context, callerID string, req
 	return nil
 }
 
+func (s *Service) AssignSystemUserRoles(ctx context.Context, callerID string, req model.AssignSystemUserRolesReq) (*model.BatchUpsertResult, error) {
+	// Note: Scope is implied to be System
+
+	// Permission: platform.system.add_member
+	canAssign, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, PermPlatformSystemAddMember)
+	if err != nil {
+		return nil, err
+	}
+	if !canAssign {
+		return nil, ErrForbidden
+	}
+
+	// Build roles slice for bulk upsert
+	var roles []*model.UserRole
+	for _, userID := range req.UserIDs {
+		userType := req.UserType
+		if userType == "" {
+			userType = model.UserTypeMember
+		}
+		role := &model.UserRole{
+			UserID:    userID,
+			Role:      req.Role,
+			Scope:     model.ScopeSystem,
+			Namespace: req.Namespace,
+			UserType:  userType,
+			CreatedBy: callerID,
+			UpdatedBy: callerID,
+		}
+		roles = append(roles, role)
+	}
+
+	result, err := s.Repo.BulkUpsertUserRoles(ctx, roles)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Printf("Audit: System User Roles Assigned (Batch). Caller=%s, Success=%d, Failed=%d, Role=%s, Namespace=%s",
+		callerID, result.SuccessCount, result.FailedCount, req.Role, req.Namespace)
+
+	return result, nil
+}
+
 func (s *Service) DeleteSystemUserRole(ctx context.Context, callerID string, req model.DeleteSystemUserRoleReq) error {
 	// Permission: platform.system.remove_member
 	canDelete, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, PermPlatformSystemRemoveMember)

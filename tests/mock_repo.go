@@ -87,3 +87,16 @@ func (m *MockRBACRepository) CountResourceOwners(ctx context.Context, resourceID
 	args := m.Called(ctx, resourceID, resourceType)
 	return args.Get(0).(int64), args.Error(1)
 }
+
+func (m *MockRBACRepository) CountResourceRoles(ctx context.Context, resourceID, resourceType string) (int64, error) {
+	args := m.Called(ctx, resourceID, resourceType)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (m *MockRBACRepository) BulkUpsertUserRoles(ctx context.Context, roles []*model.UserRole) (*model.BatchUpsertResult, error) {
+	args := m.Called(ctx, roles)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.BatchUpsertResult), args.Error(1)
+}

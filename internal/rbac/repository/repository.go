@@ -37,4 +37,8 @@ type RBACRepository interface {
 	HasAnyResourceRole(ctx context.Context, userID, resourceID, resourceType string, roles []string) (bool, error)
 	// Transfer resource ownership
 	TransferResourceOwner(ctx context.Context, resourceID, resourceType, oldOwnerID, newOwnerID, updatedBy string) error
+	// Count total roles assigned to a resource (used for whitelist check)
+	CountResourceRoles(ctx context.Context, resourceID, resourceType string) (int64, error)
+	// Bulk upsert user roles (partial success allowed)
+	BulkUpsertUserRoles(ctx context.Context, roles []*model.UserRole) (*model.BatchUpsertResult, error)
 }

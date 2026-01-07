@@ -31,6 +31,12 @@ const (
 	PermResourceDashboardRemoveMember  = "resource.dashboard.remove_member"
 	PermResourceDashboardGetMember     = "resource.dashboard.get_member"
 	PermResourceDashboardTransferOwner = "resource.dashboard.transfer_owner"
+
+	// Dashboard Widget Permissions
+	PermResourceDashboardAddWidget       = "resource.dashboard.add_widget"
+	PermResourceDashboardRemoveWidget    = "resource.dashboard.remove_widget"
+	PermResourceDashboardAddWidgetViewer = "resource.dashboard.add_widget_viewer"
+	PermResourceDashboardWidgetRead      = "resource.dashboard_widget.read"
 )
 
 // SystemRolePermissions maps System Role Names to their Prmissions
@@ -90,6 +96,10 @@ var ResourceRolePermissions = map[string][]string{
 		PermResourceDashboardRemoveMember,
 		PermResourceDashboardGetMember,
 		PermResourceDashboardTransferOwner,
+		PermResourceDashboardAddWidget,
+		PermResourceDashboardRemoveWidget,
+		PermResourceDashboardAddWidgetViewer,
+		PermResourceDashboardWidgetRead,
 	},
 	"admin": {
 		PermResourceDashboardRead,
@@ -98,13 +108,22 @@ var ResourceRolePermissions = map[string][]string{
 		PermResourceDashboardAddMember,
 		PermResourceDashboardRemoveMember,
 		PermResourceDashboardGetMember,
+		PermResourceDashboardAddWidget,
+		PermResourceDashboardRemoveWidget,
+		PermResourceDashboardAddWidgetViewer,
+		PermResourceDashboardWidgetRead,
 	},
 	"editor": {
 		PermResourceDashboardRead,
 		PermResourceDashboardUpdate,
+		PermResourceDashboardAddWidget,
+		PermResourceDashboardRemoveWidget,
+		PermResourceDashboardAddWidgetViewer,
+		PermResourceDashboardWidgetRead,
 	},
 	"viewer": {
 		PermResourceDashboardRead,
+		PermResourceDashboardWidgetRead,
 	},
 }
 

@@ -87,7 +87,7 @@ func TestPostSystemUserRole(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
 
-	t.Run("assign system role forbidden (admin trying to assign owner) and return 403", func(t *testing.T) {
+	t.Run("assign system owner role and return 400", func(t *testing.T) {
 		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
@@ -96,7 +96,7 @@ func TestPostSystemUserRole(t *testing.T) {
 
 		reqBody := model.SystemUserRole{UserID: "u_2", Role: "owner", Namespace: "ns_1"}
 		rec := PerformRequest(e, http.MethodPost, "/user_roles_bad_role", reqBody, map[string]string{"x-user-id": "admin_1", "authentication": "t"})
-		assert.Equal(t, http.StatusForbidden, rec.Code)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
 	t.Run("assign system role invalid role value and return 400", func(t *testing.T) {

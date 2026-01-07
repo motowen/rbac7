@@ -135,3 +135,12 @@ func (r *MongoRepository) HasAnyResourceRole(ctx context.Context, userID, resour
 	}
 	return count > 0, nil
 }
+func (r *MongoRepository) CountResourceRoles(ctx context.Context, resourceID, resourceType string) (int64, error) {
+	filter := bson.M{
+		"resource_id":   resourceID,
+		"resource_type": resourceType,
+		"scope":         model.ScopeResource,
+		"deleted_at":    nil,
+	}
+	return r.ResourceRoles.CountDocuments(ctx, filter)
+}
