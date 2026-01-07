@@ -14,12 +14,13 @@ import (
 )
 
 func TestPostResourceUserRolesBatch(t *testing.T) {
+	path := "/user_roles/resources/batch"
 	t.Run("assign multiple users admin role success", func(t *testing.T) {
 		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
-		e.POST("/user_roles/resources/batch", h.PostResourceUserRolesBatch)
+		e.POST(path, h.PostResourceUserRolesBatch)
 
 		// Permission Check
 		mockRepo.On("HasAnyResourceRole", mock.Anything, "owner_1", "dash_1", "dashboard", mock.Anything).Return(true, nil)
@@ -35,7 +36,7 @@ func TestPostResourceUserRolesBatch(t *testing.T) {
 			ResourceID:   "dash_1",
 			ResourceType: "dashboard",
 		}
-		rec := PerformRequest(e, http.MethodPost, "/user_roles/resources/batch", reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
+		rec := PerformRequest(e, http.MethodPost, path, reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
 		assert.Equal(t, http.StatusOK, rec.Code)
 
 		var result model.BatchUpsertResult
@@ -49,7 +50,7 @@ func TestPostResourceUserRolesBatch(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
-		e.POST("/user_roles/resources/batch_viewer", h.PostResourceUserRolesBatch)
+		e.POST(path, h.PostResourceUserRolesBatch)
 
 		mockRepo.On("HasAnyResourceRole", mock.Anything, "admin_1", "dash_1", "dashboard", mock.Anything).Return(true, nil)
 		mockRepo.On("BulkUpsertUserRoles", mock.Anything, mock.MatchedBy(func(roles []*model.UserRole) bool {
@@ -57,7 +58,7 @@ func TestPostResourceUserRolesBatch(t *testing.T) {
 		})).Return(&model.BatchUpsertResult{SuccessCount: 1, FailedCount: 0}, nil)
 
 		reqBody := model.AssignResourceUserRolesReq{UserIDs: []string{"u_3"}, Role: "viewer", ResourceID: "dash_1", ResourceType: "dashboard"}
-		rec := PerformRequest(e, http.MethodPost, "/user_roles/resources/batch_viewer", reqBody, map[string]string{"x-user-id": "admin_1", "authentication": "t"})
+		rec := PerformRequest(e, http.MethodPost, path, reqBody, map[string]string{"x-user-id": "admin_1", "authentication": "t"})
 		assert.Equal(t, http.StatusOK, rec.Code)
 	})
 
@@ -66,7 +67,7 @@ func TestPostResourceUserRolesBatch(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
-		e.POST("/user_roles/resources/batch_editor", h.PostResourceUserRolesBatch)
+		e.POST(path, h.PostResourceUserRolesBatch)
 
 		mockRepo.On("HasAnyResourceRole", mock.Anything, "owner_1", "dash_1", "dashboard", mock.Anything).Return(true, nil)
 		mockRepo.On("BulkUpsertUserRoles", mock.Anything, mock.MatchedBy(func(roles []*model.UserRole) bool {
@@ -74,7 +75,7 @@ func TestPostResourceUserRolesBatch(t *testing.T) {
 		})).Return(&model.BatchUpsertResult{SuccessCount: 2, FailedCount: 0}, nil)
 
 		reqBody := model.AssignResourceUserRolesReq{UserIDs: []string{"u_4", "u_5"}, Role: "editor", ResourceID: "dash_1", ResourceType: "dashboard"}
-		rec := PerformRequest(e, http.MethodPost, "/user_roles/resources/batch_editor", reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
+		rec := PerformRequest(e, http.MethodPost, path, reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
 		assert.Equal(t, http.StatusOK, rec.Code)
 	})
 
@@ -83,7 +84,7 @@ func TestPostResourceUserRolesBatch(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
-		e.POST("/user_roles/resources/batch", h.PostResourceUserRolesBatch)
+		e.POST(path, h.PostResourceUserRolesBatch)
 
 		reqBody := model.AssignResourceUserRolesReq{
 			UserIDs:      []string{},
@@ -91,7 +92,7 @@ func TestPostResourceUserRolesBatch(t *testing.T) {
 			ResourceID:   "dash_1",
 			ResourceType: "dashboard",
 		}
-		rec := PerformRequest(e, http.MethodPost, "/user_roles/resources/batch", reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
+		rec := PerformRequest(e, http.MethodPost, path, reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
@@ -100,10 +101,10 @@ func TestPostResourceUserRolesBatch(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
-		e.POST("/user_roles/resources/batch_owner", h.PostResourceUserRolesBatch)
+		e.POST(path, h.PostResourceUserRolesBatch)
 
 		reqBody := model.AssignResourceUserRolesReq{UserIDs: []string{"u_2"}, Role: "owner", ResourceID: "dash_1", ResourceType: "dashboard"}
-		rec := PerformRequest(e, http.MethodPost, "/user_roles/resources/batch_owner", reqBody, map[string]string{"x-user-id": "admin_1", "authentication": "t"})
+		rec := PerformRequest(e, http.MethodPost, path, reqBody, map[string]string{"x-user-id": "admin_1", "authentication": "t"})
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
@@ -112,10 +113,10 @@ func TestPostResourceUserRolesBatch(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
-		e.POST("/user_roles/resources/batch_invalid", h.PostResourceUserRolesBatch)
+		e.POST(path, h.PostResourceUserRolesBatch)
 
 		reqBody := model.AssignResourceUserRolesReq{UserIDs: []string{"u_2"}, Role: "god_mode", ResourceID: "dash_1", ResourceType: "dashboard"}
-		rec := PerformRequest(e, http.MethodPost, "/user_roles/resources/batch_invalid", reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
+		rec := PerformRequest(e, http.MethodPost, path, reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
@@ -124,12 +125,12 @@ func TestPostResourceUserRolesBatch(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
-		e.POST("/user_roles/resources/batch_forbidden", h.PostResourceUserRolesBatch)
+		e.POST(path, h.PostResourceUserRolesBatch)
 
 		mockRepo.On("HasAnyResourceRole", mock.Anything, "u_common", "dash_1", "dashboard", mock.Anything).Return(false, nil)
 
 		reqBody := model.AssignResourceUserRolesReq{UserIDs: []string{"u_2"}, Role: "viewer", ResourceID: "dash_1", ResourceType: "dashboard"}
-		rec := PerformRequest(e, http.MethodPost, "/user_roles/resources/batch_forbidden", reqBody, map[string]string{"x-user-id": "u_common", "authentication": "t"})
+		rec := PerformRequest(e, http.MethodPost, path, reqBody, map[string]string{"x-user-id": "u_common", "authentication": "t"})
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
 
@@ -138,10 +139,10 @@ func TestPostResourceUserRolesBatch(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
-		e.POST("/user_roles/resources/batch_no_res", h.PostResourceUserRolesBatch)
+		e.POST(path, h.PostResourceUserRolesBatch)
 
 		reqBody := model.AssignResourceUserRolesReq{UserIDs: []string{"u_2"}, Role: "admin", ResourceID: "", ResourceType: "dashboard"}
-		rec := PerformRequest(e, http.MethodPost, "/user_roles/resources/batch_no_res", reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
+		rec := PerformRequest(e, http.MethodPost, path, reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
@@ -150,10 +151,10 @@ func TestPostResourceUserRolesBatch(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
-		e.POST("/user_roles/resources/batch_401", h.PostResourceUserRolesBatch)
+		e.POST(path, h.PostResourceUserRolesBatch)
 
 		reqBody := model.AssignResourceUserRolesReq{UserIDs: []string{"u_2"}, Role: "admin", ResourceID: "dash_1", ResourceType: "dashboard"}
-		rec := PerformRequest(e, http.MethodPost, "/user_roles/resources/batch_401", reqBody, map[string]string{})
+		rec := PerformRequest(e, http.MethodPost, path, reqBody, map[string]string{})
 		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 	})
 
@@ -162,13 +163,13 @@ func TestPostResourceUserRolesBatch(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
-		e.POST("/user_roles/resources/batch_500", h.PostResourceUserRolesBatch)
+		e.POST(path, h.PostResourceUserRolesBatch)
 
 		mockRepo.On("HasAnyResourceRole", mock.Anything, "owner_1", "dash_1", "dashboard", mock.Anything).Return(true, nil)
 		mockRepo.On("BulkUpsertUserRoles", mock.Anything, mock.Anything).Return(nil, errors.New("db error"))
 
 		reqBody := model.AssignResourceUserRolesReq{UserIDs: []string{"u_2"}, Role: "admin", ResourceID: "dash_1", ResourceType: "dashboard"}
-		rec := PerformRequest(e, http.MethodPost, "/user_roles/resources/batch_500", reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
+		rec := PerformRequest(e, http.MethodPost, path, reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	})
 
@@ -177,12 +178,12 @@ func TestPostResourceUserRolesBatch(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
-		e.POST("/user_roles/resources/batch_auth_error", h.PostResourceUserRolesBatch)
+		e.POST(path, h.PostResourceUserRolesBatch)
 
 		mockRepo.On("HasAnyResourceRole", mock.Anything, "owner_1", "dash_1", "dashboard", mock.Anything).Return(false, errors.New("db disconnect"))
 
 		reqBody := model.AssignResourceUserRolesReq{UserIDs: []string{"u_2"}, Role: "admin", ResourceID: "dash_1", ResourceType: "dashboard"}
-		rec := PerformRequest(e, http.MethodPost, "/user_roles/resources/batch_auth_error", reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
+		rec := PerformRequest(e, http.MethodPost, path, reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	})
 
@@ -192,7 +193,7 @@ func TestPostResourceUserRolesBatch(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
-		e.POST("/user_roles/resources/batch_partial", h.PostResourceUserRolesBatch)
+		e.POST(path, h.PostResourceUserRolesBatch)
 
 		mockRepo.On("HasAnyResourceRole", mock.Anything, "owner_1", "dash_1", "dashboard", mock.Anything).Return(true, nil)
 
@@ -212,7 +213,7 @@ func TestPostResourceUserRolesBatch(t *testing.T) {
 			ResourceID:   "dash_1",
 			ResourceType: "dashboard",
 		}
-		rec := PerformRequest(e, http.MethodPost, "/user_roles/resources/batch_partial", reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
+		rec := PerformRequest(e, http.MethodPost, path, reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
 		assert.Equal(t, http.StatusOK, rec.Code)
 
 		var result model.BatchUpsertResult
@@ -227,7 +228,7 @@ func TestPostResourceUserRolesBatch(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
-		e.POST("/user_roles/resources/batch_all_fail", h.PostResourceUserRolesBatch)
+		e.POST(path, h.PostResourceUserRolesBatch)
 
 		mockRepo.On("HasAnyResourceRole", mock.Anything, "owner_1", "dash_1", "dashboard", mock.Anything).Return(true, nil)
 
@@ -248,7 +249,7 @@ func TestPostResourceUserRolesBatch(t *testing.T) {
 			ResourceID:   "dash_1",
 			ResourceType: "dashboard",
 		}
-		rec := PerformRequest(e, http.MethodPost, "/user_roles/resources/batch_all_fail", reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
+		rec := PerformRequest(e, http.MethodPost, path, reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
 		assert.Equal(t, http.StatusOK, rec.Code)
 
 		var result model.BatchUpsertResult
@@ -262,7 +263,7 @@ func TestPostResourceUserRolesBatch(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
-		e.POST("/user_roles/resources/batch_widget", h.PostResourceUserRolesBatch)
+		e.POST(path, h.PostResourceUserRolesBatch)
 
 		reqBody := model.AssignResourceUserRolesReq{
 			UserIDs:      []string{"u_2"},
@@ -271,7 +272,7 @@ func TestPostResourceUserRolesBatch(t *testing.T) {
 			ResourceType: "dashboard_widget",
 			// Missing ParentResourceID
 		}
-		rec := PerformRequest(e, http.MethodPost, "/user_roles/resources/batch_widget", reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
+		rec := PerformRequest(e, http.MethodPost, path, reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
@@ -280,7 +281,7 @@ func TestPostResourceUserRolesBatch(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		h := handler.NewSystemHandler(svc)
-		e.POST("/user_roles/resources/batch_widget_ok", h.PostResourceUserRolesBatch)
+		e.POST(path, h.PostResourceUserRolesBatch)
 
 		// Permission checked on parent dashboard
 		mockRepo.On("HasAnyResourceRole", mock.Anything, "owner_1", "dash_1", "dashboard", mock.Anything).Return(true, nil)
@@ -293,7 +294,7 @@ func TestPostResourceUserRolesBatch(t *testing.T) {
 			ResourceType:     "dashboard_widget",
 			ParentResourceID: "dash_1",
 		}
-		rec := PerformRequest(e, http.MethodPost, "/user_roles/resources/batch_widget_ok", reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
+		rec := PerformRequest(e, http.MethodPost, path, reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
 		assert.Equal(t, http.StatusOK, rec.Code)
 	})
 }
