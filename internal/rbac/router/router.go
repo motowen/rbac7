@@ -41,4 +41,8 @@ func RegisterRoutes(e *echo.Echo, h *handler.SystemHandler) {
 	v1.POST("/user_roles/resources/batch", h.PostResourceUserRolesBatch)
 	v1.DELETE("/user_roles/resources", h.DeleteResourceUserRoles)
 	v1.POST("/permissions/check", h.PostPermissionsCheck)
+
+	// Library Widget Routes
+	v1.POST("/user_roles/library_widgets/batch", h.PostLibraryWidgetViewers)
+	v1.DELETE("/user_roles/library_widgets", h.DeleteLibraryWidgetViewer)
 }

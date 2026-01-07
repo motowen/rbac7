@@ -215,4 +215,45 @@ func TestPostPermissionsCheck(t *testing.T) {
 		rec := PerformRequest(e, http.MethodPost, "/permissions/check", payload, map[string]string{"x-user-id": "admin_1"})
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	})
+
+	// Library Widget Permission Check Tests
+	t.Run("check library_widget read permission allowed", func(t *testing.T) {
+		e := SetupServer()
+		mockRepo := new(MockRBACRepository)
+		svc := service.NewService(mockRepo)
+		h := handler.NewSystemHandler(svc)
+		e.POST("/permissions/check", h.PostPermissionsCheck)
+
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "viewer_1", "lw_1", "library_widget", mock.Anything).Return(true, nil)
+
+		payload := map[string]string{
+			"permission":    "resource.library_widget.read",
+			"scope":         "resource",
+			"resource_id":   "lw_1",
+			"resource_type": "library_widget",
+		}
+		rec := PerformRequest(e, http.MethodPost, "/permissions/check", payload, map[string]string{"x-user-id": "viewer_1"})
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), `"allowed":true`)
+	})
+
+	t.Run("check library_widget read permission denied", func(t *testing.T) {
+		e := SetupServer()
+		mockRepo := new(MockRBACRepository)
+		svc := service.NewService(mockRepo)
+		h := handler.NewSystemHandler(svc)
+		e.POST("/permissions/check", h.PostPermissionsCheck)
+
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "user_1", "lw_1", "library_widget", mock.Anything).Return(false, nil)
+
+		payload := map[string]string{
+			"permission":    "resource.library_widget.read",
+			"scope":         "resource",
+			"resource_id":   "lw_1",
+			"resource_type": "library_widget",
+		}
+		rec := PerformRequest(e, http.MethodPost, "/permissions/check", payload, map[string]string{"x-user-id": "user_1"})
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), `"allowed":false`)
+	})
 }

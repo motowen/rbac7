@@ -50,6 +50,9 @@ const (
 	PermResourceDashboardRemoveWidget    = "resource.dashboard.remove_widget"
 	PermResourceDashboardAddWidgetViewer = "resource.dashboard.add_widget_viewer"
 	PermResourceDashboardWidgetRead      = "resource.dashboard_widget.read"
+
+	// Library Widget Permissions
+	PermResourceLibraryWidgetRead = "resource.library_widget.read"
 )
 
 // User Types
@@ -60,6 +63,7 @@ const (
 
 // Resource Types
 const (
-	ResourceTypeDashboard = "dashboard"
-	ResourceTypeWidget    = "dashboard_widget"
+	ResourceTypeDashboard     = "dashboard"
+	ResourceTypeWidget        = "dashboard_widget"
+	ResourceTypeLibraryWidget = "library_widget"
 )

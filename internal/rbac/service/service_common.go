@@ -29,6 +29,9 @@ type RBACService interface {
 	AssignResourceUserRoles(ctx context.Context, callerID string, req model.AssignResourceUserRolesReq) (*model.BatchUpsertResult, error) // Batch
 	DeleteResourceUserRole(ctx context.Context, callerID string, req model.DeleteResourceUserRoleReq) error
 	CheckPermission(ctx context.Context, callerID string, req model.CheckPermissionReq) (bool, error)
+	// Library Widget
+	AssignLibraryWidgetViewers(ctx context.Context, callerID string, req model.AssignLibraryWidgetViewersReq) (*model.BatchUpsertResult, error)
+	DeleteLibraryWidgetViewer(ctx context.Context, callerID string, req model.DeleteLibraryWidgetViewerReq) error
 }
 
 type Service struct {

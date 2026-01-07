@@ -127,6 +127,14 @@ var ResourceRolePermissions = map[string][]string{
 	},
 }
 
+// Library Widget Role Permissions (only viewer role)
+var LibraryWidgetRolePermissions = map[string][]string{
+	"viewer": {PermResourceLibraryWidgetRead},
+}
+
+// PermResourceLibraryWidgetRead permission constant
+const PermResourceLibraryWidgetRead = "resource.library_widget.read"
+
 // GetRolesWithPermission returns a list of role names (in system scope) that possess the given permission.
 func GetRolesWithPermission(permission string) []string {
 	var roles []string
@@ -146,6 +154,7 @@ func GetRolesWithPermission(permission string) []string {
 // GetResourceRolesWithPermission returns a list of role names (in resource scope) that possess the given permission.
 func GetResourceRolesWithPermission(permission string) []string {
 	var roles []string
+	// Check dashboard/widget permissions
 	for role, perms := range ResourceRolePermissions {
 		for _, p := range perms {
 			if p == permission {
@@ -154,6 +163,27 @@ func GetResourceRolesWithPermission(permission string) []string {
 			}
 		}
 	}
+
+	// Also check library_widget permissions
+	for role, perms := range LibraryWidgetRolePermissions {
+		for _, p := range perms {
+			if p == permission {
+				// Avoid duplicates
+				found := false
+				for _, r := range roles {
+					if r == role {
+						found = true
+						break
+					}
+				}
+				if !found {
+					roles = append(roles, role)
+				}
+				break
+			}
+		}
+	}
+
 	sort.Strings(roles)
 	return roles
 }
