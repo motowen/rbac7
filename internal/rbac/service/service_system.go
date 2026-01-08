@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"rbac7/internal/rbac/model"
+	"rbac7/internal/rbac/policy"
 	"rbac7/internal/rbac/repository"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -18,8 +19,11 @@ func (s *Service) AssignSystemOwner(ctx context.Context, callerID string, req mo
 	}
 
 	// 2. Check permissions: Caller must have 'platform.system.add_owner'
-	// Usually moderator is global, so namespace might be empty string?
-	hasPerm, err := CheckSystemPermission(ctx, s.Repo, callerID, "", model.PermPlatformSystemAddOwner)
+	hasPerm, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
+		CallerID:  callerID,
+		Entity:    "system",
+		Operation: "assign_owner",
+	})
 	if err != nil {
 		return err
 	}
@@ -62,7 +66,12 @@ func (s *Service) TransferSystemOwner(ctx context.Context, callerID string, req 
 	}
 
 	// 2. Check permissions: Caller must have 'platform.system.transfer_owner'
-	hasPerm, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, model.PermPlatformSystemTransferOwner)
+	hasPerm, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
+		CallerID:  callerID,
+		Entity:    "system",
+		Operation: "transfer_owner",
+		Namespace: req.Namespace,
+	})
 	if err != nil {
 		return err
 	}
@@ -108,7 +117,12 @@ func (s *Service) AssignSystemUserRole(ctx context.Context, callerID string, req
 	}
 
 	// Permission: platform.system.add_member
-	canAssign, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, model.PermPlatformSystemAddMember)
+	canAssign, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
+		CallerID:  callerID,
+		Entity:    "system",
+		Operation: "assign_user_role",
+		Namespace: req.Namespace,
+	})
 	if err != nil {
 		return err
 	}
@@ -154,7 +168,12 @@ func (s *Service) AssignSystemUserRoles(ctx context.Context, callerID string, re
 	// Note: Scope is implied to be System
 
 	// Permission: platform.system.add_member
-	canAssign, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, model.PermPlatformSystemAddMember)
+	canAssign, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
+		CallerID:  callerID,
+		Entity:    "system",
+		Operation: "assign_user_roles_batch",
+		Namespace: req.Namespace,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +213,12 @@ func (s *Service) AssignSystemUserRoles(ctx context.Context, callerID string, re
 
 func (s *Service) DeleteSystemUserRole(ctx context.Context, callerID string, req model.DeleteSystemUserRoleReq) error {
 	// Permission: platform.system.remove_member
-	canDelete, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, model.PermPlatformSystemRemoveMember)
+	canDelete, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
+		CallerID:  callerID,
+		Entity:    "system",
+		Operation: "delete_user_role",
+		Namespace: req.Namespace,
+	})
 	if err != nil {
 		return err
 	}

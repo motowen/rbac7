@@ -1,0 +1,30 @@
+{
+    "entity": "library_widget",
+    "scope": "resource",
+    "operations": {
+        "assign_viewer": {
+            "permission": "platform.system.add_member",
+            "check_scope": "system",
+            "namespace_required": true
+        },
+        "assign_viewers_batch": {
+            "permission": "platform.system.add_member",
+            "check_scope": "system",
+            "namespace_required": true
+        },
+        "delete_viewer": {
+            "permission": "platform.system.remove_member",
+            "check_scope": "system",
+            "namespace_required": true
+        },
+        "get_members": {
+            "permission": "resource.library_widget.get_member",
+            "check_scope": "system",
+            "namespace_required": true
+        },
+        "get_my_roles": {
+            "permission": "resource.library_widget.read",
+            "check_scope": "self_roles"
+        }
+    }
+}

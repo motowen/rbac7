@@ -1,0 +1,34 @@
+{
+    "entity": "dashboard",
+    "scope": "resource",
+    "operations": {
+        "assign_owner": {
+            "permission": "",
+            "check_scope": "none"
+        },
+        "transfer_owner": {
+            "permission": "resource.dashboard.transfer_owner",
+            "check_scope": "resource"
+        },
+        "assign_user_role": {
+            "permission": "resource.dashboard.add_member",
+            "check_scope": "resource"
+        },
+        "assign_user_roles_batch": {
+            "permission": "resource.dashboard.add_member",
+            "check_scope": "resource"
+        },
+        "delete_user_role": {
+            "permission": "resource.dashboard.remove_member",
+            "check_scope": "resource"
+        },
+        "get_members": {
+            "permission": "resource.dashboard.get_member",
+            "check_scope": "resource"
+        },
+        "get_my_roles": {
+            "permission": "resource.dashboard.read",
+            "check_scope": "self_roles"
+        }
+    }
+}

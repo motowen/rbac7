@@ -1,0 +1,34 @@
+{
+  "entity": "system",
+  "scope": "system",
+  "operations": {
+    "assign_owner": {
+      "permission": "platform.system.add_owner",
+      "check_scope": "system"
+    },
+    "transfer_owner": {
+      "permission": "platform.system.transfer_owner",
+      "check_scope": "system"
+    },
+    "assign_user_role": {
+      "permission": "platform.system.add_member",
+      "check_scope": "system"
+    },
+    "assign_user_roles_batch": {
+      "permission": "platform.system.add_member",
+      "check_scope": "system"
+    },
+    "delete_user_role": {
+      "permission": "platform.system.remove_member",
+      "check_scope": "system"
+    },
+    "get_members": {
+      "permission": "platform.system.get_member",
+      "check_scope": "system"
+    },
+    "get_my_roles": {
+      "permission": "platform.system.read",
+      "check_scope": "self_roles"
+    }
+  }
+}

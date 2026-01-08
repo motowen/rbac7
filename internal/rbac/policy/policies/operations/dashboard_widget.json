@@ -1,0 +1,30 @@
+{
+    "entity": "dashboard_widget",
+    "scope": "resource",
+    "parent_entity": "dashboard",
+    "operations": {
+        "assign_viewer": {
+            "permission": "resource.dashboard.add_widget_viewer",
+            "check_scope": "parent_resource",
+            "parent_resource_required": true
+        },
+        "assign_user_roles_batch": {
+            "permission": "resource.dashboard.add_widget_viewer",
+            "check_scope": "parent_resource",
+            "parent_resource_required": true
+        },
+        "delete_viewer": {
+            "permission": "resource.dashboard.add_widget_viewer",
+            "check_scope": "parent_resource",
+            "parent_resource_required": true
+        },
+        "get_members": {
+            "permission": "resource.dashboard_widget.get_member",
+            "check_scope": "resource"
+        },
+        "get_my_roles": {
+            "permission": "resource.dashboard_widget.read",
+            "check_scope": "self_roles"
+        }
+    }
+}

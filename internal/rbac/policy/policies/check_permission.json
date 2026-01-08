@@ -1,0 +1,17 @@
+{
+    "resource_types": {
+        "dashboard": {
+            "inheritance": "none"
+        },
+        "dashboard_widget": {
+            "inheritance": "parent_if_no_roles",
+            "parent_type": "dashboard",
+            "permission_mapping": {
+                "resource.dashboard_widget.read": "resource.dashboard.read"
+            }
+        },
+        "library_widget": {
+            "inheritance": "none"
+        }
+    }
+}

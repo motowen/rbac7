@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"rbac7/internal/rbac/model"
+	"rbac7/internal/rbac/policy"
 	"rbac7/internal/rbac/repository"
 )
 
@@ -35,11 +36,17 @@ type RBACService interface {
 }
 
 type Service struct {
-	Repo repository.RBACRepository
+	Repo   repository.RBACRepository
+	Policy *policy.Engine
 }
 
 func NewService(repo repository.RBACRepository) *Service {
-	return &Service{Repo: repo}
+	policyEngine, err := policy.NewEngine()
+	if err != nil {
+		// Policy engine is essential, panic if it fails to load
+		panic("failed to initialize policy engine: " + err.Error())
+	}
+	return &Service{Repo: repo, Policy: policyEngine}
 }
 
 func (s *Service) GetUserRolesMe(ctx context.Context, callerID string, req model.GetUserRolesMeReq) ([]*model.UserRole, error) {
@@ -57,30 +64,34 @@ func (s *Service) GetUserRolesMe(ctx context.Context, callerID string, req model
 		return nil, err
 	}
 
-	// Permission Check
+	// Permission Check using PolicyEngine
+	// Get the required permission from policy based on scope
+	var entity string
 	if req.Scope == model.ScopeSystem {
-		// Requirement: "GetUserRolesMe要檢查有沒有platform.system.read的權限"
-		if !CheckRolesHavePermission(roles, model.PermPlatformSystemRead) {
+		entity = "system"
+	} else if req.Scope == model.ScopeResource {
+		if req.ResourceType != "" {
+			entity = req.ResourceType
+		} else {
+			entity = "dashboard" // Default fallback
+		}
+	}
+
+	// Get the get_my_roles operation policy
+	opPolicy, err := s.Policy.GetOperationPolicy(entity, "get_my_roles")
+	if err != nil {
+		// For unknown entity, use default permission check
+		perm := "resource." + req.ResourceType + ".read"
+		if req.Scope == model.ScopeSystem {
+			perm = model.PermPlatformSystemRead
+		}
+		if !s.Policy.CheckRolesHavePermission(roles, perm) {
 			return nil, ErrForbidden
 		}
-	} else if req.Scope == model.ScopeResource {
-		// For resource scope, check resource read permission
-		// Given strict RBAC, let's use the one matching resourceType.
-		perm := "resource." + req.ResourceType + ".read"
-		// If resourceType is present:
-		if req.ResourceType != "" {
-			if !CheckRolesHavePermission(roles, perm) {
-				return nil, ErrForbidden
-			}
-		} else {
-			// If resourceType not provided (e.g. get all my resources), strict check might fail.
-			// But sticking to test requirement "missing resource_type -> 400" in Handler, so resourceType will be present.
-			// Just in case:
-			if !CheckRolesHavePermission(roles, model.PermResourceDashboardRead) { // Fallback or Fail?
-				// If we have mixed resources, we need mixed check.
-				// But let's assume resourceType is mandatory for 'resource' scope for now.
-				return nil, ErrForbidden
-			}
+	} else {
+		// Use policy-defined permission
+		if !s.Policy.CheckRolesHavePermission(roles, opPolicy.Permission) {
+			return nil, ErrForbidden
 		}
 	}
 
@@ -91,9 +102,12 @@ func (s *Service) GetUserRoles(ctx context.Context, callerID string, req model.G
 	// Permission Check for List
 	if req.Scope == model.ScopeSystem {
 		// Permission: platform.system.get_member
-		// Note: User user request 1186: GetUserRoles -> get_meber (get_member)
-
-		canList, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, model.PermPlatformSystemGetMember)
+		canList, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
+			CallerID:  callerID,
+			Entity:    "system",
+			Operation: "get_members",
+			Namespace: req.Namespace,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -106,19 +120,16 @@ func (s *Service) GetUserRoles(ctx context.Context, callerID string, req model.G
 			return nil, ErrBadRequest // Handler should catch this, but safeguard
 		}
 
-		var canList bool
-		var err error
-
-		// Special case: library_widget get_member is checked against system scope
-		// because it's managed by namespace owner/admin
-		if req.ResourceType == model.ResourceTypeLibraryWidget {
-			// library_widget.get_member requires platform.system.add_member OR remove_member (owner/admin)
-			canList, err = CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, model.PermResourceLibraryWidgetGetMember)
-		} else {
-			perm := "resource." + req.ResourceType + ".get_member"
-			canList, err = CheckResourcePermission(ctx, s.Repo, callerID, req.ResourceID, req.ResourceType, perm)
-		}
-
+		// Determine entity name from resource type
+		entity := req.ResourceType
+		canList, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
+			CallerID:     callerID,
+			Entity:       entity,
+			Operation:    "get_members",
+			Namespace:    req.Namespace,
+			ResourceID:   req.ResourceID,
+			ResourceType: req.ResourceType,
+		})
 		if err != nil {
 			return nil, err
 		}

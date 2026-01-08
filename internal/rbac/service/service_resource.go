@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"rbac7/internal/rbac/model"
+	"rbac7/internal/rbac/policy"
 	"rbac7/internal/rbac/repository"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -65,10 +66,13 @@ func (s *Service) TransferResourceOwner(ctx context.Context, callerID string, re
 	}
 
 	// Permission: resource.dashboard.transfer_owner (or generic resource.transfer_owner)
-	perm := "resource." + req.ResourceType + ".transfer_owner"
-
-	// No namespace
-	hasPerm, err := CheckResourcePermission(ctx, s.Repo, callerID, req.ResourceID, req.ResourceType, perm)
+	hasPerm, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
+		CallerID:     callerID,
+		Entity:       req.ResourceType,
+		Operation:    "transfer_owner",
+		ResourceID:   req.ResourceID,
+		ResourceType: req.ResourceType,
+	})
 	if err != nil {
 		return err
 	}
@@ -103,26 +107,30 @@ func (s *Service) AssignResourceUserRole(ctx context.Context, callerID string, r
 		return ErrBadRequest
 	}
 
-	// Permission Check
-	var perm string
-	targetResourceID := req.ResourceID
-	targetResourceType := req.ResourceType
-
+	// Permission Check using PolicyEngine
+	var opReq policy.OperationRequest
 	if req.ResourceType == model.ResourceTypeWidget && req.Role == model.RoleResourceViewer {
-		// Specific permission for adding widget viewer
-		perm = model.PermResourceDashboardAddWidgetViewer
-		// Check on Parent Dashboard
-		if req.ParentResourceID != "" {
-			targetResourceID = req.ParentResourceID
-			targetResourceType = model.ResourceTypeDashboard
+		// Specific permission for adding widget viewer - check on parent dashboard
+		opReq = policy.OperationRequest{
+			CallerID:         callerID,
+			Entity:           "dashboard_widget",
+			Operation:        "assign_viewer",
+			ResourceID:       req.ResourceID,
+			ResourceType:     req.ResourceType,
+			ParentResourceID: req.ParentResourceID,
 		}
 	} else {
 		// Generic permission: resource.{type}.add_member
-		perm = "resource." + req.ResourceType + ".add_member"
+		opReq = policy.OperationRequest{
+			CallerID:     callerID,
+			Entity:       req.ResourceType,
+			Operation:    "assign_user_role",
+			ResourceID:   req.ResourceID,
+			ResourceType: req.ResourceType,
+		}
 	}
 
-	// No namespace
-	canAssign, err := CheckResourcePermission(ctx, s.Repo, callerID, targetResourceID, targetResourceType, perm)
+	canAssign, err := s.Policy.CheckOperationPermission(ctx, s.Repo, opReq)
 	if err != nil {
 		return err
 	}
@@ -168,30 +176,43 @@ func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID string, r
 		return ErrBadRequest
 	}
 
-	// Determine Permission based on Target Role & Resource Type
-	perm := "resource." + req.ResourceType + ".remove_member"
-	targetResourceID := req.ResourceID
-	targetResourceType := req.ResourceType
-
+	// Permission Check using PolicyEngine
+	var opReq policy.OperationRequest
 	if req.ResourceType == model.ResourceTypeWidget {
-		// Specific check for Widget Viewer removal
-		// check target role...
+		// Specific check for Widget Viewer removal - check on parent dashboard
 		isViewer, err := s.Repo.HasResourceRole(ctx, req.UserID, req.ResourceID, req.ResourceType, model.RoleResourceViewer)
 		if err != nil {
 			return err
 		}
 		if isViewer {
-			perm = model.PermResourceDashboardAddWidgetViewer
-			// Check on Parent Dashboard
-			if req.ParentResourceID != "" {
-				targetResourceID = req.ParentResourceID
-				targetResourceType = model.ResourceTypeDashboard
+			opReq = policy.OperationRequest{
+				CallerID:         callerID,
+				Entity:           "dashboard_widget",
+				Operation:        "delete_viewer",
+				ResourceID:       req.ResourceID,
+				ResourceType:     req.ResourceType,
+				ParentResourceID: req.ParentResourceID,
 			}
+		} else {
+			opReq = policy.OperationRequest{
+				CallerID:     callerID,
+				Entity:       req.ResourceType,
+				Operation:    "delete_user_role",
+				ResourceID:   req.ResourceID,
+				ResourceType: req.ResourceType,
+			}
+		}
+	} else {
+		opReq = policy.OperationRequest{
+			CallerID:     callerID,
+			Entity:       req.ResourceType,
+			Operation:    "delete_user_role",
+			ResourceID:   req.ResourceID,
+			ResourceType: req.ResourceType,
 		}
 	}
 
-	// No Namespace
-	canDelete, err := CheckResourcePermission(ctx, s.Repo, callerID, targetResourceID, targetResourceType, perm)
+	canDelete, err := s.Policy.CheckOperationPermission(ctx, s.Repo, opReq)
 	if err != nil {
 		return err
 	}
@@ -221,22 +242,28 @@ func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID string, r
 }
 
 func (s *Service) AssignResourceUserRoles(ctx context.Context, callerID string, req model.AssignResourceUserRolesReq) (*model.BatchUpsertResult, error) {
-	// Permission Check
-	var perm string
-	targetResourceID := req.ResourceID
-	targetResourceType := req.ResourceType
-
+	// Permission Check using PolicyEngine
+	var opReq policy.OperationRequest
 	if req.ResourceType == model.ResourceTypeWidget && req.Role == model.RoleResourceViewer {
-		perm = model.PermResourceDashboardAddWidgetViewer
-		if req.ParentResourceID != "" {
-			targetResourceID = req.ParentResourceID
-			targetResourceType = model.ResourceTypeDashboard
+		opReq = policy.OperationRequest{
+			CallerID:         callerID,
+			Entity:           "dashboard_widget",
+			Operation:        "assign_user_roles_batch",
+			ResourceID:       req.ResourceID,
+			ResourceType:     req.ResourceType,
+			ParentResourceID: req.ParentResourceID,
 		}
 	} else {
-		perm = "resource." + req.ResourceType + ".add_member"
+		opReq = policy.OperationRequest{
+			CallerID:     callerID,
+			Entity:       req.ResourceType,
+			Operation:    "assign_user_roles_batch",
+			ResourceID:   req.ResourceID,
+			ResourceType: req.ResourceType,
+		}
 	}
 
-	canAssign, err := CheckResourcePermission(ctx, s.Repo, callerID, targetResourceID, targetResourceType, perm)
+	canAssign, err := s.Policy.CheckOperationPermission(ctx, s.Repo, opReq)
 	if err != nil {
 		return nil, err
 	}
@@ -280,7 +307,12 @@ func (s *Service) AssignResourceUserRoles(ctx context.Context, callerID string, 
 // Permission: platform.system.add_member in namespace
 func (s *Service) AssignLibraryWidgetViewers(ctx context.Context, callerID string, req model.AssignLibraryWidgetViewersReq) (*model.BatchUpsertResult, error) {
 	// Permission Check: Caller needs platform.system.add_member in this namespace
-	canAssign, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, model.PermPlatformSystemAddMember)
+	canAssign, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
+		CallerID:  callerID,
+		Entity:    "library_widget",
+		Operation: "assign_viewers_batch",
+		Namespace: req.Namespace,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -325,7 +357,12 @@ func (s *Service) AssignLibraryWidgetViewers(ctx context.Context, callerID strin
 // Permission: platform.system.remove_member in namespace
 func (s *Service) DeleteLibraryWidgetViewer(ctx context.Context, callerID string, req model.DeleteLibraryWidgetViewerReq) error {
 	// Permission Check: Caller needs platform.system.remove_member in this namespace
-	canRemove, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, model.PermPlatformSystemRemoveMember)
+	canRemove, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
+		CallerID:  callerID,
+		Entity:    "library_widget",
+		Operation: "delete_viewer",
+		Namespace: req.Namespace,
+	})
 	if err != nil {
 		return err
 	}
