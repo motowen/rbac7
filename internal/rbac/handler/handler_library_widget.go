@@ -47,7 +47,7 @@ func (h *SystemHandler) DeleteLibraryWidgetViewer(c echo.Context) error {
 	var req model.DeleteLibraryWidgetViewerReq
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			Error: model.ErrorDetail{Code: "bad_request", Message: "Invalid body"},
+			Error: model.ErrorDetail{Code: "bad_request", Message: "Invalid parameters"},
 		})
 	}
 

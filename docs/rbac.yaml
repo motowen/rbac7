@@ -553,12 +553,24 @@ paths:
       parameters:
         - $ref: '#/components/parameters/AuthenticationHeader'
         - $ref: '#/components/parameters/XUserIdHeader'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DeleteLibraryWidgetViewerRequest'
+        - in: query
+          name: user_id
+          schema:
+            type: string
+          required: true
+          description: User ID to remove
+        - in: query
+          name: resource_id
+          schema:
+            type: string
+          required: true
+          description: Library widget ID
+        - in: query
+          name: namespace
+          schema:
+            type: string
+          required: true
+          description: Publishing team namespace
       responses:
         '200':
           description: Viewer removed successfully
@@ -570,6 +582,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalServerError'
+
 
 components:
   parameters:

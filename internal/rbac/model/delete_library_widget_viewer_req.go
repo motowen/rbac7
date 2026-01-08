@@ -4,9 +4,9 @@ import "strings"
 
 // DeleteLibraryWidgetViewerReq - Remove a viewer from a library_widget
 type DeleteLibraryWidgetViewerReq struct {
-	UserID     string `json:"user_id" validate:"required,min=1,max=50"`
-	ResourceID string `json:"resource_id" validate:"required,min=1,max=50"`
-	Namespace  string `json:"namespace" validate:"required,min=1,max=50"`
+	UserID     string `query:"user_id" validate:"required,min=1,max=50"`
+	ResourceID string `query:"resource_id" validate:"required,min=1,max=50"`
+	Namespace  string `query:"namespace" validate:"required,min=1,max=50"`
 }
 
 func (r *DeleteLibraryWidgetViewerReq) Validate() error {

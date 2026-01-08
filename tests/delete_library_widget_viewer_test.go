@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net/http"
 	"rbac7/internal/rbac/handler"
-	"rbac7/internal/rbac/model"
 	"rbac7/internal/rbac/service"
 	"testing"
 
@@ -27,12 +26,7 @@ func TestDeleteLibraryWidgetViewer(t *testing.T) {
 		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "NS_1", mock.Anything).Return(true, nil)
 		mockRepo.On("DeleteUserRole", mock.Anything, "NS_1", "u_1", "resource", "lw_1", "library_widget", "owner_1").Return(nil)
 
-		reqBody := model.DeleteLibraryWidgetViewerReq{
-			UserID:     "u_1",
-			ResourceID: "lw_1",
-			Namespace:  "ns_1",
-		}
-		rec := PerformRequest(e, http.MethodDelete, path, reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
+		rec := PerformRequest(e, http.MethodDelete, path+"?user_id=u_1&resource_id=lw_1&namespace=ns_1", nil, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Contains(t, rec.Body.String(), `"status":"success"`)
 	})
@@ -47,12 +41,7 @@ func TestDeleteLibraryWidgetViewer(t *testing.T) {
 		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "NS_1", mock.Anything).Return(true, nil)
 		mockRepo.On("DeleteUserRole", mock.Anything, "NS_1", "u_1", "resource", "lw_1", "library_widget", "owner_1").Return(mongo.ErrNoDocuments)
 
-		reqBody := model.DeleteLibraryWidgetViewerReq{
-			UserID:     "u_1",
-			ResourceID: "lw_1",
-			Namespace:  "ns_1",
-		}
-		rec := PerformRequest(e, http.MethodDelete, path, reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
+		rec := PerformRequest(e, http.MethodDelete, path+"?user_id=u_1&resource_id=lw_1&namespace=ns_1", nil, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
 		assert.Equal(t, http.StatusOK, rec.Code)
 	})
 
@@ -63,12 +52,7 @@ func TestDeleteLibraryWidgetViewer(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.DELETE(path, h.DeleteLibraryWidgetViewer)
 
-		reqBody := model.DeleteLibraryWidgetViewerReq{
-			UserID:     "",
-			ResourceID: "lw_1",
-			Namespace:  "ns_1",
-		}
-		rec := PerformRequest(e, http.MethodDelete, path, reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
+		rec := PerformRequest(e, http.MethodDelete, path+"?user_id=&resource_id=lw_1&namespace=ns_1", nil, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
@@ -79,12 +63,7 @@ func TestDeleteLibraryWidgetViewer(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.DELETE(path, h.DeleteLibraryWidgetViewer)
 
-		reqBody := model.DeleteLibraryWidgetViewerReq{
-			UserID:     "u_1",
-			ResourceID: "",
-			Namespace:  "ns_1",
-		}
-		rec := PerformRequest(e, http.MethodDelete, path, reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
+		rec := PerformRequest(e, http.MethodDelete, path+"?user_id=u_1&resource_id=&namespace=ns_1", nil, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
@@ -95,12 +74,7 @@ func TestDeleteLibraryWidgetViewer(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.DELETE(path, h.DeleteLibraryWidgetViewer)
 
-		reqBody := model.DeleteLibraryWidgetViewerReq{
-			UserID:     "u_1",
-			ResourceID: "lw_1",
-			Namespace:  "",
-		}
-		rec := PerformRequest(e, http.MethodDelete, path, reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
+		rec := PerformRequest(e, http.MethodDelete, path+"?user_id=u_1&resource_id=lw_1&namespace=", nil, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
@@ -113,12 +87,7 @@ func TestDeleteLibraryWidgetViewer(t *testing.T) {
 
 		mockRepo.On("HasAnySystemRole", mock.Anything, "viewer_1", "NS_1", mock.Anything).Return(false, nil)
 
-		reqBody := model.DeleteLibraryWidgetViewerReq{
-			UserID:     "u_1",
-			ResourceID: "lw_1",
-			Namespace:  "ns_1",
-		}
-		rec := PerformRequest(e, http.MethodDelete, path, reqBody, map[string]string{"x-user-id": "viewer_1", "authentication": "t"})
+		rec := PerformRequest(e, http.MethodDelete, path+"?user_id=u_1&resource_id=lw_1&namespace=ns_1", nil, map[string]string{"x-user-id": "viewer_1", "authentication": "t"})
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
 
@@ -129,12 +98,7 @@ func TestDeleteLibraryWidgetViewer(t *testing.T) {
 		h := handler.NewSystemHandler(svc)
 		e.DELETE(path, h.DeleteLibraryWidgetViewer)
 
-		reqBody := model.DeleteLibraryWidgetViewerReq{
-			UserID:     "u_1",
-			ResourceID: "lw_1",
-			Namespace:  "ns_1",
-		}
-		rec := PerformRequest(e, http.MethodDelete, path, reqBody, map[string]string{})
+		rec := PerformRequest(e, http.MethodDelete, path+"?user_id=u_1&resource_id=lw_1&namespace=ns_1", nil, map[string]string{})
 		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 	})
 
@@ -148,12 +112,7 @@ func TestDeleteLibraryWidgetViewer(t *testing.T) {
 		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "NS_1", mock.Anything).Return(true, nil)
 		mockRepo.On("DeleteUserRole", mock.Anything, "NS_1", "u_1", "resource", "lw_1", "library_widget", "owner_1").Return(errors.New("db error"))
 
-		reqBody := model.DeleteLibraryWidgetViewerReq{
-			UserID:     "u_1",
-			ResourceID: "lw_1",
-			Namespace:  "ns_1",
-		}
-		rec := PerformRequest(e, http.MethodDelete, path, reqBody, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
+		rec := PerformRequest(e, http.MethodDelete, path+"?user_id=u_1&resource_id=lw_1&namespace=ns_1", nil, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	})
 }
