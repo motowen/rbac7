@@ -27,16 +27,23 @@ const (
 	ScopeResource = "resource"
 )
 
-// Permissions
+// Permission constants for strict typing
 const (
-	PermSystemUpdate        = "platform.system.update"
-	PermSystemRead          = "platform.system.read"
-	PermSystemAddMember     = "platform.system.add_member"
-	PermSystemRemoveMember  = "platform.system.remove_member"
-	PermSystemGetMember     = "platform.system.get_member"
-	PermSystemAddOwner      = "platform.system.add_owner"
-	PermSystemTransferOwner = "platform.system.transfer_owner"
+	PermPlatformSystemCreate        = "platform.system.create"
+	PermPlatformSystemRead          = "platform.system.read"
+	PermPlatformSystemAddOwner      = "platform.system.add_owner"
+	PermPlatformSystemUpdate        = "platform.system.update"
+	PermPlatformSystemAddMember     = "platform.system.add_member" // Used for AssignSystemUserRole
+	PermPlatformSystemRemoveMember  = "platform.system.remove_member"
+	PermPlatformSystemGetMember     = "platform.system.get_member" // Used for GetUserRoles (List)
+	PermPlatformSystemTransferOwner = "platform.system.transfer_owner"
+	PermSystemResourceCreate        = "system.resource.create"
+	PermSystemResourceRead          = "system.resource.read"
+	PermSystemResourceDelete        = "system.resource.delete"
+	PermSystemResourceUpdate        = "system.resource.update"
+	PermSystemResourcePublish       = "system.resource.publish"
 
+	// Resource Scope Permissions (Dashboard)
 	PermResourceDashboardRead          = "resource.dashboard.read"
 	PermResourceDashboardUpdate        = "resource.dashboard.update"
 	PermResourceDashboardDelete        = "resource.dashboard.delete"
@@ -50,9 +57,6 @@ const (
 	PermResourceDashboardRemoveWidget    = "resource.dashboard.remove_widget"
 	PermResourceDashboardAddWidgetViewer = "resource.dashboard.add_widget_viewer"
 	PermResourceDashboardWidgetRead      = "resource.dashboard_widget.read"
-
-	// Library Widget Permissions
-	PermResourceLibraryWidgetRead = "resource.library_widget.read"
 )
 
 // User Types

@@ -60,7 +60,7 @@ func (s *Service) GetUserRolesMe(ctx context.Context, callerID string, req model
 	// Permission Check
 	if req.Scope == model.ScopeSystem {
 		// Requirement: "GetUserRolesMe要檢查有沒有platform.system.read的權限"
-		if !CheckRolesHavePermission(roles, PermPlatformSystemRead) {
+		if !CheckRolesHavePermission(roles, model.PermPlatformSystemRead) {
 			return nil, ErrForbidden
 		}
 	} else if req.Scope == model.ScopeResource {
@@ -76,7 +76,7 @@ func (s *Service) GetUserRolesMe(ctx context.Context, callerID string, req model
 			// If resourceType not provided (e.g. get all my resources), strict check might fail.
 			// But sticking to test requirement "missing resource_type -> 400" in Handler, so resourceType will be present.
 			// Just in case:
-			if !CheckRolesHavePermission(roles, PermResourceDashboardRead) { // Fallback or Fail?
+			if !CheckRolesHavePermission(roles, model.PermResourceDashboardRead) { // Fallback or Fail?
 				// If we have mixed resources, we need mixed check.
 				// But let's assume resourceType is mandatory for 'resource' scope for now.
 				return nil, ErrForbidden
@@ -93,7 +93,7 @@ func (s *Service) GetUserRoles(ctx context.Context, callerID string, req model.G
 		// Permission: platform.system.get_member
 		// Note: User user request 1186: GetUserRoles -> get_meber (get_member)
 
-		canList, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, PermPlatformSystemGetMember)
+		canList, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, model.PermPlatformSystemGetMember)
 		if err != nil {
 			return nil, err
 		}

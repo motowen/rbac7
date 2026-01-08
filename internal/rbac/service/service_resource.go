@@ -280,7 +280,7 @@ func (s *Service) AssignResourceUserRoles(ctx context.Context, callerID string, 
 // Permission: platform.system.add_member in namespace
 func (s *Service) AssignLibraryWidgetViewers(ctx context.Context, callerID string, req model.AssignLibraryWidgetViewersReq) (*model.BatchUpsertResult, error) {
 	// Permission Check: Caller needs platform.system.add_member in this namespace
-	canAssign, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, PermPlatformSystemAddMember)
+	canAssign, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, model.PermPlatformSystemAddMember)
 	if err != nil {
 		return nil, err
 	}
@@ -325,7 +325,7 @@ func (s *Service) AssignLibraryWidgetViewers(ctx context.Context, callerID strin
 // Permission: platform.system.remove_member in namespace
 func (s *Service) DeleteLibraryWidgetViewer(ctx context.Context, callerID string, req model.DeleteLibraryWidgetViewerReq) error {
 	// Permission Check: Caller needs platform.system.remove_member in this namespace
-	canRemove, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, PermPlatformSystemRemoveMember)
+	canRemove, err := CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, model.PermPlatformSystemRemoveMember)
 	if err != nil {
 		return err
 	}

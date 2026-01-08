@@ -7,123 +7,91 @@ import (
 	"sort"
 )
 
-// Permission constants for strict typing
-const (
-	PermPlatformSystemCreate        = "platform.system.create"
-	PermPlatformSystemRead          = "platform.system.read"
-	PermPlatformSystemAddOwner      = "platform.system.add_owner"
-	PermPlatformSystemUpdate        = "platform.system.update"
-	PermPlatformSystemAddMember     = "platform.system.add_member" // Used for AssignSystemUserRole
-	PermPlatformSystemRemoveMember  = "platform.system.remove_member"
-	PermPlatformSystemGetMember     = "platform.system.get_member" // Used for GetUserRoles (List)
-	PermPlatformSystemTransferOwner = "platform.system.transfer_owner"
-	PermSystemResourceCreate        = "system.resource.create"
-	PermSystemResourceRead          = "system.resource.read"
-	PermSystemResourceDelete        = "system.resource.delete"
-	PermSystemResourceUpdate        = "system.resource.update"
-	PermSystemResourcePublish       = "system.resource.publish"
-
-	// Resource Scope Permissions (Dashboard)
-	PermResourceDashboardRead          = "resource.dashboard.read"
-	PermResourceDashboardUpdate        = "resource.dashboard.update"
-	PermResourceDashboardDelete        = "resource.dashboard.delete"
-	PermResourceDashboardAddMember     = "resource.dashboard.add_member"
-	PermResourceDashboardRemoveMember  = "resource.dashboard.remove_member"
-	PermResourceDashboardGetMember     = "resource.dashboard.get_member"
-	PermResourceDashboardTransferOwner = "resource.dashboard.transfer_owner"
-
-	// Dashboard Widget Permissions
-	PermResourceDashboardAddWidget       = "resource.dashboard.add_widget"
-	PermResourceDashboardRemoveWidget    = "resource.dashboard.remove_widget"
-	PermResourceDashboardAddWidgetViewer = "resource.dashboard.add_widget_viewer"
-	PermResourceDashboardWidgetRead      = "resource.dashboard_widget.read"
-)
-
 // SystemRolePermissions maps System Role Names to their Prmissions
 // Based on User provided JSON
 var SystemRolePermissions = map[string][]string{
 	"moderator": {
-		PermPlatformSystemCreate,
-		PermPlatformSystemRead,
-		PermPlatformSystemAddOwner,
+		model.PermPlatformSystemCreate,
+		model.PermPlatformSystemRead,
+		model.PermPlatformSystemAddOwner,
 	},
 	"owner": {
-		PermPlatformSystemUpdate,
-		PermPlatformSystemRead,
-		PermPlatformSystemAddMember,
-		PermPlatformSystemRemoveMember,
-		PermPlatformSystemGetMember,
-		PermPlatformSystemTransferOwner,
-		PermSystemResourceCreate,
-		PermSystemResourceRead,
-		PermSystemResourceDelete,
-		PermSystemResourceUpdate,
-		PermSystemResourcePublish,
+		model.PermPlatformSystemUpdate,
+		model.PermPlatformSystemRead,
+		model.PermPlatformSystemAddMember,
+		model.PermPlatformSystemRemoveMember,
+		model.PermPlatformSystemGetMember,
+		model.PermPlatformSystemTransferOwner,
+		model.PermSystemResourceCreate,
+		model.PermSystemResourceRead,
+		model.PermSystemResourceDelete,
+		model.PermSystemResourceUpdate,
+		model.PermSystemResourcePublish,
 	},
 	"admin": {
-		PermPlatformSystemUpdate,
-		PermPlatformSystemRead,
-		PermPlatformSystemAddMember,
-		PermPlatformSystemRemoveMember,
-		PermPlatformSystemGetMember,
-		PermSystemResourceCreate,
-		PermSystemResourceRead,
-		PermSystemResourceDelete,
-		PermSystemResourceUpdate,
-		PermSystemResourcePublish,
+		model.PermPlatformSystemUpdate,
+		model.PermPlatformSystemRead,
+		model.PermPlatformSystemAddMember,
+		model.PermPlatformSystemRemoveMember,
+		model.PermPlatformSystemGetMember,
+		model.PermSystemResourceCreate,
+		model.PermSystemResourceRead,
+		model.PermSystemResourceDelete,
+		model.PermSystemResourceUpdate,
+		model.PermSystemResourcePublish,
 	},
 	"dev_user": {
-		PermPlatformSystemRead,
-		PermSystemResourceCreate,
-		PermSystemResourceRead,
-		PermSystemResourceDelete,
-		PermSystemResourceUpdate,
-		PermSystemResourcePublish,
+		model.PermPlatformSystemRead,
+		model.PermSystemResourceCreate,
+		model.PermSystemResourceRead,
+		model.PermSystemResourceDelete,
+		model.PermSystemResourceUpdate,
+		model.PermSystemResourcePublish,
 	},
 	"viewer": {
-		PermPlatformSystemRead,
-		PermSystemResourceRead,
+		model.PermPlatformSystemRead,
+		model.PermSystemResourceRead,
 	},
 }
 
 // ResourceRolePermissions maps Resource Role Names to their Permissions (Dashboard)
 var ResourceRolePermissions = map[string][]string{
 	"owner": {
-		PermResourceDashboardRead,
-		PermResourceDashboardUpdate,
-		PermResourceDashboardDelete,
-		PermResourceDashboardAddMember,
-		PermResourceDashboardRemoveMember,
-		PermResourceDashboardGetMember,
-		PermResourceDashboardTransferOwner,
-		PermResourceDashboardAddWidget,
-		PermResourceDashboardRemoveWidget,
-		PermResourceDashboardAddWidgetViewer,
-		PermResourceDashboardWidgetRead,
+		model.PermResourceDashboardRead,
+		model.PermResourceDashboardUpdate,
+		model.PermResourceDashboardDelete,
+		model.PermResourceDashboardAddMember,
+		model.PermResourceDashboardRemoveMember,
+		model.PermResourceDashboardGetMember,
+		model.PermResourceDashboardTransferOwner,
+		model.PermResourceDashboardAddWidget,
+		model.PermResourceDashboardRemoveWidget,
+		model.PermResourceDashboardAddWidgetViewer,
+		model.PermResourceDashboardWidgetRead,
 	},
 	"admin": {
-		PermResourceDashboardRead,
-		PermResourceDashboardUpdate,
-		PermResourceDashboardDelete,
-		PermResourceDashboardAddMember,
-		PermResourceDashboardRemoveMember,
-		PermResourceDashboardGetMember,
-		PermResourceDashboardAddWidget,
-		PermResourceDashboardRemoveWidget,
-		PermResourceDashboardAddWidgetViewer,
-		PermResourceDashboardWidgetRead,
+		model.PermResourceDashboardRead,
+		model.PermResourceDashboardUpdate,
+		model.PermResourceDashboardDelete,
+		model.PermResourceDashboardAddMember,
+		model.PermResourceDashboardRemoveMember,
+		model.PermResourceDashboardGetMember,
+		model.PermResourceDashboardAddWidget,
+		model.PermResourceDashboardRemoveWidget,
+		model.PermResourceDashboardAddWidgetViewer,
+		model.PermResourceDashboardWidgetRead,
 	},
 	"editor": {
-		PermResourceDashboardRead,
-		PermResourceDashboardUpdate,
-		PermResourceDashboardAddWidget,
-		PermResourceDashboardRemoveWidget,
-		PermResourceDashboardAddWidgetViewer,
-		PermResourceDashboardWidgetRead,
+		model.PermResourceDashboardRead,
+		model.PermResourceDashboardUpdate,
+		model.PermResourceDashboardAddWidget,
+		model.PermResourceDashboardRemoveWidget,
+		model.PermResourceDashboardAddWidgetViewer,
+		model.PermResourceDashboardWidgetRead,
 	},
 	"viewer": {
-		PermResourceDashboardRead,
-		PermResourceDashboardWidgetRead,
+		model.PermResourceDashboardRead,
+		model.PermResourceDashboardWidgetRead,
 	},
 }
 
