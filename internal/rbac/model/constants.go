@@ -57,6 +57,11 @@ const (
 	PermResourceDashboardRemoveWidget    = "resource.dashboard.remove_widget"
 	PermResourceDashboardAddWidgetViewer = "resource.dashboard.add_widget_viewer"
 	PermResourceDashboardWidgetRead      = "resource.dashboard_widget.read"
+	PermResourceDashboardWidgetGetMember = "resource.dashboard_widget.get_member"
+
+	// Library Widget Permissions
+	PermResourceLibraryWidgetRead      = "resource.library_widget.read"
+	PermResourceLibraryWidgetGetMember = "resource.library_widget.get_member"
 )
 
 // User Types

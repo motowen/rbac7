@@ -105,8 +105,20 @@ func (s *Service) GetUserRoles(ctx context.Context, callerID string, req model.G
 		if req.ResourceID == "" || req.ResourceType == "" {
 			return nil, ErrBadRequest // Handler should catch this, but safeguard
 		}
-		perm := "resource." + req.ResourceType + ".get_member"
-		canList, err := CheckResourcePermission(ctx, s.Repo, callerID, req.ResourceID, req.ResourceType, perm)
+
+		var canList bool
+		var err error
+
+		// Special case: library_widget get_member is checked against system scope
+		// because it's managed by namespace owner/admin
+		if req.ResourceType == model.ResourceTypeLibraryWidget {
+			// library_widget.get_member requires platform.system.add_member OR remove_member (owner/admin)
+			canList, err = CheckSystemPermission(ctx, s.Repo, callerID, req.Namespace, model.PermResourceLibraryWidgetGetMember)
+		} else {
+			perm := "resource." + req.ResourceType + ".get_member"
+			canList, err = CheckResourcePermission(ctx, s.Repo, callerID, req.ResourceID, req.ResourceType, perm)
+		}
+
 		if err != nil {
 			return nil, err
 		}

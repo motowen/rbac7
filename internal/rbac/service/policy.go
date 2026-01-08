@@ -27,6 +27,7 @@ var SystemRolePermissions = map[string][]string{
 		model.PermSystemResourceDelete,
 		model.PermSystemResourceUpdate,
 		model.PermSystemResourcePublish,
+		model.PermResourceLibraryWidgetGetMember, // Can view library widget whitelist
 	},
 	"admin": {
 		model.PermPlatformSystemUpdate,
@@ -39,6 +40,7 @@ var SystemRolePermissions = map[string][]string{
 		model.PermSystemResourceDelete,
 		model.PermSystemResourceUpdate,
 		model.PermSystemResourcePublish,
+		model.PermResourceLibraryWidgetGetMember, // Can view library widget whitelist
 	},
 	"dev_user": {
 		model.PermPlatformSystemRead,
@@ -68,6 +70,7 @@ var ResourceRolePermissions = map[string][]string{
 		model.PermResourceDashboardRemoveWidget,
 		model.PermResourceDashboardAddWidgetViewer,
 		model.PermResourceDashboardWidgetRead,
+		model.PermResourceDashboardWidgetGetMember, // Can view dashboard_widget whitelist
 	},
 	"admin": {
 		model.PermResourceDashboardRead,
@@ -80,6 +83,7 @@ var ResourceRolePermissions = map[string][]string{
 		model.PermResourceDashboardRemoveWidget,
 		model.PermResourceDashboardAddWidgetViewer,
 		model.PermResourceDashboardWidgetRead,
+		model.PermResourceDashboardWidgetGetMember, // Can view dashboard_widget whitelist
 	},
 	"editor": {
 		model.PermResourceDashboardRead,
@@ -88,6 +92,7 @@ var ResourceRolePermissions = map[string][]string{
 		model.PermResourceDashboardRemoveWidget,
 		model.PermResourceDashboardAddWidgetViewer,
 		model.PermResourceDashboardWidgetRead,
+		model.PermResourceDashboardWidgetGetMember, // Can view dashboard_widget whitelist
 	},
 	"viewer": {
 		model.PermResourceDashboardRead,
@@ -97,11 +102,8 @@ var ResourceRolePermissions = map[string][]string{
 
 // Library Widget Role Permissions (only viewer role)
 var LibraryWidgetRolePermissions = map[string][]string{
-	"viewer": {PermResourceLibraryWidgetRead},
+	"viewer": {model.PermResourceLibraryWidgetRead},
 }
-
-// PermResourceLibraryWidgetRead permission constant
-const PermResourceLibraryWidgetRead = "resource.library_widget.read"
 
 // GetRolesWithPermission returns a list of role names (in system scope) that possess the given permission.
 func GetRolesWithPermission(permission string) []string {
