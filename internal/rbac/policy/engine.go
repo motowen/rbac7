@@ -57,12 +57,23 @@ func (e *Engine) GetOperationPolicy(entity, operation string) (*OperationPolicy,
 }
 
 // CheckOperationPermission checks if the caller has permission to perform an operation
+// If Entity is not provided, it will be inferred from Scope and ResourceType
 func (e *Engine) CheckOperationPermission(
 	ctx context.Context,
 	repo repository.RBACRepository,
 	req OperationRequest,
 ) (bool, error) {
-	policy, err := e.GetOperationPolicy(req.Entity, req.Operation)
+	// Auto-infer Entity from Scope/ResourceType if not provided
+	entity := req.Entity
+	if entity == "" {
+		if req.Scope == "system" {
+			entity = "system"
+		} else if req.Scope == "resource" && req.ResourceType != "" {
+			entity = req.ResourceType
+		}
+	}
+
+	policy, err := e.GetOperationPolicy(entity, req.Operation)
 	if err != nil {
 		// For unknown entity/operation, return false (no permission) instead of error
 		// This maintains backward compatibility with existing behavior
@@ -224,7 +235,33 @@ func (e *Engine) CheckRolesHavePermission(roles []*model.UserRole, permission st
 	return false
 }
 
-// getSystemRolePermissions returns system role permission mappings
+// CheckSelfRolesPermission checks if the caller's roles have permission for get_my_roles operation
+// Auto-infers entity from scope/resourceType and looks up permission from policy
+func (e *Engine) CheckSelfRolesPermission(roles []*model.UserRole, scope, resourceType string) bool {
+	// Infer entity from scope/resourceType
+	var entity string
+	if scope == "system" {
+		entity = "system"
+	} else if scope == "resource" && resourceType != "" {
+		entity = resourceType
+	} else {
+		entity = "dashboard" // Default fallback
+	}
+
+	// Get the get_my_roles policy
+	opPolicy, err := e.GetOperationPolicy(entity, "get_my_roles")
+	if err != nil {
+		// For unknown entity, use default permission
+		perm := "resource." + resourceType + ".read"
+		if scope == "system" {
+			perm = model.PermPlatformSystemRead
+		}
+		return e.CheckRolesHavePermission(roles, perm)
+	}
+
+	return e.CheckRolesHavePermission(roles, opPolicy.Permission)
+}
+
 func getSystemRolePermissions() map[string][]string {
 	return map[string][]string{
 		"moderator": {

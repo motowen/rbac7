@@ -45,8 +45,9 @@ type RolePermissions map[string][]string
 // OperationRequest is the input for checking operation permission
 type OperationRequest struct {
 	CallerID         string
-	Entity           string // "system", "dashboard", "library_widget", etc.
+	Entity           string // "system", "dashboard", "library_widget", etc. - can be inferred from Scope/ResourceType
 	Operation        string // "assign_owner", "get_members", etc.
+	Scope            string // "system" or "resource" - used to infer Entity if not provided
 	Namespace        string
 	ResourceID       string
 	ResourceType     string

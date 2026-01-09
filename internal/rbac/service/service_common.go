@@ -64,78 +64,34 @@ func (s *Service) GetUserRolesMe(ctx context.Context, callerID string, req model
 		return nil, err
 	}
 
-	// Permission Check using PolicyEngine
-	// Get the required permission from policy based on scope
-	var entity string
-	if req.Scope == model.ScopeSystem {
-		entity = "system"
-	} else if req.Scope == model.ScopeResource {
-		if req.ResourceType != "" {
-			entity = req.ResourceType
-		} else {
-			entity = "dashboard" // Default fallback
-		}
-	}
-
-	// Get the get_my_roles operation policy
-	opPolicy, err := s.Policy.GetOperationPolicy(entity, "get_my_roles")
-	if err != nil {
-		// For unknown entity, use default permission check
-		perm := "resource." + req.ResourceType + ".read"
-		if req.Scope == model.ScopeSystem {
-			perm = model.PermPlatformSystemRead
-		}
-		if !s.Policy.CheckRolesHavePermission(roles, perm) {
-			return nil, ErrForbidden
-		}
-	} else {
-		// Use policy-defined permission
-		if !s.Policy.CheckRolesHavePermission(roles, opPolicy.Permission) {
-			return nil, ErrForbidden
-		}
+	// Permission Check using PolicyEngine (auto-infers entity from scope)
+	if !s.Policy.CheckSelfRolesPermission(roles, req.Scope, req.ResourceType) {
+		return nil, ErrForbidden
 	}
 
 	return roles, nil
 }
 
 func (s *Service) GetUserRoles(ctx context.Context, callerID string, req model.GetUserRolesReq) ([]*model.UserRole, error) {
-	// Permission Check for List
-	if req.Scope == model.ScopeSystem {
-		// Permission: platform.system.get_member
-		canList, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
-			CallerID:  callerID,
-			Entity:    "system",
-			Operation: "get_members",
-			Namespace: req.Namespace,
-		})
-		if err != nil {
-			return nil, err
-		}
-		if !canList {
-			return nil, ErrForbidden
-		}
-	} else if req.Scope == model.ScopeResource {
-		// Permission: resource.{type}.get_member
-		if req.ResourceID == "" || req.ResourceType == "" {
-			return nil, ErrBadRequest // Handler should catch this, but safeguard
-		}
+	// Validation for resource scope
+	if req.Scope == model.ScopeResource && (req.ResourceID == "" || req.ResourceType == "") {
+		return nil, ErrBadRequest
+	}
 
-		// Determine entity name from resource type
-		entity := req.ResourceType
-		canList, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
-			CallerID:     callerID,
-			Entity:       entity,
-			Operation:    "get_members",
-			Namespace:    req.Namespace,
-			ResourceID:   req.ResourceID,
-			ResourceType: req.ResourceType,
-		})
-		if err != nil {
-			return nil, err
-		}
-		if !canList {
-			return nil, ErrForbidden
-		}
+	// Permission Check using PolicyEngine (auto-infers entity from scope)
+	canList, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
+		CallerID:     callerID,
+		Operation:    "get_members",
+		Scope:        req.Scope,
+		Namespace:    req.Namespace,
+		ResourceID:   req.ResourceID,
+		ResourceType: req.ResourceType,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if !canList {
+		return nil, ErrForbidden
 	}
 
 	filter := model.UserRoleFilter{
