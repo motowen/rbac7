@@ -200,7 +200,7 @@ func (e *Engine) checkSystemPermission(
 	repo repository.RBACRepository,
 	userID, namespace, permission string,
 ) (bool, error) {
-	requiredRoles := e.getRolesWithPermission(permission, true)
+	requiredRoles := e.GetRolesWithPermission(permission, true)
 	if len(requiredRoles) == 0 {
 		return false, nil
 	}
@@ -213,15 +213,15 @@ func (e *Engine) checkResourcePermission(
 	repo repository.RBACRepository,
 	userID, resourceID, resourceType, permission string,
 ) (bool, error) {
-	requiredRoles := e.getRolesWithPermission(permission, false)
+	requiredRoles := e.GetRolesWithPermission(permission, false)
 	if len(requiredRoles) == 0 {
 		return false, nil
 	}
 	return repo.HasAnyResourceRole(ctx, userID, resourceID, resourceType, requiredRoles)
 }
 
-// getRolesWithPermission returns roles that have the given permission
-func (e *Engine) getRolesWithPermission(permission string, isSystem bool) []string {
+// GetRolesWithPermission returns roles that have the given permission
+func (e *Engine) GetRolesWithPermission(permission string, isSystem bool) []string {
 	var rolePerms map[string][]string
 	if isSystem {
 		rolePerms = e.systemRolePerms
@@ -244,8 +244,8 @@ func (e *Engine) getRolesWithPermission(permission string, isSystem bool) []stri
 
 // CheckRolesHavePermission checks if any of the provided roles have the permission
 func (e *Engine) CheckRolesHavePermission(roles []*model.UserRole, permission string) bool {
-	systemAllowed := e.getRolesWithPermission(permission, true)
-	resourceAllowed := e.getRolesWithPermission(permission, false)
+	systemAllowed := e.GetRolesWithPermission(permission, true)
+	resourceAllowed := e.GetRolesWithPermission(permission, false)
 
 	allowedMap := make(map[string]bool)
 	for _, r := range systemAllowed {

@@ -91,14 +91,14 @@ func TestGetRolesWithPermission(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("system add_member permission returns owner and admin", func(t *testing.T) {
-		roles := engine.getRolesWithPermission("platform.system.add_member", true)
+		roles := engine.GetRolesWithPermission("platform.system.add_member", true)
 		assert.Contains(t, roles, "owner")
 		assert.Contains(t, roles, "admin")
 		assert.NotContains(t, roles, "viewer")
 	})
 
 	t.Run("resource read permission returns multiple roles", func(t *testing.T) {
-		roles := engine.getRolesWithPermission("resource.dashboard.read", false)
+		roles := engine.GetRolesWithPermission("resource.dashboard.read", false)
 		assert.Contains(t, roles, "owner")
 		assert.Contains(t, roles, "admin")
 		assert.Contains(t, roles, "editor")

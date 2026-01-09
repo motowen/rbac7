@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"rbac7/internal/rbac/model"
+	"rbac7/internal/rbac/policy"
 	"rbac7/internal/rbac/service"
 
 	"github.com/stretchr/testify/assert"
@@ -19,15 +20,18 @@ func TestDashboardWidgetPermissions(t *testing.T) {
 	})
 
 	t.Run("Policy Mappings", func(t *testing.T) {
+		engine, err := policy.NewEngine()
+		assert.NoError(t, err)
+
 		// Owner should have add_widget
-		roles := service.GetResourceRolesWithPermission(model.PermResourceDashboardAddWidget)
+		roles := engine.GetRolesWithPermission(model.PermResourceDashboardAddWidget, false)
 		assert.Contains(t, roles, "owner")
 		assert.Contains(t, roles, "admin")
 		assert.Contains(t, roles, "editor")
 		assert.NotContains(t, roles, "viewer")
 
 		// Viewer should have whitelisted read (via generic mapping)
-		rolesRead := service.GetResourceRolesWithPermission(model.PermResourceDashboardWidgetRead)
+		rolesRead := engine.GetRolesWithPermission(model.PermResourceDashboardWidgetRead, false)
 		assert.Contains(t, rolesRead, "viewer")
 	})
 
