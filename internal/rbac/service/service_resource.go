@@ -107,30 +107,15 @@ func (s *Service) AssignResourceUserRole(ctx context.Context, callerID string, r
 		return ErrBadRequest
 	}
 
-	// Permission Check using PolicyEngine
-	var opReq policy.OperationRequest
-	if req.ResourceType == model.ResourceTypeWidget && req.Role == model.RoleResourceViewer {
-		// Specific permission for adding widget viewer - check on parent dashboard
-		opReq = policy.OperationRequest{
-			CallerID:         callerID,
-			Entity:           "dashboard_widget",
-			Operation:        "assign_viewer",
-			ResourceID:       req.ResourceID,
-			ResourceType:     req.ResourceType,
-			ParentResourceID: req.ParentResourceID,
-		}
-	} else {
-		// Generic permission: resource.{type}.add_member
-		opReq = policy.OperationRequest{
-			CallerID:     callerID,
-			Entity:       req.ResourceType,
-			Operation:    "assign_user_role",
-			ResourceID:   req.ResourceID,
-			ResourceType: req.ResourceType,
-		}
-	}
-
-	canAssign, err := s.Policy.CheckOperationPermission(ctx, s.Repo, opReq)
+	// Permission Check using PolicyEngine (auto-detects widget viewer operations via Role)
+	canAssign, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
+		CallerID:         callerID,
+		Operation:        "assign_user_role",
+		ResourceID:       req.ResourceID,
+		ResourceType:     req.ResourceType,
+		ParentResourceID: req.ParentResourceID,
+		Role:             req.Role,
+	})
 	if err != nil {
 		return err
 	}
@@ -176,43 +161,27 @@ func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID string, r
 		return ErrBadRequest
 	}
 
-	// Permission Check using PolicyEngine
-	var opReq policy.OperationRequest
+	// For widget, determine target role for proper permission check
+	var targetRole string
 	if req.ResourceType == model.ResourceTypeWidget {
-		// Specific check for Widget Viewer removal - check on parent dashboard
 		isViewer, err := s.Repo.HasResourceRole(ctx, req.UserID, req.ResourceID, req.ResourceType, model.RoleResourceViewer)
 		if err != nil {
 			return err
 		}
 		if isViewer {
-			opReq = policy.OperationRequest{
-				CallerID:         callerID,
-				Entity:           "dashboard_widget",
-				Operation:        "delete_viewer",
-				ResourceID:       req.ResourceID,
-				ResourceType:     req.ResourceType,
-				ParentResourceID: req.ParentResourceID,
-			}
-		} else {
-			opReq = policy.OperationRequest{
-				CallerID:     callerID,
-				Entity:       req.ResourceType,
-				Operation:    "delete_user_role",
-				ResourceID:   req.ResourceID,
-				ResourceType: req.ResourceType,
-			}
-		}
-	} else {
-		opReq = policy.OperationRequest{
-			CallerID:     callerID,
-			Entity:       req.ResourceType,
-			Operation:    "delete_user_role",
-			ResourceID:   req.ResourceID,
-			ResourceType: req.ResourceType,
+			targetRole = model.RoleResourceViewer
 		}
 	}
 
-	canDelete, err := s.Policy.CheckOperationPermission(ctx, s.Repo, opReq)
+	// Permission Check using PolicyEngine (auto-detects widget viewer operations via Role)
+	canDelete, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
+		CallerID:         callerID,
+		Operation:        "delete_user_role",
+		ResourceID:       req.ResourceID,
+		ResourceType:     req.ResourceType,
+		ParentResourceID: req.ParentResourceID,
+		Role:             targetRole,
+	})
 	if err != nil {
 		return err
 	}

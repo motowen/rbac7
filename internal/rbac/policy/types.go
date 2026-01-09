@@ -46,10 +46,11 @@ type RolePermissions map[string][]string
 type OperationRequest struct {
 	CallerID         string
 	Entity           string // "system", "dashboard", "library_widget", etc. - can be inferred from Scope/ResourceType
-	Operation        string // "assign_owner", "get_members", etc.
+	Operation        string // "assign_owner", "get_members", etc. - can be auto-adjusted for viewer operations
 	Scope            string // "system" or "resource" - used to infer Entity if not provided
 	Namespace        string
 	ResourceID       string
 	ResourceType     string
 	ParentResourceID string
+	Role             string // Target role - used to auto-detect viewer operations (e.g., "viewer" triggers widget-specific handling)
 }

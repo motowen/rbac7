@@ -41,6 +41,38 @@ func NewEngine() (*Engine, error) {
 	return engine, nil
 }
 
+// normalizeRequest auto-infers Entity from Scope/ResourceType and adjusts Operation for special cases
+// For dashboard_widget with viewer role, it uses viewer-specific operations (assign_viewer, delete_viewer)
+func (e *Engine) normalizeRequest(req OperationRequest) (entity, operation string) {
+	entity = req.Entity
+	operation = req.Operation
+
+	// Auto-infer Entity from Scope/ResourceType if not provided
+	if entity == "" {
+		if req.Scope == "system" {
+			entity = "system"
+		} else if req.ResourceType != "" {
+			// Infer from ResourceType (covers both scope=resource and when scope is not set)
+			entity = req.ResourceType
+		}
+	}
+
+	// Special handling: dashboard_widget viewer operations
+	// When ResourceType is dashboard_widget and Role is viewer, use viewer-specific operations
+	if req.ResourceType == "dashboard_widget" && req.Role == "viewer" {
+		entity = "dashboard_widget"
+		// Map generic operations to viewer-specific ones
+		switch req.Operation {
+		case "assign_user_role", "assign_user_roles_batch":
+			operation = "assign_viewer"
+		case "delete_user_role":
+			operation = "delete_viewer"
+		}
+	}
+
+	return entity, operation
+}
+
 // GetOperationPolicy returns the policy for a specific entity operation
 func (e *Engine) GetOperationPolicy(entity, operation string) (*OperationPolicy, error) {
 	entityPolicy, ok := e.entityPolicies[entity]
@@ -58,22 +90,16 @@ func (e *Engine) GetOperationPolicy(entity, operation string) (*OperationPolicy,
 
 // CheckOperationPermission checks if the caller has permission to perform an operation
 // If Entity is not provided, it will be inferred from Scope and ResourceType
+// For widget viewer operations (ResourceType=dashboard_widget + Role=viewer), auto-adjusts to use viewer-specific policies
 func (e *Engine) CheckOperationPermission(
 	ctx context.Context,
 	repo repository.RBACRepository,
 	req OperationRequest,
 ) (bool, error) {
-	// Auto-infer Entity from Scope/ResourceType if not provided
-	entity := req.Entity
-	if entity == "" {
-		if req.Scope == "system" {
-			entity = "system"
-		} else if req.Scope == "resource" && req.ResourceType != "" {
-			entity = req.ResourceType
-		}
-	}
+	// Normalize request: auto-infer Entity and adjust Operation for special cases
+	entity, operation := e.normalizeRequest(req)
 
-	policy, err := e.GetOperationPolicy(entity, req.Operation)
+	policy, err := e.GetOperationPolicy(entity, operation)
 	if err != nil {
 		// For unknown entity/operation, return false (no permission) instead of error
 		// This maintains backward compatibility with existing behavior
@@ -100,8 +126,11 @@ func (e *Engine) CheckOperationPermission(
 			return false, fmt.Errorf("parent_resource_id is required for this operation")
 		}
 		// Get parent entity type from policy
-		entityPolicy := e.entityPolicies[req.Entity]
-		parentType := entityPolicy.ParentEntity
+		entityPolicy, ok := e.entityPolicies[entity]
+		var parentType string
+		if ok && entityPolicy != nil {
+			parentType = entityPolicy.ParentEntity
+		}
 		if parentType == "" {
 			parentType = "dashboard" // Default fallback
 		}
