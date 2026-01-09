@@ -48,13 +48,12 @@ func (e *Engine) normalizeRequest(req OperationRequest) (entity, operation strin
 	operation = req.Operation
 
 	// Auto-infer Entity from Scope/ResourceType if not provided
-	if entity == "" {
-		if req.Scope == "system" {
-			entity = "system"
-		} else if req.ResourceType != "" {
-			// Infer from ResourceType (covers both scope=resource and when scope is not set)
-			entity = req.ResourceType
-		}
+	if entity == "" && req.Scope == "system" {
+		entity = "system"
+	}
+	if entity == "" && req.ResourceType != "" {
+		// Infer from ResourceType (covers both scope=resource and when scope is not set)
+		entity = req.ResourceType
 	}
 
 	// Special handling: dashboard_widget viewer operations
@@ -126,14 +125,7 @@ func (e *Engine) CheckOperationPermission(
 			return false, fmt.Errorf("parent_resource_id is required for this operation")
 		}
 		// Get parent entity type from policy
-		entityPolicy, ok := e.entityPolicies[entity]
-		var parentType string
-		if ok && entityPolicy != nil {
-			parentType = entityPolicy.ParentEntity
-		}
-		if parentType == "" {
-			parentType = "dashboard" // Default fallback
-		}
+		parentType := e.getParentType(entity)
 		return e.checkResourcePermission(ctx, repo, req.CallerID, req.ParentResourceID, parentType, policy.Permission)
 
 	case CheckScopeSelfRoles:
@@ -144,6 +136,37 @@ func (e *Engine) CheckOperationPermission(
 	default:
 		return false, fmt.Errorf("unknown check_scope: %s", policy.CheckScope)
 	}
+}
+
+// getParentType returns the parent entity type for the given entity
+func (e *Engine) getParentType(entity string) string {
+	entityPolicy, ok := e.entityPolicies[entity]
+	if ok && entityPolicy != nil && entityPolicy.ParentEntity != "" {
+		return entityPolicy.ParentEntity
+	}
+	return "dashboard" // Default fallback
+}
+
+// mapPermission maps a permission based on the rule's permission mapping
+func (e *Engine) mapPermission(rule *CheckPermissionRule, permission string) string {
+	if rule.PermissionMapping == nil {
+		return permission
+	}
+	if mapped, ok := rule.PermissionMapping[permission]; ok {
+		return mapped
+	}
+	return permission
+}
+
+// inferEntity infers the entity name from scope and resourceType
+func (e *Engine) inferEntity(scope, resourceType string) string {
+	if scope == "system" {
+		return "system"
+	}
+	if scope == "resource" && resourceType != "" {
+		return resourceType
+	}
+	return "dashboard" // Default fallback
 }
 
 // CheckResourceAccess checks if user can access a resource (for CheckPermission API)
@@ -180,12 +203,7 @@ func (e *Engine) CheckResourceAccess(
 		}
 
 		// Map permission if needed
-		mappedPerm := permission
-		if rule.PermissionMapping != nil {
-			if mapped, ok := rule.PermissionMapping[permission]; ok {
-				mappedPerm = mapped
-			}
-		}
+		mappedPerm := e.mapPermission(rule, permission)
 
 		return e.checkResourcePermission(ctx, repo, callerID, parentResourceID, rule.ParentType, mappedPerm)
 
@@ -268,14 +286,7 @@ func (e *Engine) CheckRolesHavePermission(roles []*model.UserRole, permission st
 // Auto-infers entity from scope/resourceType and looks up permission from policy
 func (e *Engine) CheckSelfRolesPermission(roles []*model.UserRole, scope, resourceType string) bool {
 	// Infer entity from scope/resourceType
-	var entity string
-	if scope == "system" {
-		entity = "system"
-	} else if scope == "resource" && resourceType != "" {
-		entity = resourceType
-	} else {
-		entity = "dashboard" // Default fallback
-	}
+	entity := e.inferEntity(scope, resourceType)
 
 	// Get the get_my_roles policy
 	opPolicy, err := e.GetOperationPolicy(entity, "get_my_roles")
