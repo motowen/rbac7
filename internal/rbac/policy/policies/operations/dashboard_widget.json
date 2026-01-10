@@ -20,7 +20,8 @@
         },
         "get_members": {
             "permission": "resource.dashboard_widget.get_member",
-            "check_scope": "resource"
+            "check_scope": "parent_resource",
+            "parent_resource_required": true
         },
         "get_my_roles": {
             "permission": "resource.dashboard_widget.read",

@@ -163,7 +163,7 @@ func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID string, r
 
 	// For widget, determine target role for proper permission check
 	var targetRole string
-	if req.ResourceType == model.ResourceTypeWidget {
+	if req.ResourceType == model.ResourceTypeDashboardWidget {
 		isViewer, err := s.Repo.HasResourceRole(ctx, req.UserID, req.ResourceID, req.ResourceType, model.RoleResourceViewer)
 		if err != nil {
 			return err
@@ -213,7 +213,7 @@ func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID string, r
 func (s *Service) AssignResourceUserRoles(ctx context.Context, callerID string, req model.AssignResourceUserRolesReq) (*model.BatchUpsertResult, error) {
 	// Permission Check using PolicyEngine
 	var opReq policy.OperationRequest
-	if req.ResourceType == model.ResourceTypeWidget && req.Role == model.RoleResourceViewer {
+	if req.ResourceType == model.ResourceTypeDashboardWidget && req.Role == model.RoleResourceViewer {
 		opReq = policy.OperationRequest{
 			CallerID:         callerID,
 			Entity:           "dashboard_widget",

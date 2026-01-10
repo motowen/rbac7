@@ -27,7 +27,7 @@ func (r *CheckPermissionReq) Validate() error {
 		if r.ResourceID == "" || r.ResourceType == "" {
 			return &ErrorDetail{Code: "bad_request", Message: "resource params required for resource scope"}
 		}
-		if r.ResourceType == ResourceTypeWidget && r.ParentResourceID == "" {
+		if r.ResourceType == ResourceTypeDashboardWidget && r.ParentResourceID == "" {
 			return &ErrorDetail{Code: "bad_request", Message: "parent_resource_id is required for dashboard_widget"}
 		}
 	}

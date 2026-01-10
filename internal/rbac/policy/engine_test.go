@@ -65,7 +65,7 @@ func TestAllOperationsPolicies(t *testing.T) {
 		{"dashboard_widget", "assign_viewer", "resource.dashboard.add_widget_viewer", CheckScopeParentResource, false, true},
 		{"dashboard_widget", "assign_user_roles_batch", "resource.dashboard.add_widget_viewer", CheckScopeParentResource, false, true},
 		{"dashboard_widget", "delete_viewer", "resource.dashboard.add_widget_viewer", CheckScopeParentResource, false, true},
-		{"dashboard_widget", "get_members", "resource.dashboard_widget.get_member", CheckScopeResource, false, false},
+		{"dashboard_widget", "get_members", "resource.dashboard_widget.get_member", CheckScopeParentResource, false, true},
 		{"dashboard_widget", "get_my_roles", "resource.dashboard_widget.read", CheckScopeSelfRoles, false, false},
 
 		// === library_widget.json ===

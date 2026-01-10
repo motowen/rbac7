@@ -73,19 +73,15 @@ func (s *Service) GetUserRolesMe(ctx context.Context, callerID string, req model
 }
 
 func (s *Service) GetUserRoles(ctx context.Context, callerID string, req model.GetUserRolesReq) ([]*model.UserRole, error) {
-	// Validation for resource scope
-	if req.Scope == model.ScopeResource && (req.ResourceID == "" || req.ResourceType == "") {
-		return nil, ErrBadRequest
-	}
-
 	// Permission Check using PolicyEngine (auto-infers entity from scope)
 	canList, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
-		CallerID:     callerID,
-		Operation:    "get_members",
-		Scope:        req.Scope,
-		Namespace:    req.Namespace,
-		ResourceID:   req.ResourceID,
-		ResourceType: req.ResourceType,
+		CallerID:         callerID,
+		Operation:        "get_members",
+		Scope:            req.Scope,
+		Namespace:        req.Namespace,
+		ResourceID:       req.ResourceID,
+		ResourceType:     req.ResourceType,
+		ParentResourceID: req.ParentResourceID,
 	})
 	if err != nil {
 		return nil, err

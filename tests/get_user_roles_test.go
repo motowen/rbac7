@@ -177,18 +177,6 @@ func TestGetUserRolesList(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
-	t.Run("list scope=resource but provide namespace and return 400", func(t *testing.T) {
-		e := SetupServer()
-		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.GET("/user_roles", h.GetUserRoles)
-
-		path := "/user_roles?scope=resource&namespace=ns1&resource_id=r1&resource_type=d1"
-		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "admin_1"})
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-
 	t.Run("list scope=resource missing only resource_id and return 400", func(t *testing.T) {
 		e := SetupServer()
 		mockRepo := new(MockRBACRepository)

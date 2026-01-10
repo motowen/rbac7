@@ -3,12 +3,13 @@ package model
 import "strings"
 
 type GetUserRolesReq struct {
-	UserID       string `query:"user_id" validate:"omitempty,max=50"`
-	Namespace    string `query:"namespace" validate:"omitempty,max=50"`
-	Role         string `query:"role" validate:"omitempty,max=50"`
-	Scope        string `query:"scope" validate:"required,min=1,max=50"`
-	ResourceID   string `query:"resource_id" validate:"omitempty,max=50"`
-	ResourceType string `query:"resource_type" validate:"omitempty,max=50"`
+	UserID           string `query:"user_id" validate:"omitempty,max=50"`
+	Namespace        string `query:"namespace" validate:"omitempty,max=50"`
+	Role             string `query:"role" validate:"omitempty,max=50"`
+	Scope            string `query:"scope" validate:"required,min=1,max=50"`
+	ResourceID       string `query:"resource_id" validate:"omitempty,max=50"`
+	ResourceType     string `query:"resource_type" validate:"omitempty,max=50"`
+	ParentResourceID string `query:"parent_resource_id" validate:"omitempty,max=50"`
 }
 
 func (r *GetUserRolesReq) Validate() error {
@@ -18,6 +19,7 @@ func (r *GetUserRolesReq) Validate() error {
 	r.Scope = strings.ToLower(strings.TrimSpace(r.Scope))
 	r.ResourceID = strings.TrimSpace(r.ResourceID)
 	r.ResourceType = strings.ToLower(strings.TrimSpace(r.ResourceType))
+	r.ParentResourceID = strings.TrimSpace(r.ParentResourceID)
 
 	if err := GetValidator().Struct(r); err != nil {
 		return FormatValidationError(err)
@@ -31,11 +33,14 @@ func (r *GetUserRolesReq) Validate() error {
 			return &ErrorDetail{Code: "bad_request", Message: "invalid parameters for system scope"}
 		}
 	} else if r.Scope == ScopeResource {
-		if r.Namespace != "" {
-			return &ErrorDetail{Code: "bad_request", Message: "namespace not allowed for resource scope"}
-		}
 		if r.ResourceID == "" || r.ResourceType == "" {
 			return &ErrorDetail{Code: "bad_request", Message: "resource_id and resource_type required for resource scope"}
+		}
+		if r.ResourceType == ResourceTypeLibraryWidget && r.Namespace == "" {
+			return &ErrorDetail{Code: "bad_request", Message: "namespace required for resource library_widget"}
+		}
+		if r.ResourceType == ResourceTypeDashboardWidget && r.ParentResourceID == "" {
+			return &ErrorDetail{Code: "bad_request", Message: "parent_resource_id required for resource dashboard_widget"}
 		}
 	}
 	return nil

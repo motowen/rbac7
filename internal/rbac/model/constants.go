@@ -72,7 +72,7 @@ const (
 
 // Resource Types
 const (
-	ResourceTypeDashboard     = "dashboard"
-	ResourceTypeWidget        = "dashboard_widget"
-	ResourceTypeLibraryWidget = "library_widget"
+	ResourceTypeDashboard       = "dashboard"
+	ResourceTypeDashboardWidget = "dashboard_widget"
+	ResourceTypeLibraryWidget   = "library_widget"
 )

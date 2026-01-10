@@ -47,7 +47,7 @@ func (r *AssignResourceUserRolesReq) Validate() error {
 		return &ErrorDetail{Code: "bad_request", Message: "invalid role: must be one of [admin, editor, viewer]"}
 	}
 
-	if r.ResourceType == ResourceTypeWidget && r.ParentResourceID == "" {
+	if r.ResourceType == ResourceTypeDashboardWidget && r.ParentResourceID == "" {
 		return &ErrorDetail{Code: "bad_request", Message: "parent_resource_id is required for dashboard_widget"}
 	}
 
