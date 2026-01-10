@@ -271,9 +271,6 @@ func (r *MongoRepository) BulkUpsertUserRoles(ctx context.Context, roles []*mode
 	}
 
 	// All succeeded
-	batchResult.SuccessCount = int(result.UpsertedCount + result.ModifiedCount + result.MatchedCount)
-	// Handle case where MatchedCount includes documents that were matched but not modified
-	// For upsert, we consider matched + upserted as success
 	if batchResult.SuccessCount == 0 {
 		batchResult.SuccessCount = len(roles)
 	}
