@@ -4,7 +4,7 @@ info:
   version: 1.2.0
   description: API for Role-Based Access Control system (Common + System Scope + Resource Scope).
 servers:
-  - url: /api/v1
+  - url: http://localhost:8080/api/v1
 
 tags:
   - name: System
@@ -141,6 +141,13 @@ paths:
             type: string
           required: false
           description: Required when scope=resource
+        - in: query
+          name: parent_resource_id
+          schema:
+            type: string
+          required: false
+          description: Required for dashboard_widget
+          example: d_1  
       responses:
         '200':
           description: List of user roles
