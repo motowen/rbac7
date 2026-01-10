@@ -103,19 +103,10 @@ func (s *Service) GetUserRoles(ctx context.Context, callerID string, req model.G
 }
 
 func (s *Service) CheckPermission(ctx context.Context, callerID string, req model.CheckPermissionReq) (bool, error) {
-	// Validation already done in handler/struct validate, but trim is useful helper.
-	if req.Permission == "" || req.Scope == "" {
-		return false, ErrBadRequest
-	}
-
 	if req.Scope == model.ScopeSystem {
 		// Use internal method to check the actual permission requested
 		return s.checkSystemPermissionInternal(ctx, callerID, req.Namespace, req.Permission)
 	} else if req.Scope == model.ScopeResource {
-		if req.ResourceID == "" || req.ResourceType == "" {
-			return false, ErrBadRequest
-		}
-
 		// Use PolicyEngine's CheckResourceAccess for dashboard_widget inheritance logic
 		return s.Policy.CheckResourceAccess(ctx, s.Repo, callerID, req.ResourceID, req.ResourceType, req.Permission, req.ParentResourceID)
 	}

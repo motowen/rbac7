@@ -12,13 +12,7 @@ import (
 )
 
 func (s *Service) AssignSystemOwner(ctx context.Context, callerID string, req model.AssignSystemOwnerReq) error {
-	// 1. Validation already handled by caller using req.Validate()
-
-	if req.UserID == "" {
-		return ErrBadRequest
-	}
-
-	// 2. Check permissions: Caller must have 'platform.system.add_owner'
+	// Check permissions: Caller must have 'platform.system.add_owner'
 	hasPerm, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
 		CallerID:  callerID,
 		Entity:    "system",
@@ -31,7 +25,6 @@ func (s *Service) AssignSystemOwner(ctx context.Context, callerID string, req mo
 		return ErrForbidden
 	}
 
-	// 3. Create new UserRole
 	newRole := &model.UserRole{
 		UserID:    req.UserID,
 		Role:      model.RoleSystemOwner,
@@ -56,10 +49,6 @@ func (s *Service) AssignSystemOwner(ctx context.Context, callerID string, req mo
 }
 
 func (s *Service) TransferSystemOwner(ctx context.Context, callerID string, req model.TransferSystemOwnerReq) error {
-
-	if req.Namespace == "" || req.UserID == "" {
-		return ErrBadRequest
-	}
 	// Cannot transfer to self
 	if req.UserID == callerID {
 		return ErrBadRequest
@@ -102,12 +91,6 @@ func (s *Service) TransferSystemOwner(ctx context.Context, callerID string, req 
 }
 
 func (s *Service) AssignSystemUserRole(ctx context.Context, callerID string, req model.AssignSystemUserRoleReq) error {
-
-	// Note: Scope is implied to be System
-
-	if req.UserID == "" {
-		return ErrBadRequest
-	}
 	if req.Role == model.RoleSystemOwner {
 		return ErrForbidden
 	}

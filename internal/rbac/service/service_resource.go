@@ -12,12 +12,7 @@ import (
 )
 
 func (s *Service) AssignResourceOwner(ctx context.Context, callerID string, req model.AssignResourceOwnerReq) error {
-	if req.ResourceID == "" || req.ResourceType == "" {
-		return ErrBadRequest
-	}
-
 	// Permission: None required for AssignResourceOwner as per requirements.
-	// Namespace: None required.
 	// UserID: Auto-assigned to Caller.
 
 	// Check if owner already exists
@@ -44,10 +39,6 @@ func (s *Service) AssignResourceOwner(ctx context.Context, callerID string, req 
 	err = s.Repo.CreateUserRole(ctx, newRole)
 	if err != nil {
 		if errors.Is(err, repository.ErrDuplicate) {
-			// If duplicate, it means owner already exists?
-			// The index (scope, ns, resID, resType, role=owner) is unique.
-			// So if we try to assign owner and one exists, we get duplicate.
-			// Requirement: "一個資源只能有一個Owner"
 			return ErrConflict // "resource owner already exists"
 		}
 		return err
@@ -58,9 +49,6 @@ func (s *Service) AssignResourceOwner(ctx context.Context, callerID string, req 
 }
 
 func (s *Service) TransferResourceOwner(ctx context.Context, callerID string, req model.TransferResourceOwnerReq) error {
-	if req.UserID == "" || req.ResourceID == "" || req.ResourceType == "" {
-		return ErrBadRequest
-	}
 	if req.UserID == callerID {
 		return ErrBadRequest
 	}
@@ -95,10 +83,6 @@ func (s *Service) TransferResourceOwner(ctx context.Context, callerID string, re
 
 func (s *Service) AssignResourceUserRole(ctx context.Context, callerID string, req model.AssignResourceUserRoleReq) error {
 	// Scope implied Resource
-
-	if req.UserID == "" || req.ResourceID == "" || req.ResourceType == "" {
-		return ErrBadRequest
-	}
 	if req.Role == model.RoleResourceOwner {
 		return ErrForbidden // Use Transfer or AssignOwner
 	}
