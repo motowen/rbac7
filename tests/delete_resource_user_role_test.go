@@ -135,7 +135,7 @@ func TestDeleteResourceUserRole(t *testing.T) {
 		// Service: delete
 		mockRepo.On("DeleteUserRole", mock.Anything, "", "u1", model.ScopeResource, "w1", "dashboard_widget", "caller").Return(nil)
 
-		rec := PerformRequest(e, http.MethodDelete, "/api/v1/user_roles/resources?user_id=u1&resource_id=w1&resource_type=dashboard_widget&role=viewer&parent_resource_id=dash_1", nil, map[string]string{
+		rec := PerformRequest(e, http.MethodDelete, "/api/v1/user_roles/resources?user_id=u1&resource_id=w1&resource_type=dashboard_widget&parent_resource_id=dash_1", nil, map[string]string{
 			"x-user-id": "caller",
 		})
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -148,7 +148,7 @@ func TestDeleteResourceUserRole(t *testing.T) {
 		// No mocks needed - middleware should return 400 before any permission check
 		// because parent_resource_required=true for dashboard_widget delete_viewer
 
-		rec := PerformRequest(e, http.MethodDelete, "/api/v1/user_roles/resources?user_id=u1&resource_id=w1&resource_type=dashboard_widget&role=viewer", nil, map[string]string{
+		rec := PerformRequest(e, http.MethodDelete, "/api/v1/user_roles/resources?user_id=u1&resource_id=w1&resource_type=dashboard_widget", nil, map[string]string{
 			"x-user-id": "caller",
 		})
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
@@ -161,7 +161,7 @@ func TestDeleteResourceUserRole(t *testing.T) {
 		// RBAC Middleware: permission denied on parent dashboard
 		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "dash_1", "dashboard", mock.Anything).Return(false, nil)
 
-		rec := PerformRequest(e, http.MethodDelete, "/api/v1/user_roles/resources?user_id=u1&resource_id=w1&resource_type=dashboard_widget&role=viewer&parent_resource_id=dash_1", nil, map[string]string{
+		rec := PerformRequest(e, http.MethodDelete, "/api/v1/user_roles/resources?user_id=u1&resource_id=w1&resource_type=dashboard_widget&parent_resource_id=dash_1", nil, map[string]string{
 			"x-user-id": "caller",
 		})
 		assert.Equal(t, http.StatusForbidden, rec.Code)

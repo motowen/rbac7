@@ -46,12 +46,10 @@
             "params": {
                 "resource_id": "query.resource_id",
                 "resource_type": "query.resource_type",
-                "parent_resource_id": "query.parent_resource_id",
-                "role": "query.role"
+                "parent_resource_id": "query.parent_resource_id"
             },
             "condition": {
-                "resource_type": "dashboard_widget",
-                "role": "viewer"
+                "resource_type": "dashboard_widget"
             }
         },
         "get_members": {

@@ -138,10 +138,7 @@ func (m *RBACMiddleware) findMatchingConfig(c echo.Context, configs []*policy.AP
 		}
 	}
 
-	// Return first config if no conditions match (fallback)
-	if len(configs) > 0 {
-		return configs[0]
-	}
+	// No matching config found - return nil to pass through to handler
 	return nil
 }
 
