@@ -6,7 +6,7 @@
       "method": "POST",
       "path": "/api/v1/user_roles/owner",
       "permission": "platform.system.add_owner",
-      "check_scope": "system",
+      "check_scope": "global",
       "params": {
         "namespace": "body.namespace"
       }

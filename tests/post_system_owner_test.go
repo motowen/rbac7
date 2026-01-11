@@ -19,8 +19,8 @@ func TestPostSystemOwner(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		e := SetupServerWithMiddleware(mockRepo)
 
-		// RBAC Middleware: permission check (add_owner requires moderator role)
-		mockRepo.On("HasAnySystemRole", mock.Anything, "moderator_1", "NS_SUCCESS", mock.Anything).Return(true, nil)
+		// RBAC Middleware: global scope check (empty namespace for global roles like moderator)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "moderator_1", "", mock.Anything).Return(true, nil)
 		// Service: create user role
 		mockRepo.On("CreateUserRole", mock.Anything, mock.Anything).Return(nil)
 
@@ -39,8 +39,8 @@ func TestPostSystemOwner(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		e := SetupServerWithMiddleware(mockRepo)
 
-		// Middleware uses trimmed/uppercased namespace
-		mockRepo.On("HasAnySystemRole", mock.Anything, "moderator_1", "NS_TRIM", mock.Anything).Return(true, nil)
+		// Middleware uses global scope (empty namespace)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "moderator_1", "", mock.Anything).Return(true, nil)
 		mockRepo.On("CreateUserRole", mock.Anything, mock.MatchedBy(func(r *model.UserRole) bool {
 			return r.Namespace == "NS_TRIM" && r.UserID == "u_trim"
 		})).Return(nil)
@@ -61,7 +61,7 @@ func TestPostSystemOwner(t *testing.T) {
 		e := SetupServerWithMiddleware(mockRepo)
 
 		// Middleware may pass with empty namespace, validation fails in handler
-		mockRepo.On("HasAnySystemRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Maybe()
+		mockRepo.On("HasAnySystemRole", mock.Anything, mock.Anything, "", mock.Anything).Return(true, nil).Maybe()
 
 		reqBody := model.SystemOwnerUpsertRequest{
 			UserID:    "u_1",
@@ -77,7 +77,7 @@ func TestPostSystemOwner(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		e := SetupServerWithMiddleware(mockRepo)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Maybe()
+		mockRepo.On("HasAnySystemRole", mock.Anything, mock.Anything, "", mock.Anything).Return(true, nil).Maybe()
 
 		reqBody := model.SystemOwnerUpsertRequest{
 			UserID:    "",
@@ -104,8 +104,8 @@ func TestPostSystemOwner(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		e := SetupServerWithMiddleware(mockRepo)
 
-		// RBAC Middleware: permission denied
-		mockRepo.On("HasAnySystemRole", mock.Anything, "u_common", "NS", mock.Anything).Return(false, nil)
+		// RBAC Middleware: global scope permission denied (empty namespace for global check)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "u_common", "", mock.Anything).Return(false, nil)
 
 		reqBody := model.SystemOwnerUpsertRequest{Namespace: "ns", UserID: "u_1"}
 		headers := map[string]string{"x-user-id": "u_common"}
@@ -118,7 +118,7 @@ func TestPostSystemOwner(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		e := SetupServerWithMiddleware(mockRepo)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "moderator_1", "NS_CONFLICT", mock.Anything).Return(true, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "moderator_1", "", mock.Anything).Return(true, nil)
 		mockRepo.On("CreateUserRole", mock.Anything, mock.Anything).Return(repository.ErrDuplicate)
 
 		reqBody := model.SystemOwnerUpsertRequest{Namespace: "ns_conflict", UserID: "u_1"}
@@ -132,7 +132,7 @@ func TestPostSystemOwner(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		e := SetupServerWithMiddleware(mockRepo)
 
-		mockRepo.On("HasAnySystemRole", mock.Anything, "moderator_1", "NS_ERROR", mock.Anything).Return(true, nil)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "moderator_1", "", mock.Anything).Return(true, nil)
 		mockRepo.On("CreateUserRole", mock.Anything, mock.Anything).Return(errors.New("db disconnect"))
 
 		reqBody := model.SystemOwnerUpsertRequest{Namespace: "ns_error", UserID: "u_1"}

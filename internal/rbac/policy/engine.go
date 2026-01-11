@@ -155,6 +155,10 @@ func (e *Engine) CheckOperationPermission(
 		// The service layer should handle this case
 		return true, nil
 
+	case CheckScopeGlobal:
+		// Check global roles (e.g., moderator) without namespace requirement
+		return e.checkGlobalPermission(ctx, repo, req.CallerID, policy.Permission)
+
 	default:
 		return false, fmt.Errorf("unknown check_scope: %s", policy.CheckScope)
 	}
@@ -245,6 +249,21 @@ func (e *Engine) checkSystemPermission(
 		return false, nil
 	}
 	return repo.HasAnySystemRole(ctx, userID, namespace, requiredRoles)
+}
+
+// checkGlobalPermission checks if user has global-level permission (without namespace)
+// This is used for roles like "moderator" that are not bound to any namespace
+func (e *Engine) checkGlobalPermission(
+	ctx context.Context,
+	repo repository.RBACRepository,
+	userID, permission string,
+) (bool, error) {
+	requiredRoles := e.GetRolesWithPermission(permission, true)
+	if len(requiredRoles) == 0 {
+		return false, nil
+	}
+	// Pass empty namespace to check for global roles
+	return repo.HasAnySystemRole(ctx, userID, "", requiredRoles)
 }
 
 // checkResourcePermission checks if user has resource-level permission

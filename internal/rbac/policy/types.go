@@ -9,6 +9,7 @@ const (
 	CheckScopeResource       CheckScope = "resource"        // Check against resource
 	CheckScopeParentResource CheckScope = "parent_resource" // Check against parent resource
 	CheckScopeSelfRoles      CheckScope = "self_roles"      // Check against caller's own roles
+	CheckScopeGlobal         CheckScope = "global"          // Check against global roles (no namespace)
 )
 
 // OperationPolicy defines the permission requirements for an operation
