@@ -3,32 +3,93 @@
     "scope": "resource",
     "operations": {
         "assign_owner": {
+            "method": "POST",
+            "path": "/api/v1/user_roles/resources/owner",
             "permission": "",
-            "check_scope": "none"
+            "check_scope": "none",
+            "params": {
+                "resource_id": "body.resource_id",
+                "resource_type": "body.resource_type"
+            },
+            "condition": {
+                "resource_type": "dashboard"
+            }
         },
         "transfer_owner": {
+            "method": "PUT",
+            "path": "/api/v1/user_roles/resources/owner",
             "permission": "resource.dashboard.transfer_owner",
-            "check_scope": "resource"
+            "check_scope": "resource",
+            "params": {
+                "resource_id": "body.resource_id",
+                "resource_type": "body.resource_type"
+            },
+            "condition": {
+                "resource_type": "dashboard"
+            }
         },
         "assign_user_role": {
+            "method": "POST",
+            "path": "/api/v1/user_roles/resources",
             "permission": "resource.dashboard.add_member",
-            "check_scope": "resource"
+            "check_scope": "resource",
+            "params": {
+                "resource_id": "body.resource_id",
+                "resource_type": "body.resource_type"
+            },
+            "condition": {
+                "resource_type": "dashboard"
+            }
         },
         "assign_user_roles_batch": {
+            "method": "POST",
+            "path": "/api/v1/user_roles/resources/batch",
             "permission": "resource.dashboard.add_member",
-            "check_scope": "resource"
+            "check_scope": "resource",
+            "params": {
+                "resource_id": "body.resource_id",
+                "resource_type": "body.resource_type"
+            },
+            "condition": {
+                "resource_type": "dashboard"
+            }
         },
         "delete_user_role": {
+            "method": "DELETE",
+            "path": "/api/v1/user_roles/resources",
             "permission": "resource.dashboard.remove_member",
-            "check_scope": "resource"
+            "check_scope": "resource",
+            "params": {
+                "resource_id": "query.resource_id",
+                "resource_type": "query.resource_type"
+            },
+            "condition": {
+                "resource_type": "dashboard"
+            }
         },
         "get_members": {
+            "method": "GET",
+            "path": "/api/v1/user_roles",
             "permission": "resource.dashboard.get_member",
-            "check_scope": "resource"
+            "check_scope": "resource",
+            "params": {
+                "resource_id": "query.resource_id",
+                "resource_type": "query.resource_type"
+            },
+            "condition": {
+                "scope": "resource",
+                "resource_type": "dashboard"
+            }
         },
         "get_my_roles": {
+            "method": "GET",
+            "path": "/api/v1/user_roles/me",
             "permission": "resource.dashboard.read",
-            "check_scope": "self_roles"
+            "check_scope": "self_roles",
+            "condition": {
+                "scope": "resource",
+                "resource_type": "dashboard"
+            }
         }
     }
 }

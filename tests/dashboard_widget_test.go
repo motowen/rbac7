@@ -35,17 +35,14 @@ func TestDashboardWidgetPermissions(t *testing.T) {
 		assert.Contains(t, rolesRead, "viewer")
 	})
 
-	// Service Logic Tests (Inheritance vs Whitelist)
+	// Service Logic Tests (Inheritance vs Whitelist) via CheckPermission API
 	t.Run("CheckPermission Service Logic", func(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		ctx := context.TODO()
 
 		// Scenario 1: Inherited Read (Widget has 0 roles) -> Checks Parent
-		// Mock CountResourceRoles(widget1) -> 0
-		// Mock HasAnyResourceRole(user1, dashboard1, dashboard, ...) -> true
 		mockRepo.On("CountResourceRoles", ctx, "widget1", "dashboard_widget").Return(int64(0), nil)
-		// CheckCommon logic calls HasResourcePermission -> HasAnyResourceRole
 		mockRepo.On("HasAnyResourceRole", ctx, "user1", "dashboard1", "dashboard", mock.Anything).Return(true, nil)
 
 		reqInherit := model.CheckPermissionReq{
@@ -61,8 +58,6 @@ func TestDashboardWidgetPermissions(t *testing.T) {
 		assert.True(t, allowed)
 
 		// Scenario 2: Whitelisted Read (Widget has roles) -> Checks Widget Strictly
-		// Mock CountResourceRoles(widget2) -> 1
-		// Mock HasAnyResourceRole(user2, widget2, dashboard_widget, ...) -> false (User denied on widget)
 		mockRepo.On("CountResourceRoles", ctx, "widget2", "dashboard_widget").Return(int64(1), nil)
 		mockRepo.On("HasAnyResourceRole", ctx, "user2", "widget2", "dashboard_widget", mock.Anything).Return(false, nil)
 
@@ -79,8 +74,6 @@ func TestDashboardWidgetPermissions(t *testing.T) {
 		assert.False(t, allowedDeny)
 
 		// Scenario 3: Whitelisted Read (Widget has roles) -> Checks Widget Strictly (Allow)
-		// Mock CountResourceRoles(widget3) -> 1
-		// Mock HasAnyResourceRole(user3, widget3, dashboard_widget, ...) -> true (User allowed on widget)
 		mockRepo.On("CountResourceRoles", ctx, "widget3", "dashboard_widget").Return(int64(1), nil)
 		mockRepo.On("HasAnyResourceRole", ctx, "user3", "widget3", "dashboard_widget", mock.Anything).Return(true, nil)
 
@@ -96,6 +89,7 @@ func TestDashboardWidgetPermissions(t *testing.T) {
 		assert.NoError(t, errAllow)
 		assert.True(t, allowedAllow)
 	})
+
 	t.Run("Validation Logic", func(t *testing.T) {
 		// Case 1: Dashboard Widget missing ParentResourceID -> Error
 		req := model.CheckPermissionReq{
@@ -124,17 +118,17 @@ func TestDashboardWidgetPermissions(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("Assign Widget Viewer Permission Check", func(t *testing.T) {
+	// Service layer tests: Permission check is now handled by middleware
+	// These tests only verify business logic (owner check, upsert, delete)
+	t.Run("Assign Widget Viewer Business Logic", func(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		ctx := context.TODO()
 
-		// Expect check for "resource.dashboard.add_widget_viewer" ON PARENT (d1)
-		mockRepo.On("HasAnyResourceRole", ctx, "caller", "d1", "dashboard", mock.Anything).Return(true, nil)
+		// Mock HasResourceRole (Owner check) -> target is not owner
+		mockRepo.On("HasResourceRole", ctx, "target", "w1", "dashboard_widget", "owner").Return(false, nil)
 		// Mock Upsert
 		mockRepo.On("UpsertUserRole", ctx, mock.Anything).Return(nil)
-		// Mock HasResourceRole (Owner check)
-		mockRepo.On("HasResourceRole", ctx, "target", "w1", "dashboard_widget", "owner").Return(false, nil)
 
 		req := model.AssignResourceUserRoleReq{
 			UserID:           "target",
@@ -150,21 +144,15 @@ func TestDashboardWidgetPermissions(t *testing.T) {
 		mockRepo.AssertExpectations(t)
 	})
 
-	t.Run("Delete Widget Viewer Permission Check", func(t *testing.T) {
+	t.Run("Delete Widget Viewer Business Logic", func(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		svc := service.NewService(mockRepo)
 		ctx := context.TODO()
 
-		// 1. Mock HasResourceRole(target, viewer) -> true (Target IS a viewer)
-		mockRepo.On("HasResourceRole", ctx, "target", "w1", "dashboard_widget", "viewer").Return(true, nil)
-
-		// 2. Expect check for "resource.dashboard.add_widget_viewer" ON PARENT (d1)
-		mockRepo.On("HasAnyResourceRole", ctx, "caller", "d1", "dashboard", mock.Anything).Return(true, nil)
-
-		// 3. Check Owner (prevent delete owner) -> false
+		// 1. Check Owner (prevent delete owner) -> false
 		mockRepo.On("HasResourceRole", ctx, "target", "w1", "dashboard_widget", "owner").Return(false, nil)
 
-		// 4. Delete
+		// 2. Delete
 		mockRepo.On("DeleteUserRole", ctx, "", "target", "resource", "w1", "dashboard_widget", "caller").Return(nil)
 
 		req := model.DeleteResourceUserRoleReq{

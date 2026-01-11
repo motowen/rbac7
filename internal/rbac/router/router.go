@@ -2,12 +2,14 @@ package router
 
 import (
 	"rbac7/internal/rbac/handler"
+	"rbac7/internal/rbac/policy"
+	"rbac7/internal/rbac/repository"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
 
-func RegisterRoutes(e *echo.Echo, h *handler.SystemHandler) {
+func RegisterRoutes(e *echo.Echo, h *handler.SystemHandler, policyEngine *policy.Engine, repo repository.RBACRepository, apiConfigs map[string][]*policy.APIConfig) {
 	// Enable CORS for Swagger UI interaction
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{"*"},
@@ -25,6 +27,10 @@ func RegisterRoutes(e *echo.Echo, h *handler.SystemHandler) {
 	v1 := e.Group("/api/v1")
 	v1.Use(handler.RequestIDMiddleware) // Add Request ID middleware to API routes
 
+	// Create and apply RBAC middleware
+	rbacMiddleware := handler.NewRBACMiddleware(policyEngine, repo, apiConfigs)
+	v1.Use(rbacMiddleware.Middleware())
+
 	// System Scope Routes
 	v1.POST("/user_roles/owner", h.PostSystemOwner)
 	v1.PUT("/user_roles/owner", h.PutSystemOwner)
@@ -40,7 +46,7 @@ func RegisterRoutes(e *echo.Echo, h *handler.SystemHandler) {
 	v1.POST("/user_roles/resources", h.PostResourceUserRoles)
 	v1.POST("/user_roles/resources/batch", h.PostResourceUserRolesBatch)
 	v1.DELETE("/user_roles/resources", h.DeleteResourceUserRoles)
-	v1.POST("/permissions/check", h.PostPermissionsCheck)
+	v1.POST("/permissions/check", h.PostPermissionsCheck) // No RBAC check for this endpoint
 
 	// Library Widget Routes
 	v1.POST("/user_roles/library_widgets/batch", h.PostLibraryWidgetViewers)

@@ -91,3 +91,30 @@ func (l *Loader) LoadResourceRolePermissions() (map[string][]string, error) {
 
 	return perms, nil
 }
+
+// LoadAPIConfigs builds an index of API configurations for middleware matching
+// Returns a map where key is "METHOD:PATH" (e.g., "POST:/api/v1/user_roles")
+// and value is a list of APIConfigs (multiple configs for same path with different conditions)
+func (l *Loader) LoadAPIConfigs(entityPolicies map[string]*EntityPolicy) map[string][]*APIConfig {
+	apiConfigs := make(map[string][]*APIConfig)
+
+	for _, entityPolicy := range entityPolicies {
+		for opName, opPolicy := range entityPolicy.Operations {
+			// Skip operations without API routing info
+			if opPolicy.Method == "" || opPolicy.Path == "" {
+				continue
+			}
+
+			key := opPolicy.Method + ":" + opPolicy.Path
+			config := &APIConfig{
+				Entity:    entityPolicy.Entity,
+				Operation: opName,
+				Policy:    opPolicy,
+			}
+
+			apiConfigs[key] = append(apiConfigs[key], config)
+		}
+	}
+
+	return apiConfigs
+}

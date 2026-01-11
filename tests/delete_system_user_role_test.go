@@ -3,9 +3,7 @@ package tests
 import (
 	"errors"
 	"net/http"
-	"rbac7/internal/rbac/handler"
 	"rbac7/internal/rbac/model"
-	"rbac7/internal/rbac/service"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,65 +11,56 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// DeleteMockRepo usage is replaced by shared MockRBACRepository in mock_repo.go
-
 func TestDeleteSystemUserRole(t *testing.T) {
-	t.Run("remove system member success and return 200", func(t *testing.T) {
-		e := SetupServer()
-		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.DELETE("/user_roles", h.DeleteUserRoles)
+	apiPath := "/api/v1/user_roles"
 
+	t.Run("remove system member success and return 200", func(t *testing.T) {
+		mockRepo := new(MockRBACRepository)
+		e := SetupServerWithMiddleware(mockRepo)
+
+		// RBAC Middleware: permission check
 		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "NS_1", mock.Anything).Return(true, nil)
+		// Service: check if target is owner
 		mockRepo.On("GetSystemOwner", mock.Anything, "NS_1").Return(nil, nil)
+		// Service: delete
 		mockRepo.On("DeleteUserRole", mock.Anything, "NS_1", "u_2", "system", "", "", "owner_1").Return(nil)
 
-		rec := PerformRequest(e, http.MethodDelete, "/user_roles?namespace=ns_1&user_id=u_2", nil, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
+		rec := PerformRequest(e, http.MethodDelete, apiPath+"?namespace=NS_1&user_id=u_2", nil, map[string]string{"x-user-id": "owner_1"})
 		assert.Equal(t, http.StatusOK, rec.Code)
 	})
 
 	t.Run("remove system member missing user_id and return 400", func(t *testing.T) {
-		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.DELETE("/user_roles_bad", h.DeleteUserRoles)
+		e := SetupServerWithMiddleware(mockRepo)
 
-		// Missing user_id
-		rec := PerformRequest(e, http.MethodDelete, "/user_roles_bad?namespace=ns_1", nil, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
+		mockRepo.On("HasAnySystemRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Maybe()
+
+		rec := PerformRequest(e, http.MethodDelete, apiPath+"?namespace=NS_1", nil, map[string]string{"x-user-id": "owner_1"})
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
 	t.Run("remove system member missing namespace and return 400", func(t *testing.T) {
-		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.DELETE("/user_roles_bad", h.DeleteUserRoles)
+		e := SetupServerWithMiddleware(mockRepo)
 
-		// Missing namespace
-		rec := PerformRequest(e, http.MethodDelete, "/user_roles_bad?user_id=u_2", nil, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
+		mockRepo.On("HasAnySystemRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Maybe()
+
+		rec := PerformRequest(e, http.MethodDelete, apiPath+"?user_id=u_2", nil, map[string]string{"x-user-id": "owner_1"})
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
 	t.Run("remove system member unauthorized and return 401", func(t *testing.T) {
-		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.DELETE("/user_roles_401", h.DeleteUserRoles)
+		e := SetupServerWithMiddleware(mockRepo)
 
-		rec := PerformRequest(e, http.MethodDelete, "/user_roles_401?namespace=ns_1&user_id=u_2", nil, map[string]string{})
+		// No x-user-id header
+		rec := PerformRequest(e, http.MethodDelete, apiPath+"?namespace=NS_1&user_id=u_2", nil, nil)
 		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 	})
 
 	t.Run("remove system member forbidden (cannot delete last owner) and return 403", func(t *testing.T) {
-		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.DELETE("/user_roles_own", h.DeleteUserRoles)
+		e := SetupServerWithMiddleware(mockRepo)
 
 		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "NS_1", mock.Anything).Return(true, nil)
 
@@ -79,68 +68,42 @@ func TestDeleteSystemUserRole(t *testing.T) {
 		mockRepo.On("GetSystemOwner", mock.Anything, "NS_1").Return(ownerRole, nil)
 		mockRepo.On("CountSystemOwners", mock.Anything, "NS_1").Return(int64(1), nil)
 
-		rec := PerformRequest(e, http.MethodDelete, "/user_roles_own?namespace=ns_1&user_id=u_target", nil, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
+		rec := PerformRequest(e, http.MethodDelete, apiPath+"?namespace=NS_1&user_id=u_target", nil, map[string]string{"x-user-id": "owner_1"})
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
 
 	t.Run("remove system member forbidden (missing delete permission) and return 403", func(t *testing.T) {
-		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.DELETE("/user_roles_403", h.DeleteUserRoles)
+		e := SetupServerWithMiddleware(mockRepo)
 
+		// RBAC Middleware: permission denied
 		mockRepo.On("HasAnySystemRole", mock.Anything, "u_common", "NS_1", mock.Anything).Return(false, nil)
 
-		rec := PerformRequest(e, http.MethodDelete, "/user_roles_403?namespace=ns_1&user_id=u_2", nil, map[string]string{"x-user-id": "u_common", "authentication": "t"})
-		assert.Equal(t, http.StatusForbidden, rec.Code)
-	})
-
-	t.Run("remove system member forbidden should not reveal existence and return 403 even if target not found", func(t *testing.T) {
-		e := SetupServer()
-		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.DELETE("/user_roles_403_reveal", h.DeleteUserRoles)
-
-		mockRepo.On("HasAnySystemRole", mock.Anything, "u_common", "NS_1", mock.Anything).Return(false, nil)
-
-		// Note: Service checks auth FIRST before checking if target user exists or is owner.
-		// So it returns 403 immediately without checking GetAll or specific user role.
-		// This satisfies "not reveal existence".
-
-		rec := PerformRequest(e, http.MethodDelete, "/user_roles_403_reveal?namespace=ns_1&user_id=u_ghost", nil, map[string]string{"x-user-id": "u_common", "authentication": "t"})
+		rec := PerformRequest(e, http.MethodDelete, apiPath+"?namespace=NS_1&user_id=u_2", nil, map[string]string{"x-user-id": "u_common"})
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
 
 	t.Run("remove system member twice should be idempotent and return 200", func(t *testing.T) {
-		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.DELETE("/user_roles_idempotent", h.DeleteUserRoles)
+		e := SetupServerWithMiddleware(mockRepo)
 
 		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "NS_1", mock.Anything).Return(true, nil)
 		mockRepo.On("GetSystemOwner", mock.Anything, "NS_1").Return(nil, nil)
-		// Repo returns ErrNoDocuments -> Service converts to nil/success
 		mockRepo.On("DeleteUserRole", mock.Anything, "NS_1", "u_2", "system", "", "", "owner_1").Return(mongo.ErrNoDocuments)
 
-		rec := PerformRequest(e, http.MethodDelete, "/user_roles_idempotent?namespace=ns_1&user_id=u_2", nil, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
+		rec := PerformRequest(e, http.MethodDelete, apiPath+"?namespace=NS_1&user_id=u_2", nil, map[string]string{"x-user-id": "owner_1"})
 		assert.Equal(t, http.StatusOK, rec.Code)
 	})
 
 	t.Run("remove system member internal error and return 500", func(t *testing.T) {
-		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.DELETE("/user_roles_500", h.DeleteUserRoles)
+		e := SetupServerWithMiddleware(mockRepo)
 
 		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "NS_1", mock.Anything).Return(true, nil)
 		mockRepo.On("GetSystemOwner", mock.Anything, "NS_1").Return(nil, nil)
 		mockRepo.On("DeleteUserRole", mock.Anything, "NS_1", "u_2", "system", "", "", "owner_1").Return(errors.New("db error"))
 
-		rec := PerformRequest(e, http.MethodDelete, "/user_roles_500?namespace=ns_1&user_id=u_2", nil, map[string]string{"x-user-id": "owner_1", "authentication": "t"})
+		rec := PerformRequest(e, http.MethodDelete, apiPath+"?namespace=NS_1&user_id=u_2", nil, map[string]string{"x-user-id": "owner_1"})
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	})
 }

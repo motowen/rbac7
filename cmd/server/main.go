@@ -59,7 +59,6 @@ func main() {
 
 	svc := service.NewService(repo)
 	h := handler.NewSystemHandler(svc)
-	// TODO: Add HealthHandler here later
 
 	// 4. Init Echo & Routes
 	e := echo.New()
@@ -78,7 +77,11 @@ func main() {
 		},
 	}))
 
-	router.RegisterRoutes(e, h)
+	// Load API configs for RBAC middleware
+	policyLoader := svc.Policy.GetLoader()
+	apiConfigs := policyLoader.LoadAPIConfigs(svc.Policy.GetEntityPolicies())
+
+	router.RegisterRoutes(e, h, svc.Policy, repo, apiConfigs)
 
 	// 5. Start Server with Graceful Shutdown
 	srv := &http.Server{

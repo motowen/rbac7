@@ -5,37 +5,25 @@ import (
 	"errors"
 	"log"
 	"rbac7/internal/rbac/model"
-	"rbac7/internal/rbac/policy"
 	"rbac7/internal/rbac/repository"
 
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func (s *Service) AssignSystemOwner(ctx context.Context, callerID string, req model.AssignSystemOwnerReq) error {
-	// Check permissions: Caller must have 'platform.system.add_owner'
-	hasPerm, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
-		CallerID:  callerID,
-		Entity:    "system",
-		Operation: "assign_owner",
-	})
-	if err != nil {
-		return err
-	}
-	if !hasPerm {
-		return ErrForbidden
-	}
+	// Permission check handled by RBAC middleware
 
 	newRole := &model.UserRole{
 		UserID:    req.UserID,
 		Role:      model.RoleSystemOwner,
 		Scope:     model.ScopeSystem,
 		Namespace: req.Namespace,
-		UserType:  model.UserTypeMember, // Defaulting to member as per likely requirement
-		CreatedBy: callerID,             // Audit
+		UserType:  model.UserTypeMember,
+		CreatedBy: callerID,
 		UpdatedBy: callerID,
 	}
 
-	err = s.Repo.CreateUserRole(ctx, newRole)
+	err := s.Repo.CreateUserRole(ctx, newRole)
 	if err != nil {
 		if errors.Is(err, repository.ErrDuplicate) {
 			return ErrConflict
@@ -54,21 +42,9 @@ func (s *Service) TransferSystemOwner(ctx context.Context, callerID string, req 
 		return ErrBadRequest
 	}
 
-	// 2. Check permissions: Caller must have 'platform.system.transfer_owner'
-	hasPerm, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
-		CallerID:  callerID,
-		Entity:    "system",
-		Operation: "transfer_owner",
-		Namespace: req.Namespace,
-	})
-	if err != nil {
-		return err
-	}
-	if !hasPerm {
-		return ErrForbidden
-	}
+	// Permission check handled by RBAC middleware
 
-	// 2b. Validate ownership specifics
+	// Validate ownership specifics
 	currentOwner, err := s.Repo.GetSystemOwner(ctx, req.Namespace)
 	if err != nil {
 		return err
@@ -77,11 +53,9 @@ func (s *Service) TransferSystemOwner(ctx context.Context, callerID string, req 
 		return errors.New("system not found or has no owner")
 	}
 
-	// 3. Perform Transfer (Transaction)
-	// New owner is req.UserID
+	// Perform Transfer (Transaction)
 	err = s.Repo.TransferSystemOwner(ctx, req.Namespace, callerID, req.UserID, callerID)
 	if err != nil {
-		// Map errors if needed, or return generic
 		return err
 	}
 
@@ -94,24 +68,12 @@ func (s *Service) AssignSystemUserRole(ctx context.Context, callerID string, req
 	if req.Role == model.RoleSystemOwner {
 		return ErrForbidden
 	}
-	// Check if role being assigned is valid? (admin, viewer, dev_user, moderator)
+	// Check if role being assigned is valid
 	if req.Role != "admin" && req.Role != "viewer" && req.Role != "dev_user" && req.Role != "moderator" {
 		return ErrBadRequest
 	}
 
-	// Permission: platform.system.add_member
-	canAssign, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
-		CallerID:  callerID,
-		Entity:    "system",
-		Operation: "assign_user_role",
-		Namespace: req.Namespace,
-	})
-	if err != nil {
-		return err
-	}
-	if !canAssign {
-		return ErrForbidden
-	}
+	// Permission check handled by RBAC middleware
 
 	currentOwner, err := s.Repo.GetSystemOwner(ctx, req.Namespace)
 	if err != nil {
@@ -148,21 +110,7 @@ func (s *Service) AssignSystemUserRole(ctx context.Context, callerID string, req
 }
 
 func (s *Service) AssignSystemUserRoles(ctx context.Context, callerID string, req model.AssignSystemUserRolesReq) (*model.BatchUpsertResult, error) {
-	// Note: Scope is implied to be System
-
-	// Permission: platform.system.add_member
-	canAssign, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
-		CallerID:  callerID,
-		Entity:    "system",
-		Operation: "assign_user_roles_batch",
-		Namespace: req.Namespace,
-	})
-	if err != nil {
-		return nil, err
-	}
-	if !canAssign {
-		return nil, ErrForbidden
-	}
+	// Permission check handled by RBAC middleware
 
 	// Build roles slice for bulk upsert
 	var roles []*model.UserRole
@@ -195,19 +143,7 @@ func (s *Service) AssignSystemUserRoles(ctx context.Context, callerID string, re
 }
 
 func (s *Service) DeleteSystemUserRole(ctx context.Context, callerID string, req model.DeleteSystemUserRoleReq) error {
-	// Permission: platform.system.remove_member
-	canDelete, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
-		CallerID:  callerID,
-		Entity:    "system",
-		Operation: "delete_user_role",
-		Namespace: req.Namespace,
-	})
-	if err != nil {
-		return err
-	}
-	if !canDelete {
-		return ErrForbidden
-	}
+	// Permission check handled by RBAC middleware
 
 	currentOwner, err := s.Repo.GetSystemOwner(ctx, req.Namespace)
 	if err != nil {

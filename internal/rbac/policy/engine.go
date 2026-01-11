@@ -10,6 +10,7 @@ import (
 
 // Engine is the central policy engine for permission checking
 type Engine struct {
+	loader            *Loader
 	entityPolicies    map[string]*EntityPolicy
 	checkPermConfig   *CheckPermissionConfig
 	systemRolePerms   map[string][]string
@@ -42,6 +43,7 @@ func NewEngine() (*Engine, error) {
 	}
 
 	engine := &Engine{
+		loader:            loader,
 		entityPolicies:    entityPolicies,
 		checkPermConfig:   checkPermConfig,
 		systemRolePerms:   systemRolePerms,
@@ -49,6 +51,16 @@ func NewEngine() (*Engine, error) {
 	}
 
 	return engine, nil
+}
+
+// GetLoader returns the loader for building API configs
+func (e *Engine) GetLoader() *Loader {
+	return e.loader
+}
+
+// GetEntityPolicies returns the entity policies map
+func (e *Engine) GetEntityPolicies() map[string]*EntityPolicy {
+	return e.entityPolicies
 }
 
 // normalizeRequest auto-infers Entity from Scope/ResourceType and adjusts Operation for special cases

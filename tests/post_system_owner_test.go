@@ -5,58 +5,42 @@ import (
 	"net/http"
 	"testing"
 
-	"rbac7/internal/rbac/handler"
 	"rbac7/internal/rbac/model"
 	"rbac7/internal/rbac/repository"
-	"rbac7/internal/rbac/service"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-// --- Mock Utils for this test ---
-
-// MockRepo usage is replaced by shared MockRBACRepository in mock_repo.go
-
-// --- Test Implementation ---
-
 func TestPostSystemOwner(t *testing.T) {
-	t.Run("moderator assign system owner success and return 200", func(t *testing.T) {
-		e := SetupServer()
-		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.POST("/user_roles/owner", h.PostSystemOwner)
+	apiPath := "/api/v1/user_roles/owner"
 
-		// 1. Role Check (Policy Engine uses HasAnySystemRole for add_owner permission)
-		mockRepo.On("HasAnySystemRole", mock.Anything, "moderator_1", "", mock.Anything).Return(true, nil)
-		// 2. Create (GetSystemOwner Removed from Service logic, relies on DB constraint/err now)
+	t.Run("moderator assign system owner success and return 200", func(t *testing.T) {
+		mockRepo := new(MockRBACRepository)
+		e := SetupServerWithMiddleware(mockRepo)
+
+		// RBAC Middleware: permission check (add_owner requires moderator role)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "moderator_1", "NS_SUCCESS", mock.Anything).Return(true, nil)
+		// Service: create user role
 		mockRepo.On("CreateUserRole", mock.Anything, mock.Anything).Return(nil)
 
 		reqBody := model.SystemOwnerUpsertRequest{
 			UserID:    "u_1",
 			Namespace: "ns_success",
 		}
+		headers := map[string]string{"x-user-id": "moderator_1"}
 
-		headers := map[string]string{
-			"authentication": "Bearer token",
-			"x-user-id":      "moderator_1",
-		}
-
-		rec := PerformRequest(e, http.MethodPost, "/user_roles/owner", reqBody, headers)
+		rec := PerformRequest(e, http.MethodPost, apiPath, reqBody, headers)
 		assert.Equal(t, http.StatusOK, rec.Code)
 		mockRepo.AssertExpectations(t)
 	})
 
 	t.Run("assign system owner with whitespace inputs success", func(t *testing.T) {
-		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.POST("/user_roles/owner_trim", h.PostSystemOwner)
+		e := SetupServerWithMiddleware(mockRepo)
 
-		// Expect TRIMMED values in calls
-		mockRepo.On("HasAnySystemRole", mock.Anything, "moderator_1", "", mock.Anything).Return(true, nil)
+		// Middleware uses trimmed/uppercased namespace
+		mockRepo.On("HasAnySystemRole", mock.Anything, "moderator_1", "NS_TRIM", mock.Anything).Return(true, nil)
 		mockRepo.On("CreateUserRole", mock.Anything, mock.MatchedBy(func(r *model.UserRole) bool {
 			return r.Namespace == "NS_TRIM" && r.UserID == "u_trim"
 		})).Return(nil)
@@ -65,134 +49,96 @@ func TestPostSystemOwner(t *testing.T) {
 			UserID:    "  u_trim  ",
 			Namespace: "  ns_trim  ",
 		}
-		headers := map[string]string{"authentication": "Bearer token", "x-user-id": "moderator_1"}
+		headers := map[string]string{"x-user-id": "moderator_1"}
 
-		rec := PerformRequest(e, http.MethodPost, "/user_roles/owner_trim", reqBody, headers)
+		rec := PerformRequest(e, http.MethodPost, apiPath, reqBody, headers)
 		assert.Equal(t, http.StatusOK, rec.Code)
 		mockRepo.AssertExpectations(t)
 	})
 
 	t.Run("assign system owner missing namespace and return 400", func(t *testing.T) {
-		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.POST("/user_roles/owner_400", h.PostSystemOwner)
+		e := SetupServerWithMiddleware(mockRepo)
 
-		// Validation happens FIRST now
-		// So no Repo calls expected
+		// Middleware may pass with empty namespace, validation fails in handler
+		mockRepo.On("HasAnySystemRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Maybe()
 
 		reqBody := model.SystemOwnerUpsertRequest{
 			UserID:    "u_1",
-			Namespace: "", // Missing
+			Namespace: "",
 		}
-		headers := map[string]string{
-			"authentication": "Bearer token",
-			"x-user-id":      "moderator_1",
-		}
+		headers := map[string]string{"x-user-id": "moderator_1"}
 
-		rec := PerformRequest(e, http.MethodPost, "/user_roles/owner_400", reqBody, headers)
+		rec := PerformRequest(e, http.MethodPost, apiPath, reqBody, headers)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
-		mockRepo.AssertExpectations(t)
 	})
 
 	t.Run("assign system owner missing user_id and return 400", func(t *testing.T) {
-		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.POST("/user_roles/owner_400_u", h.PostSystemOwner)
+		e := SetupServerWithMiddleware(mockRepo)
+
+		mockRepo.On("HasAnySystemRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Maybe()
 
 		reqBody := model.SystemOwnerUpsertRequest{
-			UserID:    "", // Missing
+			UserID:    "",
 			Namespace: "ns",
 		}
-		headers := map[string]string{
-			"authentication": "Bearer token",
-			"x-user-id":      "moderator_1",
-		}
+		headers := map[string]string{"x-user-id": "moderator_1"}
 
-		rec := PerformRequest(e, http.MethodPost, "/user_roles/owner_400_u", reqBody, headers)
+		rec := PerformRequest(e, http.MethodPost, apiPath, reqBody, headers)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
-		mockRepo.AssertExpectations(t)
 	})
 
 	t.Run("assign system owner unauthorized (empty caller) and return 401", func(t *testing.T) {
-		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		// No service call expected if handler auth fails first
-		h := handler.NewSystemHandler(svc)
-		e.POST("/user_roles/owner_401", h.PostSystemOwner)
+		e := SetupServerWithMiddleware(mockRepo)
 
-		reqBody := model.SystemOwnerUpsertRequest{Namespace: "ns"}
-		// No x-user-id
+		// No x-user-id header -> middleware returns 401
+		reqBody := model.SystemOwnerUpsertRequest{Namespace: "ns", UserID: "u_1"}
 
-		rec := PerformRequest(e, http.MethodPost, "/user_roles/owner_401", reqBody, map[string]string{"authentication": "Bearer t"})
+		rec := PerformRequest(e, http.MethodPost, apiPath, reqBody, nil)
 		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 	})
 
 	t.Run("assign system owner forbidden (not moderator) and return 403", func(t *testing.T) {
-		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.POST("/user_roles/owner_403", h.PostSystemOwner)
+		e := SetupServerWithMiddleware(mockRepo)
 
-		// Role Check -> False
-		mockRepo.On("HasAnySystemRole", mock.Anything, "u_common", "", mock.Anything).Return(false, nil)
+		// RBAC Middleware: permission denied
+		mockRepo.On("HasAnySystemRole", mock.Anything, "u_common", "NS", mock.Anything).Return(false, nil)
 
 		reqBody := model.SystemOwnerUpsertRequest{Namespace: "ns", UserID: "u_1"}
-		headers := map[string]string{
-			"authentication": "Bearer token",
-			"x-user-id":      "u_common",
-		}
+		headers := map[string]string{"x-user-id": "u_common"}
 
-		rec := PerformRequest(e, http.MethodPost, "/user_roles/owner_403", reqBody, headers)
+		rec := PerformRequest(e, http.MethodPost, apiPath, reqBody, headers)
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
 
 	t.Run("assign system owner already exists (conflict) and return 409", func(t *testing.T) {
-		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.POST("/user_roles/owner_409", h.PostSystemOwner)
+		e := SetupServerWithMiddleware(mockRepo)
 
-		// 1. Role Check -> True
-		mockRepo.On("HasAnySystemRole", mock.Anything, "moderator_1", "", mock.Anything).Return(true, nil)
-		// 2. Create -> ErrConflict (simulated via Repo ErrDuplicate)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "moderator_1", "NS_CONFLICT", mock.Anything).Return(true, nil)
 		mockRepo.On("CreateUserRole", mock.Anything, mock.Anything).Return(repository.ErrDuplicate)
 
 		reqBody := model.SystemOwnerUpsertRequest{Namespace: "ns_conflict", UserID: "u_1"}
-		headers := map[string]string{
-			"authentication": "Bearer token",
-			"x-user-id":      "moderator_1",
-		}
+		headers := map[string]string{"x-user-id": "moderator_1"}
 
-		rec := PerformRequest(e, http.MethodPost, "/user_roles/owner_409", reqBody, headers)
+		rec := PerformRequest(e, http.MethodPost, apiPath, reqBody, headers)
 		assert.Equal(t, http.StatusConflict, rec.Code)
 	})
 
 	t.Run("assign system owner internal error and return 500", func(t *testing.T) {
-		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.POST("/user_roles/owner_500", h.PostSystemOwner)
+		e := SetupServerWithMiddleware(mockRepo)
 
-		// 1. Role Check -> True
-		mockRepo.On("HasAnySystemRole", mock.Anything, "moderator_1", "", mock.Anything).Return(true, nil)
-		// 2. Create -> Error
+		mockRepo.On("HasAnySystemRole", mock.Anything, "moderator_1", "NS_ERROR", mock.Anything).Return(true, nil)
 		mockRepo.On("CreateUserRole", mock.Anything, mock.Anything).Return(errors.New("db disconnect"))
 
 		reqBody := model.SystemOwnerUpsertRequest{Namespace: "ns_error", UserID: "u_1"}
-		headers := map[string]string{
-			"authentication": "Bearer token",
-			"x-user-id":      "moderator_1",
-		}
+		headers := map[string]string{"x-user-id": "moderator_1"}
 
-		rec := PerformRequest(e, http.MethodPost, "/user_roles/owner_500", reqBody, headers)
+		rec := PerformRequest(e, http.MethodPost, apiPath, reqBody, headers)
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	})
 }

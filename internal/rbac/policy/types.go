@@ -13,6 +13,13 @@ const (
 
 // OperationPolicy defines the permission requirements for an operation
 type OperationPolicy struct {
+	// API routing fields (for middleware)
+	Method    string            `json:"method,omitempty"`    // HTTP method: GET, POST, PUT, DELETE
+	Path      string            `json:"path,omitempty"`      // API path: /api/v1/user_roles
+	Params    map[string]string `json:"params,omitempty"`    // Param extraction: {"namespace": "body.namespace"}
+	Condition map[string]string `json:"condition,omitempty"` // Matching condition: {"scope": "system"}
+
+	// Permission fields
 	Permission             string     `json:"permission"`
 	CheckScope             CheckScope `json:"check_scope"`
 	NamespaceRequired      bool       `json:"namespace_required,omitempty"`
@@ -53,4 +60,11 @@ type OperationRequest struct {
 	ResourceType     string
 	ParentResourceID string
 	Role             string // Target role - used to auto-detect viewer operations (e.g., "viewer" triggers widget-specific handling)
+}
+
+// APIConfig represents a single API endpoint configuration for middleware matching
+type APIConfig struct {
+	Entity    string           // Entity name (system, dashboard, etc.)
+	Operation string           // Operation name (assign_owner, get_members, etc.)
+	Policy    *OperationPolicy // Full policy including permission, check_scope, params
 }

@@ -3,32 +3,70 @@
   "scope": "system",
   "operations": {
     "assign_owner": {
+      "method": "POST",
+      "path": "/api/v1/user_roles/owner",
       "permission": "platform.system.add_owner",
-      "check_scope": "system"
+      "check_scope": "system",
+      "params": {
+        "namespace": "body.namespace"
+      }
     },
     "transfer_owner": {
+      "method": "PUT",
+      "path": "/api/v1/user_roles/owner",
       "permission": "platform.system.transfer_owner",
-      "check_scope": "system"
+      "check_scope": "system",
+      "params": {
+        "namespace": "body.namespace"
+      }
     },
     "assign_user_role": {
+      "method": "POST",
+      "path": "/api/v1/user_roles",
       "permission": "platform.system.add_member",
-      "check_scope": "system"
+      "check_scope": "system",
+      "params": {
+        "namespace": "body.namespace"
+      }
     },
     "assign_user_roles_batch": {
+      "method": "POST",
+      "path": "/api/v1/user_roles/batch",
       "permission": "platform.system.add_member",
-      "check_scope": "system"
+      "check_scope": "system",
+      "params": {
+        "namespace": "body.namespace"
+      }
     },
     "delete_user_role": {
+      "method": "DELETE",
+      "path": "/api/v1/user_roles",
       "permission": "platform.system.remove_member",
-      "check_scope": "system"
+      "check_scope": "system",
+      "params": {
+        "namespace": "query.namespace"
+      }
     },
     "get_members": {
+      "method": "GET",
+      "path": "/api/v1/user_roles",
       "permission": "platform.system.get_member",
-      "check_scope": "system"
+      "check_scope": "system",
+      "params": {
+        "namespace": "query.namespace"
+      },
+      "condition": {
+        "scope": "system"
+      }
     },
     "get_my_roles": {
+      "method": "GET",
+      "path": "/api/v1/user_roles/me",
       "permission": "platform.system.read",
-      "check_scope": "self_roles"
+      "check_scope": "self_roles",
+      "condition": {
+        "scope": "system"
+      }
     }
   }
 }

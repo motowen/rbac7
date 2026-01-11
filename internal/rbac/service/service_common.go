@@ -50,7 +50,8 @@ func NewService(repo repository.RBACRepository) *Service {
 }
 
 func (s *Service) GetUserRolesMe(ctx context.Context, callerID string, req model.GetUserRolesMeReq) ([]*model.UserRole, error) {
-	// Get All My Roles first
+	// Permission check handled by RBAC middleware for self_roles check_scope
+
 	filter := model.UserRoleFilter{UserID: callerID}
 	if req.Scope != "" {
 		filter.Scope = req.Scope
@@ -64,7 +65,7 @@ func (s *Service) GetUserRolesMe(ctx context.Context, callerID string, req model
 		return nil, err
 	}
 
-	// Permission Check using PolicyEngine (auto-infers entity from scope)
+	// Self-roles permission check: verify caller has read permission
 	if !s.Policy.CheckSelfRolesPermission(roles, req.Scope, req.ResourceType) {
 		return nil, ErrForbidden
 	}
@@ -73,22 +74,7 @@ func (s *Service) GetUserRolesMe(ctx context.Context, callerID string, req model
 }
 
 func (s *Service) GetUserRoles(ctx context.Context, callerID string, req model.GetUserRolesReq) ([]*model.UserRole, error) {
-	// Permission Check using PolicyEngine (auto-infers entity from scope)
-	canList, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
-		CallerID:         callerID,
-		Operation:        "get_members",
-		Scope:            req.Scope,
-		Namespace:        req.Namespace,
-		ResourceID:       req.ResourceID,
-		ResourceType:     req.ResourceType,
-		ParentResourceID: req.ParentResourceID,
-	})
-	if err != nil {
-		return nil, err
-	}
-	if !canList {
-		return nil, ErrForbidden
-	}
+	// Permission check handled by RBAC middleware
 
 	filter := model.UserRoleFilter{
 		UserID:       req.UserID,
@@ -104,10 +90,8 @@ func (s *Service) GetUserRoles(ctx context.Context, callerID string, req model.G
 
 func (s *Service) CheckPermission(ctx context.Context, callerID string, req model.CheckPermissionReq) (bool, error) {
 	if req.Scope == model.ScopeSystem {
-		// Use internal method to check the actual permission requested
 		return s.checkSystemPermissionInternal(ctx, callerID, req.Namespace, req.Permission)
 	} else if req.Scope == model.ScopeResource {
-		// Use PolicyEngine's CheckResourceAccess for dashboard_widget inheritance logic
 		return s.Policy.CheckResourceAccess(ctx, s.Repo, callerID, req.ResourceID, req.ResourceType, req.Permission, req.ParentResourceID)
 	}
 
@@ -116,7 +100,6 @@ func (s *Service) CheckPermission(ctx context.Context, callerID string, req mode
 
 // checkSystemPermissionInternal checks system permission using PolicyEngine's internal methods
 func (s *Service) checkSystemPermissionInternal(ctx context.Context, callerID, namespace, permission string) (bool, error) {
-	// Get roles that have this permission (from PolicyEngine's role mappings)
 	requiredRoles := s.Policy.GetRolesWithPermission(permission, true)
 	if len(requiredRoles) == 0 {
 		return false, nil

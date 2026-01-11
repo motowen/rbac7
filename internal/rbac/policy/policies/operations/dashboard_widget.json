@@ -4,28 +4,81 @@
     "parent_entity": "dashboard",
     "operations": {
         "assign_viewer": {
+            "method": "POST",
+            "path": "/api/v1/user_roles/resources",
             "permission": "resource.dashboard.add_widget_viewer",
             "check_scope": "parent_resource",
-            "parent_resource_required": true
+            "parent_resource_required": true,
+            "params": {
+                "resource_id": "body.resource_id",
+                "resource_type": "body.resource_type",
+                "parent_resource_id": "body.parent_resource_id",
+                "role": "body.role"
+            },
+            "condition": {
+                "resource_type": "dashboard_widget",
+                "role": "viewer"
+            }
         },
         "assign_user_roles_batch": {
+            "method": "POST",
+            "path": "/api/v1/user_roles/resources/batch",
             "permission": "resource.dashboard.add_widget_viewer",
             "check_scope": "parent_resource",
-            "parent_resource_required": true
+            "parent_resource_required": true,
+            "params": {
+                "resource_id": "body.resource_id",
+                "resource_type": "body.resource_type",
+                "parent_resource_id": "body.parent_resource_id",
+                "role": "body.role"
+            },
+            "condition": {
+                "resource_type": "dashboard_widget",
+                "role": "viewer"
+            }
         },
         "delete_viewer": {
+            "method": "DELETE",
+            "path": "/api/v1/user_roles/resources",
             "permission": "resource.dashboard.add_widget_viewer",
             "check_scope": "parent_resource",
-            "parent_resource_required": true
+            "parent_resource_required": true,
+            "params": {
+                "resource_id": "query.resource_id",
+                "resource_type": "query.resource_type",
+                "parent_resource_id": "query.parent_resource_id",
+                "role": "query.role"
+            },
+            "condition": {
+                "resource_type": "dashboard_widget",
+                "role": "viewer"
+            }
         },
         "get_members": {
+            "method": "GET",
+            "path": "/api/v1/user_roles",
             "permission": "resource.dashboard_widget.get_member",
             "check_scope": "parent_resource",
-            "parent_resource_required": true
+            "parent_resource_required": true,
+            "params": {
+                "resource_id": "query.resource_id",
+                "resource_type": "query.resource_type",
+                "parent_resource_id": "query.parent_resource_id"
+            },
+            "condition": {
+                "scope": "resource",
+                "resource_type": "dashboard_widget"
+            }
         },
         "get_my_roles": {
+            "method": "GET",
+            "path": "/api/v1/user_roles/me",
             "permission": "resource.dashboard_widget.read",
-            "check_scope": "self_roles"
+            "check_scope": "self_roles",
+            "condition": {
+                "scope": "resource",
+                "resource_type": "dashboard_widget"
+            }
         }
     }
 }

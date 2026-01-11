@@ -8,23 +8,50 @@
             "namespace_required": true
         },
         "assign_viewers_batch": {
+            "method": "POST",
+            "path": "/api/v1/user_roles/library_widgets/batch",
             "permission": "platform.system.add_member",
             "check_scope": "system",
-            "namespace_required": true
+            "namespace_required": true,
+            "params": {
+                "namespace": "body.namespace"
+            }
         },
         "delete_viewer": {
+            "method": "DELETE",
+            "path": "/api/v1/user_roles/library_widgets",
             "permission": "platform.system.remove_member",
             "check_scope": "system",
-            "namespace_required": true
+            "namespace_required": true,
+            "params": {
+                "namespace": "query.namespace"
+            }
         },
         "get_members": {
+            "method": "GET",
+            "path": "/api/v1/user_roles",
             "permission": "resource.library_widget.get_member",
             "check_scope": "system",
-            "namespace_required": true
+            "namespace_required": true,
+            "params": {
+                "namespace": "query.namespace",
+                "resource_id": "query.resource_id",
+                "resource_type": "query.resource_type"
+            },
+            "condition": {
+                "scope": "resource",
+                "resource_type": "library_widget"
+            }
         },
         "get_my_roles": {
+            "method": "GET",
+            "path": "/api/v1/user_roles/me",
             "permission": "resource.library_widget.read",
-            "check_scope": "self_roles"
+            "check_scope": "self_roles",
+            "condition": {
+                "scope": "resource",
+                "resource_type": "library_widget"
+            }
         }
     }
 }

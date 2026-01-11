@@ -5,15 +5,13 @@ import (
 	"errors"
 	"log"
 	"rbac7/internal/rbac/model"
-	"rbac7/internal/rbac/policy"
 	"rbac7/internal/rbac/repository"
 
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func (s *Service) AssignResourceOwner(ctx context.Context, callerID string, req model.AssignResourceOwnerReq) error {
-	// Permission: None required for AssignResourceOwner as per requirements.
-	// UserID: Auto-assigned to Caller.
+	// Permission check handled by RBAC middleware (check_scope: none)
 
 	// Check if owner already exists
 	count, err := s.Repo.CountResourceOwners(ctx, req.ResourceID, req.ResourceType)
@@ -24,7 +22,6 @@ func (s *Service) AssignResourceOwner(ctx context.Context, callerID string, req 
 		return ErrConflict
 	}
 
-	// 1. Create new UserRole
 	newRole := &model.UserRole{
 		UserID:       callerID, // Caller becomes owner
 		Role:         model.RoleResourceOwner,
@@ -39,7 +36,7 @@ func (s *Service) AssignResourceOwner(ctx context.Context, callerID string, req 
 	err = s.Repo.CreateUserRole(ctx, newRole)
 	if err != nil {
 		if errors.Is(err, repository.ErrDuplicate) {
-			return ErrConflict // "resource owner already exists"
+			return ErrConflict
 		}
 		return err
 	}
@@ -53,26 +50,11 @@ func (s *Service) TransferResourceOwner(ctx context.Context, callerID string, re
 		return ErrBadRequest
 	}
 
-	// Permission: resource.dashboard.transfer_owner (or generic resource.transfer_owner)
-	hasPerm, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
-		CallerID:     callerID,
-		Entity:       req.ResourceType,
-		Operation:    "transfer_owner",
-		ResourceID:   req.ResourceID,
-		ResourceType: req.ResourceType,
-	})
-	if err != nil {
-		return err
-	}
-	if !hasPerm {
-		return ErrForbidden
-	}
+	// Permission check handled by RBAC middleware
 
-	// Old Owner = Caller (Simplification)
 	oldOwnerID := callerID
 
-	// Namespace is empty string
-	err = s.Repo.TransferResourceOwner(ctx, req.ResourceID, req.ResourceType, oldOwnerID, req.UserID, callerID)
+	err := s.Repo.TransferResourceOwner(ctx, req.ResourceID, req.ResourceType, oldOwnerID, req.UserID, callerID)
 	if err != nil {
 		return err
 	}
@@ -82,39 +64,21 @@ func (s *Service) TransferResourceOwner(ctx context.Context, callerID string, re
 }
 
 func (s *Service) AssignResourceUserRole(ctx context.Context, callerID string, req model.AssignResourceUserRoleReq) error {
-	// Scope implied Resource
 	if req.Role == model.RoleResourceOwner {
 		return ErrForbidden // Use Transfer or AssignOwner
 	}
-	// Validate Role? (admin, editor, viewer)
 	if req.Role != "admin" && req.Role != "editor" && req.Role != "viewer" {
 		return ErrBadRequest
 	}
 
-	// Permission Check using PolicyEngine (auto-detects widget viewer operations via Role)
-	canAssign, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
-		CallerID:         callerID,
-		Operation:        "assign_user_role",
-		ResourceID:       req.ResourceID,
-		ResourceType:     req.ResourceType,
-		ParentResourceID: req.ParentResourceID,
-		Role:             req.Role,
-	})
-	if err != nil {
-		return err
-	}
-	if !canAssign {
-		return ErrForbidden
-	}
+	// Permission check handled by RBAC middleware
 
-	// Prevent adding duplicate owner? ALready checked Role != Owner.
-	// Check if target user is ALREADY owner?
+	// Check if target user is already owner
 	isOwner, err := s.Repo.HasResourceRole(ctx, req.UserID, req.ResourceID, req.ResourceType, model.RoleResourceOwner)
 	if err != nil {
 		return err
 	}
 	if isOwner {
-		// Cannot change Owner's role via Assign. Must Transfer.
 		return ErrForbidden
 	}
 
@@ -122,7 +86,7 @@ func (s *Service) AssignResourceUserRole(ctx context.Context, callerID string, r
 		UserID:       req.UserID,
 		Role:         req.Role,
 		Scope:        model.ScopeResource,
-		Namespace:    "", // No namespace
+		Namespace:    "",
 		ResourceID:   req.ResourceID,
 		ResourceType: req.ResourceType,
 		UserType:     req.UserType,
@@ -145,33 +109,7 @@ func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID string, r
 		return ErrBadRequest
 	}
 
-	// For widget, determine target role for proper permission check
-	var targetRole string
-	if req.ResourceType == model.ResourceTypeDashboardWidget {
-		isViewer, err := s.Repo.HasResourceRole(ctx, req.UserID, req.ResourceID, req.ResourceType, model.RoleResourceViewer)
-		if err != nil {
-			return err
-		}
-		if isViewer {
-			targetRole = model.RoleResourceViewer
-		}
-	}
-
-	// Permission Check using PolicyEngine (auto-detects widget viewer operations via Role)
-	canDelete, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
-		CallerID:         callerID,
-		Operation:        "delete_user_role",
-		ResourceID:       req.ResourceID,
-		ResourceType:     req.ResourceType,
-		ParentResourceID: req.ParentResourceID,
-		Role:             targetRole,
-	})
-	if err != nil {
-		return err
-	}
-	if !canDelete {
-		return ErrForbidden
-	}
+	// Permission check handled by RBAC middleware
 
 	// Cannot remove Owner
 	isOwner, err := s.Repo.HasResourceRole(ctx, req.UserID, req.ResourceID, req.ResourceType, model.RoleResourceOwner)
@@ -179,7 +117,7 @@ func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID string, r
 		return err
 	}
 	if isOwner {
-		return ErrForbidden // Cannot remove owner
+		return ErrForbidden
 	}
 
 	err = s.Repo.DeleteUserRole(ctx, "", req.UserID, model.ScopeResource, req.ResourceID, req.ResourceType, callerID)
@@ -195,34 +133,7 @@ func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID string, r
 }
 
 func (s *Service) AssignResourceUserRoles(ctx context.Context, callerID string, req model.AssignResourceUserRolesReq) (*model.BatchUpsertResult, error) {
-	// Permission Check using PolicyEngine
-	var opReq policy.OperationRequest
-	if req.ResourceType == model.ResourceTypeDashboardWidget && req.Role == model.RoleResourceViewer {
-		opReq = policy.OperationRequest{
-			CallerID:         callerID,
-			Entity:           "dashboard_widget",
-			Operation:        "assign_user_roles_batch",
-			ResourceID:       req.ResourceID,
-			ResourceType:     req.ResourceType,
-			ParentResourceID: req.ParentResourceID,
-		}
-	} else {
-		opReq = policy.OperationRequest{
-			CallerID:     callerID,
-			Entity:       req.ResourceType,
-			Operation:    "assign_user_roles_batch",
-			ResourceID:   req.ResourceID,
-			ResourceType: req.ResourceType,
-		}
-	}
-
-	canAssign, err := s.Policy.CheckOperationPermission(ctx, s.Repo, opReq)
-	if err != nil {
-		return nil, err
-	}
-	if !canAssign {
-		return nil, ErrForbidden
-	}
+	// Permission check handled by RBAC middleware
 
 	// Build roles slice for bulk upsert
 	var roles []*model.UserRole
@@ -257,23 +168,9 @@ func (s *Service) AssignResourceUserRoles(ctx context.Context, callerID string, 
 }
 
 // AssignLibraryWidgetViewers - Batch assign viewers to a library_widget
-// Permission: platform.system.add_member in namespace
 func (s *Service) AssignLibraryWidgetViewers(ctx context.Context, callerID string, req model.AssignLibraryWidgetViewersReq) (*model.BatchUpsertResult, error) {
-	// Permission Check: Caller needs platform.system.add_member in this namespace
-	canAssign, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
-		CallerID:  callerID,
-		Entity:    "library_widget",
-		Operation: "assign_viewers_batch",
-		Namespace: req.Namespace,
-	})
-	if err != nil {
-		return nil, err
-	}
-	if !canAssign {
-		return nil, ErrForbidden
-	}
+	// Permission check handled by RBAC middleware
 
-	// Build roles slice for bulk upsert
 	var roles []*model.UserRole
 	userType := req.UserType
 	if userType == "" {
@@ -307,23 +204,10 @@ func (s *Service) AssignLibraryWidgetViewers(ctx context.Context, callerID strin
 }
 
 // DeleteLibraryWidgetViewer - Remove a viewer from a library_widget
-// Permission: platform.system.remove_member in namespace
 func (s *Service) DeleteLibraryWidgetViewer(ctx context.Context, callerID string, req model.DeleteLibraryWidgetViewerReq) error {
-	// Permission Check: Caller needs platform.system.remove_member in this namespace
-	canRemove, err := s.Policy.CheckOperationPermission(ctx, s.Repo, policy.OperationRequest{
-		CallerID:  callerID,
-		Entity:    "library_widget",
-		Operation: "delete_viewer",
-		Namespace: req.Namespace,
-	})
-	if err != nil {
-		return err
-	}
-	if !canRemove {
-		return ErrForbidden
-	}
+	// Permission check handled by RBAC middleware
 
-	err = s.Repo.DeleteUserRole(ctx, req.Namespace, req.UserID, model.ScopeResource,
+	err := s.Repo.DeleteUserRole(ctx, req.Namespace, req.UserID, model.ScopeResource,
 		req.ResourceID, model.ResourceTypeLibraryWidget, callerID)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
