@@ -155,11 +155,13 @@ func TestGetUserRolesList(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		e := SetupServerWithMiddleware(mockRepo)
 
+		// Middleware passes through for validation failure cases
 		mockRepo.On("HasAnyResourceRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Maybe()
 		mockRepo.On("HasAnySystemRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Maybe()
 		mockRepo.On("FindUserRoles", mock.Anything, mock.Anything).Return([]*model.UserRole{}, nil).Maybe()
 
-		path := apiPath + "?scope=resource&resource_type=d1"
+		// Use 'dashboard' to match middleware config, missing resource_id triggers validation error
+		path := apiPath + "?scope=resource&resource_type=dashboard"
 		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "admin_1"})
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
@@ -168,11 +170,13 @@ func TestGetUserRolesList(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		e := SetupServerWithMiddleware(mockRepo)
 
+		// Middleware passes through for validation failure cases
 		mockRepo.On("HasAnyResourceRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Maybe()
 		mockRepo.On("HasAnySystemRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Maybe()
 		mockRepo.On("FindUserRoles", mock.Anything, mock.Anything).Return([]*model.UserRole{}, nil).Maybe()
 
-		path := apiPath + "?scope=resource&resource_id=&resource_type="
+		// Empty resource_id/type triggers validation error
+		path := apiPath + "?scope=resource&resource_id=&resource_type=dashboard"
 		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "admin_1"})
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
