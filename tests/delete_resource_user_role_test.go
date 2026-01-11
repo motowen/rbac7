@@ -59,7 +59,11 @@ func TestDeleteResourceUserRole(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		e := SetupServerWithMiddleware(mockRepo)
 
+		// Middleware may pass through when no matching config (missing resource_type)
+		// Handler validation will reject missing resource_type
 		mockRepo.On("HasAnyResourceRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Maybe()
+		mockRepo.On("HasAnySystemRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Maybe()
+		mockRepo.On("DeleteUserRole", mock.Anything, mock.Anything).Return(nil).Maybe()
 
 		rec := PerformRequest(e, http.MethodDelete, "/api/v1/user_roles/resources?user_id=u1&resource_id=r1", nil, map[string]string{
 			"x-user-id": "caller",
