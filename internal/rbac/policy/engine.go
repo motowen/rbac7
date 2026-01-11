@@ -30,12 +30,22 @@ func NewEngine() (*Engine, error) {
 		return nil, fmt.Errorf("failed to load check permission config: %w", err)
 	}
 
-	// Initialize with default role permissions (can be externalized later)
+	// Load role permissions from JSON files
+	systemRolePerms, err := loader.LoadSystemRolePermissions()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load system role permissions: %w", err)
+	}
+
+	resourceRolePerms, err := loader.LoadResourceRolePermissions()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load resource role permissions: %w", err)
+	}
+
 	engine := &Engine{
 		entityPolicies:    entityPolicies,
 		checkPermConfig:   checkPermConfig,
-		systemRolePerms:   getSystemRolePermissions(),
-		resourceRolePerms: getResourceRolePermissions(),
+		systemRolePerms:   systemRolePerms,
+		resourceRolePerms: resourceRolePerms,
 	}
 
 	return engine, nil
@@ -300,102 +310,4 @@ func (e *Engine) CheckSelfRolesPermission(roles []*model.UserRole, scope, resour
 	}
 
 	return e.CheckRolesHavePermission(roles, opPolicy.Permission)
-}
-
-func getSystemRolePermissions() map[string][]string {
-	return map[string][]string{
-		"moderator": {
-			model.PermPlatformSystemCreate,
-			model.PermPlatformSystemRead,
-			model.PermPlatformSystemAddOwner,
-		},
-		"owner": {
-			model.PermPlatformSystemUpdate,
-			model.PermPlatformSystemRead,
-			model.PermPlatformSystemAddMember,
-			model.PermPlatformSystemRemoveMember,
-			model.PermPlatformSystemGetMember,
-			model.PermPlatformSystemTransferOwner,
-			model.PermSystemResourceCreate,
-			model.PermSystemResourceRead,
-			model.PermSystemResourceDelete,
-			model.PermSystemResourceUpdate,
-			model.PermSystemResourcePublish,
-			model.PermResourceLibraryWidgetGetMember,
-		},
-		"admin": {
-			model.PermPlatformSystemUpdate,
-			model.PermPlatformSystemRead,
-			model.PermPlatformSystemAddMember,
-			model.PermPlatformSystemRemoveMember,
-			model.PermPlatformSystemGetMember,
-			model.PermSystemResourceCreate,
-			model.PermSystemResourceRead,
-			model.PermSystemResourceDelete,
-			model.PermSystemResourceUpdate,
-			model.PermSystemResourcePublish,
-			model.PermResourceLibraryWidgetGetMember,
-		},
-		"dev_user": {
-			model.PermPlatformSystemRead,
-			model.PermSystemResourceCreate,
-			model.PermSystemResourceRead,
-			model.PermSystemResourceDelete,
-			model.PermSystemResourceUpdate,
-			model.PermSystemResourcePublish,
-		},
-		"viewer": {
-			model.PermPlatformSystemRead,
-			model.PermSystemResourceRead,
-		},
-	}
-}
-
-// getResourceRolePermissions returns resource role permission mappings
-func getResourceRolePermissions() map[string][]string {
-	return map[string][]string{
-		"owner": {
-			model.PermResourceDashboardRead,
-			model.PermResourceDashboardUpdate,
-			model.PermResourceDashboardDelete,
-			model.PermResourceDashboardAddMember,
-			model.PermResourceDashboardRemoveMember,
-			model.PermResourceDashboardGetMember,
-			model.PermResourceDashboardTransferOwner,
-			model.PermResourceDashboardAddWidget,
-			model.PermResourceDashboardRemoveWidget,
-			model.PermResourceDashboardAddWidgetViewer,
-			model.PermResourceDashboardWidgetRead,
-			model.PermResourceDashboardWidgetGetMember,
-			model.PermResourceLibraryWidgetRead,
-		},
-		"admin": {
-			model.PermResourceDashboardRead,
-			model.PermResourceDashboardUpdate,
-			model.PermResourceDashboardDelete,
-			model.PermResourceDashboardAddMember,
-			model.PermResourceDashboardRemoveMember,
-			model.PermResourceDashboardGetMember,
-			model.PermResourceDashboardAddWidget,
-			model.PermResourceDashboardRemoveWidget,
-			model.PermResourceDashboardAddWidgetViewer,
-			model.PermResourceDashboardWidgetRead,
-			model.PermResourceDashboardWidgetGetMember,
-			model.PermResourceLibraryWidgetRead,
-		},
-		"editor": {
-			model.PermResourceDashboardRead,
-			model.PermResourceDashboardUpdate,
-			model.PermResourceDashboardAddWidget,
-			model.PermResourceDashboardRemoveWidget,
-			model.PermResourceDashboardAddWidgetViewer,
-			model.PermResourceDashboardWidgetRead,
-			model.PermResourceDashboardWidgetGetMember,
-		},
-		"viewer": {
-			model.PermResourceDashboardRead,
-			model.PermResourceDashboardWidgetRead,
-			model.PermResourceLibraryWidgetRead,
-		},
-	}
 }

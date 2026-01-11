@@ -238,7 +238,7 @@ func (r *MongoRepository) BulkUpsertUserRoles(ctx context.Context, roles []*mode
 
 	// Ordered: false allows partial success
 	opts := options.BulkWrite().SetOrdered(false)
-	result, err := coll.BulkWrite(ctx, writeModels, opts)
+	_, err := coll.BulkWrite(ctx, writeModels, opts)
 
 	batchResult := &model.BatchUpsertResult{
 		SuccessCount: 0,

@@ -1,0 +1,46 @@
+{
+    "moderator": [
+        "platform.system.create",
+        "platform.system.read",
+        "platform.system.add_owner"
+    ],
+    "owner": [
+        "platform.system.update",
+        "platform.system.read",
+        "platform.system.add_member",
+        "platform.system.remove_member",
+        "platform.system.get_member",
+        "platform.system.transfer_owner",
+        "system.resource.create",
+        "system.resource.read",
+        "system.resource.delete",
+        "system.resource.update",
+        "system.resource.publish",
+        "resource.library_widget.get_member"
+    ],
+    "admin": [
+        "platform.system.update",
+        "platform.system.read",
+        "platform.system.add_member",
+        "platform.system.remove_member",
+        "platform.system.get_member",
+        "system.resource.create",
+        "system.resource.read",
+        "system.resource.delete",
+        "system.resource.update",
+        "system.resource.publish",
+        "resource.library_widget.get_member"
+    ],
+    "dev_user": [
+        "platform.system.read",
+        "system.resource.create",
+        "system.resource.read",
+        "system.resource.delete",
+        "system.resource.update",
+        "system.resource.publish"
+    ],
+    "viewer": [
+        "platform.system.read",
+        "system.resource.read"
+    ]
+}

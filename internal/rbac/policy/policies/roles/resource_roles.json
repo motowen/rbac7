@@ -1,0 +1,45 @@
+{
+    "owner": [
+        "resource.dashboard.read",
+        "resource.dashboard.update",
+        "resource.dashboard.delete",
+        "resource.dashboard.add_member",
+        "resource.dashboard.remove_member",
+        "resource.dashboard.get_member",
+        "resource.dashboard.transfer_owner",
+        "resource.dashboard.add_widget",
+        "resource.dashboard.remove_widget",
+        "resource.dashboard.add_widget_viewer",
+        "resource.dashboard_widget.read",
+        "resource.dashboard_widget.get_member",
+        "resource.library_widget.read"
+    ],
+    "admin": [
+        "resource.dashboard.read",
+        "resource.dashboard.update",
+        "resource.dashboard.delete",
+        "resource.dashboard.add_member",
+        "resource.dashboard.remove_member",
+        "resource.dashboard.get_member",
+        "resource.dashboard.add_widget",
+        "resource.dashboard.remove_widget",
+        "resource.dashboard.add_widget_viewer",
+        "resource.dashboard_widget.read",
+        "resource.dashboard_widget.get_member",
+        "resource.library_widget.read"
+    ],
+    "editor": [
+        "resource.dashboard.read",
+        "resource.dashboard.update",
+        "resource.dashboard.add_widget",
+        "resource.dashboard.remove_widget",
+        "resource.dashboard.add_widget_viewer",
+        "resource.dashboard_widget.read",
+        "resource.dashboard_widget.get_member"
+    ],
+    "viewer": [
+        "resource.dashboard.read",
+        "resource.dashboard_widget.read",
+        "resource.library_widget.read"
+    ]
+}

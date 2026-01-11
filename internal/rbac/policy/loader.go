@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-//go:embed policies/operations/*.json policies/check_permission.json
+//go:embed policies/operations/*.json policies/check_permission.json policies/roles/*.json
 var policiesFS embed.FS
 
 // Loader loads policy configurations from embedded JSON files
@@ -60,4 +60,34 @@ func (l *Loader) LoadCheckPermissionConfig() (*CheckPermissionConfig, error) {
 	}
 
 	return &config, nil
+}
+
+// LoadSystemRolePermissions loads system role permissions from JSON
+func (l *Loader) LoadSystemRolePermissions() (map[string][]string, error) {
+	data, err := policiesFS.ReadFile("policies/roles/system_roles.json")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read system_roles.json: %w", err)
+	}
+
+	var perms map[string][]string
+	if err := json.Unmarshal(data, &perms); err != nil {
+		return nil, fmt.Errorf("failed to parse system_roles.json: %w", err)
+	}
+
+	return perms, nil
+}
+
+// LoadResourceRolePermissions loads resource role permissions from JSON
+func (l *Loader) LoadResourceRolePermissions() (map[string][]string, error) {
+	data, err := policiesFS.ReadFile("policies/roles/resource_roles.json")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read resource_roles.json: %w", err)
+	}
+
+	var perms map[string][]string
+	if err := json.Unmarshal(data, &perms); err != nil {
+		return nil, fmt.Errorf("failed to parse resource_roles.json: %w", err)
+	}
+
+	return perms, nil
 }
