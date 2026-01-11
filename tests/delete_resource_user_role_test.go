@@ -121,4 +121,49 @@ func TestDeleteResourceUserRole(t *testing.T) {
 		})
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	})
+
+	// Dashboard Widget tests
+
+	t.Run("delete dashboard_widget viewer success with parent_resource_id and return 200", func(t *testing.T) {
+		mockRepo := new(MockRBACRepository)
+		e := SetupServerWithMiddleware(mockRepo)
+
+		// RBAC Middleware: check permission on parent dashboard
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "dash_1", "dashboard", mock.Anything).Return(true, nil)
+		// Service: owner check
+		mockRepo.On("HasResourceRole", mock.Anything, "u1", "w1", "dashboard_widget", model.RoleResourceOwner).Return(false, nil)
+		// Service: delete
+		mockRepo.On("DeleteUserRole", mock.Anything, "", "u1", model.ScopeResource, "w1", "dashboard_widget", "caller").Return(nil)
+
+		rec := PerformRequest(e, http.MethodDelete, "/api/v1/user_roles/resources?user_id=u1&resource_id=w1&resource_type=dashboard_widget&role=viewer&parent_resource_id=dash_1", nil, map[string]string{
+			"x-user-id": "caller",
+		})
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("delete dashboard_widget viewer missing parent_resource_id and return 400", func(t *testing.T) {
+		mockRepo := new(MockRBACRepository)
+		e := SetupServerWithMiddleware(mockRepo)
+
+		// No mocks needed - middleware should return 400 before any permission check
+		// because parent_resource_required=true for dashboard_widget delete_viewer
+
+		rec := PerformRequest(e, http.MethodDelete, "/api/v1/user_roles/resources?user_id=u1&resource_id=w1&resource_type=dashboard_widget&role=viewer", nil, map[string]string{
+			"x-user-id": "caller",
+		})
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("delete dashboard_widget viewer forbidden on parent and return 403", func(t *testing.T) {
+		mockRepo := new(MockRBACRepository)
+		e := SetupServerWithMiddleware(mockRepo)
+
+		// RBAC Middleware: permission denied on parent dashboard
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "dash_1", "dashboard", mock.Anything).Return(false, nil)
+
+		rec := PerformRequest(e, http.MethodDelete, "/api/v1/user_roles/resources?user_id=u1&resource_id=w1&resource_type=dashboard_widget&role=viewer&parent_resource_id=dash_1", nil, map[string]string{
+			"x-user-id": "caller",
+		})
+		assert.Equal(t, http.StatusForbidden, rec.Code)
+	})
 }

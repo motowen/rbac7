@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 
@@ -39,6 +40,8 @@ func (m *RBACMiddleware) Middleware() echo.MiddlewareFunc {
 
 			// 2. Find matching API configs
 			configs, exists := m.apiConfigs[key]
+			log.Printf("Audit:RBACMiddleware. key=%s, configs=%v, exists=%v", key, configs, exists)
+
 			if !exists {
 				// No RBAC config for this path, pass through
 				return next(c)
@@ -65,6 +68,7 @@ func (m *RBACMiddleware) Middleware() echo.MiddlewareFunc {
 
 			// 5. Find matching config based on conditions
 			config := m.findMatchingConfig(c, configs, bodyData)
+			log.Printf("Audit:RBACMiddleware. config=%v", config)
 			if config == nil {
 				// No matching condition, pass through (shouldn't happen if JSON is complete)
 				return next(c)
@@ -78,8 +82,18 @@ func (m *RBACMiddleware) Middleware() echo.MiddlewareFunc {
 			// 7. Build OperationRequest
 			opReq := m.buildOperationRequest(c, config, callerID, bodyData)
 
+			log.Printf("Audit:RBACMiddleware. opReq=%v", opReq)
+
+			// 7.5 Validate required parameters before permission check
+			if config.Policy.ParentResourceRequired && opReq.ParentResourceID == "" {
+				return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+					Error: model.ErrorDetail{Code: "bad_request", Message: "parent_resource_id is required for this operation"},
+				})
+			}
+
 			// 8. Check permission
 			allowed, err := m.policyEngine.CheckOperationPermission(c.Request().Context(), m.repo, opReq)
+			log.Printf("Audit:RBACMiddleware. allowed=%v, err=%v", allowed, err)
 			if err != nil {
 				return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 					Error: model.ErrorDetail{Code: "internal_error", Message: err.Error()},
