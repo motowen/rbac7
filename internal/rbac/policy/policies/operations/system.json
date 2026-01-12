@@ -13,6 +13,7 @@
       "path": "/api/v1/user_roles/owner",
       "permission": "platform.system.transfer_owner",
       "check_scope": "system",
+      "namespace_required": true,
       "params": {
         "namespace": "body.namespace"
       }
@@ -22,6 +23,7 @@
       "path": "/api/v1/user_roles",
       "permission": "platform.system.add_member",
       "check_scope": "system",
+      "namespace_required": true,
       "params": {
         "namespace": "body.namespace"
       }
@@ -31,6 +33,7 @@
       "path": "/api/v1/user_roles/batch",
       "permission": "platform.system.add_member",
       "check_scope": "system",
+      "namespace_required": true,
       "params": {
         "namespace": "body.namespace"
       }
@@ -40,6 +43,7 @@
       "path": "/api/v1/user_roles",
       "permission": "platform.system.remove_member",
       "check_scope": "system",
+      "namespace_required": true,
       "params": {
         "namespace": "query.namespace"
       }
@@ -49,6 +53,7 @@
       "path": "/api/v1/user_roles",
       "permission": "platform.system.get_member",
       "check_scope": "system",
+      "namespace_required": true,
       "params": {
         "namespace": "query.namespace"
       },

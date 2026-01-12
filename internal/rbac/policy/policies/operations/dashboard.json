@@ -20,6 +20,7 @@
             "path": "/api/v1/user_roles/resources/owner",
             "permission": "resource.dashboard.transfer_owner",
             "check_scope": "resource",
+            "resource_id_required": true,
             "params": {
                 "resource_id": "body.resource_id",
                 "resource_type": "body.resource_type"
@@ -33,6 +34,7 @@
             "path": "/api/v1/user_roles/resources",
             "permission": "resource.dashboard.add_member",
             "check_scope": "resource",
+            "resource_id_required": true,
             "params": {
                 "resource_id": "body.resource_id",
                 "resource_type": "body.resource_type"
@@ -59,6 +61,7 @@
             "path": "/api/v1/user_roles/resources",
             "permission": "resource.dashboard.remove_member",
             "check_scope": "resource",
+            "resource_id_required": true,
             "params": {
                 "resource_id": "query.resource_id",
                 "resource_type": "query.resource_type"
@@ -72,6 +75,7 @@
             "path": "/api/v1/user_roles",
             "permission": "resource.dashboard.get_member",
             "check_scope": "resource",
+            "resource_id_required": true,
             "params": {
                 "resource_id": "query.resource_id",
                 "resource_type": "query.resource_type"

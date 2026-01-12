@@ -27,7 +27,10 @@ func RegisterRoutes(e *echo.Echo, h *handler.SystemHandler, policyEngine *policy
 	v1 := e.Group("/api/v1")
 	v1.Use(handler.RequestIDMiddleware) // Add Request ID middleware to API routes
 
-	// Create and apply RBAC middleware
+	// Permissions check endpoint - NO RBAC middleware (anyone can check permissions)
+	v1.POST("/permissions/check", h.PostPermissionsCheck)
+
+	// Create and apply RBAC middleware for protected routes
 	rbacMiddleware := handler.NewRBACMiddleware(policyEngine, repo, apiConfigs)
 	v1.Use(rbacMiddleware.Middleware())
 
@@ -46,7 +49,6 @@ func RegisterRoutes(e *echo.Echo, h *handler.SystemHandler, policyEngine *policy
 	v1.POST("/user_roles/resources", h.PostResourceUserRoles)
 	v1.POST("/user_roles/resources/batch", h.PostResourceUserRolesBatch)
 	v1.DELETE("/user_roles/resources", h.DeleteResourceUserRoles)
-	v1.POST("/permissions/check", h.PostPermissionsCheck) // No RBAC check for this endpoint
 
 	// Library Widget Routes
 	v1.POST("/user_roles/library_widgets/batch", h.PostLibraryWidgetViewers)

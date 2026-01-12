@@ -43,8 +43,9 @@ func (m *RBACMiddleware) Middleware() echo.MiddlewareFunc {
 			log.Printf("Audit:RBACMiddleware. key=%s, configs=%v, exists=%v", key, configs, exists)
 
 			if !exists {
-				// No RBAC config for this path, pass through
-				return next(c)
+				return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+					Error: model.ErrorDetail{Code: "bad_request", Message: "No matching RBAC configuration for this request"},
+				})
 			}
 
 			// 3. Extract caller ID
@@ -70,8 +71,10 @@ func (m *RBACMiddleware) Middleware() echo.MiddlewareFunc {
 			config := m.findMatchingConfig(c, configs, bodyData)
 			log.Printf("Audit:RBACMiddleware. config=%v", config)
 			if config == nil {
-				// No matching condition, pass through (shouldn't happen if JSON is complete)
-				return next(c)
+				// No matching condition - return error (invalid request)
+				return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+					Error: model.ErrorDetail{Code: "bad_request", Message: "No matching RBAC configuration for this request"},
+				})
 			}
 
 			// 6. Skip if no permission required
@@ -85,6 +88,19 @@ func (m *RBACMiddleware) Middleware() echo.MiddlewareFunc {
 			log.Printf("Audit:RBACMiddleware. opReq=%v", opReq)
 
 			// 7.5 Validate required parameters before permission check
+			// Prevent permission check with empty values that could match wrong records
+			if config.Policy.NamespaceRequired && opReq.Namespace == "" {
+				return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+					Error: model.ErrorDetail{Code: "bad_request", Message: "namespace is required for this operation"},
+				})
+			}
+
+			if config.Policy.ResourceIDRequired && opReq.ResourceID == "" {
+				return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+					Error: model.ErrorDetail{Code: "bad_request", Message: "resource_id is required for this operation"},
+				})
+			}
+
 			if config.Policy.ParentResourceRequired && opReq.ParentResourceID == "" {
 				return c.JSON(http.StatusBadRequest, model.ErrorResponse{
 					Error: model.ErrorDetail{Code: "bad_request", Message: "parent_resource_id is required for this operation"},

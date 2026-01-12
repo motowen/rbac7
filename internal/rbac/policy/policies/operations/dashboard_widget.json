@@ -9,6 +9,7 @@
             "permission": "resource.dashboard.add_widget_viewer",
             "check_scope": "parent_resource",
             "parent_resource_required": true,
+            "resource_id_required": true,
             "params": {
                 "resource_id": "body.resource_id",
                 "resource_type": "body.resource_type",
@@ -26,6 +27,7 @@
             "permission": "resource.dashboard.add_widget_viewer",
             "check_scope": "parent_resource",
             "parent_resource_required": true,
+            "resource_id_required": true,
             "params": {
                 "resource_id": "body.resource_id",
                 "resource_type": "body.resource_type",
@@ -43,6 +45,7 @@
             "permission": "resource.dashboard.add_widget_viewer",
             "check_scope": "parent_resource",
             "parent_resource_required": true,
+            "resource_id_required": true,
             "params": {
                 "resource_id": "query.resource_id",
                 "resource_type": "query.resource_type",
@@ -58,21 +61,12 @@
             "permission": "resource.dashboard_widget.get_member",
             "check_scope": "parent_resource",
             "parent_resource_required": true,
+            "resource_id_required": true,
             "params": {
                 "resource_id": "query.resource_id",
                 "resource_type": "query.resource_type",
                 "parent_resource_id": "query.parent_resource_id"
             },
-            "condition": {
-                "scope": "resource",
-                "resource_type": "dashboard_widget"
-            }
-        },
-        "get_my_roles": {
-            "method": "GET",
-            "path": "/api/v1/user_roles/me",
-            "permission": "resource.dashboard_widget.read",
-            "check_scope": "self_roles",
             "condition": {
                 "scope": "resource",
                 "resource_type": "dashboard_widget"

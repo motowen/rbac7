@@ -24,6 +24,7 @@ type OperationPolicy struct {
 	Permission             string     `json:"permission"`
 	CheckScope             CheckScope `json:"check_scope"`
 	NamespaceRequired      bool       `json:"namespace_required,omitempty"`
+	ResourceIDRequired     bool       `json:"resource_id_required,omitempty"`
 	ParentResourceRequired bool       `json:"parent_resource_required,omitempty"`
 }
 
