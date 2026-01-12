@@ -6,29 +6,21 @@ import (
 	"net/url"
 	"testing"
 
-	"rbac7/internal/rbac/handler"
 	"rbac7/internal/rbac/model"
-	"rbac7/internal/rbac/service"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-// Define local mock
-// GetMeMockRepo usage is replaced by shared MockRBACRepository in mock_repo.go
-
 func TestGetUserRolesMe(t *testing.T) {
-	// API: GET /user_roles/me
+	apiPath := "/api/v1/user_roles/me"
 
 	t.Run("get current user system roles success and return 200", func(t *testing.T) {
-		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.GET("/user_roles/me", h.GetUserRolesMe)
+		e := SetupServerWithMiddleware(mockRepo)
 
 		expectedRoles := []*model.UserRole{
-			{UserID: "u_1", Role: "admin", Namespace: "ns_1", Scope: "system"},
+			{UserID: "u_1", Role: "admin", Namespace: "NS_1", Scope: "system"},
 		}
 
 		mockRepo.On("FindUserRoles", mock.Anything, mock.MatchedBy(func(f model.UserRoleFilter) bool {
@@ -37,7 +29,7 @@ func TestGetUserRolesMe(t *testing.T) {
 
 		params := url.Values{}
 		params.Add("scope", "system")
-		path := "/user_roles/me?" + params.Encode()
+		path := apiPath + "?" + params.Encode()
 
 		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "u_1"})
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -45,11 +37,8 @@ func TestGetUserRolesMe(t *testing.T) {
 	})
 
 	t.Run("get current user resource roles success and return 200", func(t *testing.T) {
-		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.GET("/user_roles/me", h.GetUserRolesMe)
+		e := SetupServerWithMiddleware(mockRepo)
 
 		expectedRoles := []*model.UserRole{
 			{UserID: "u_1", Role: "viewer", ResourceID: "r1", ResourceType: "dashboard", Scope: "resource"},
@@ -62,7 +51,7 @@ func TestGetUserRolesMe(t *testing.T) {
 		params := url.Values{}
 		params.Add("scope", "resource")
 		params.Add("resource_type", "dashboard")
-		path := "/user_roles/me?" + params.Encode()
+		path := apiPath + "?" + params.Encode()
 
 		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "u_1"})
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -70,122 +59,66 @@ func TestGetUserRolesMe(t *testing.T) {
 	})
 
 	t.Run("get user roles missing scope parameter and return 400", func(t *testing.T) {
-		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.GET("/user_roles/me", h.GetUserRolesMe)
+		e := SetupServerWithMiddleware(mockRepo)
 
-		rec := PerformRequest(e, http.MethodGet, "/user_roles/me", nil, map[string]string{"x-user-id": "u_1"})
+		// Middleware passthrough for validation failures
+		mockRepo.On("FindUserRoles", mock.Anything, mock.Anything).Return([]*model.UserRole{}, nil).Maybe()
+
+		rec := PerformRequest(e, http.MethodGet, apiPath, nil, map[string]string{"x-user-id": "u_1"})
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
 	t.Run("get resource roles missing resource_type parameter and return 400", func(t *testing.T) {
-		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.GET("/user_roles/me", h.GetUserRolesMe)
+		e := SetupServerWithMiddleware(mockRepo)
 
-		path := "/user_roles/me?scope=resource"
+		mockRepo.On("FindUserRoles", mock.Anything, mock.Anything).Return([]*model.UserRole{}, nil).Maybe()
+
+		path := apiPath + "?scope=resource"
 		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "u_1"})
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
 	t.Run("get system user roles having resource_type parameter and return 400", func(t *testing.T) {
-		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.GET("/user_roles/me", h.GetUserRolesMe)
+		e := SetupServerWithMiddleware(mockRepo)
 
-		path := "/user_roles/me?scope=system&resource_type=dashboard"
+		mockRepo.On("FindUserRoles", mock.Anything, mock.Anything).Return([]*model.UserRole{}, nil).Maybe()
+
+		path := apiPath + "?scope=system&resource_type=dashboard"
 		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "u_1"})
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
 	t.Run("get user roles invalid scope value and return 400", func(t *testing.T) {
-		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.GET("/user_roles/me", h.GetUserRolesMe)
+		e := SetupServerWithMiddleware(mockRepo)
 
-		path := "/user_roles/me?scope=invalid_scope"
+		mockRepo.On("FindUserRoles", mock.Anything, mock.Anything).Return([]*model.UserRole{}, nil).Maybe()
+
+		path := apiPath + "?scope=invalid_scope"
 		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "u_1"})
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
-	t.Run("get user roles unauthorized (no token) and return 401", func(t *testing.T) {
-		e := SetupServer()
-		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.GET("/user_roles/me", h.GetUserRolesMe)
-
-		rec := PerformRequest(e, http.MethodGet, "/user_roles/me?scope=system", nil, nil)
-		assert.Equal(t, http.StatusUnauthorized, rec.Code)
-	})
-
 	t.Run("get user roles forbidden (missing system read permission) and return 403", func(t *testing.T) {
-		// This implies we need a permission check even for "Me" if the user spec implies strict RBAC
-		// Assuming we check if user is valid member or blocked?
-		// For now, let's assuming simply having a valid user-id is enough for "Me" unless specific requirement.
-		// However, user ASKED for this test case. So we must implement logic to trigger 403.
-		// Maybe we mock strict mode?
-		// Or maybe we treat "Me" as requiring at least SOME role in the system?
-		// Let's implement check for 'read' permission on system?
-
-		// IMPLEMENTATION PLAN: service.GetUserRolesMe will need to call HasAnySystemRole or check permissions.
-
-		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.GET("/user_roles/me", h.GetUserRolesMe)
+		e := SetupServerWithMiddleware(mockRepo)
 
-		// If we enforce permission check:
-		// mockRepo.On("HasAnySystemRole", ...).Return(false, nil)
-
-		// For now, just setting up test expectation.
-		// If current impl doesn't check, this will FAIL as 200, which is good (TDD).
-
-		// Actually, standard "Get Me" usually doesn't need extra permission in many systems,
-		// but let's assume this system requires a global "system.read" or similar.
-
-		// Let's mock a permission check failure if the service decides to call one.
-		// Note: Service currently doesn't call one.
-
-		path := "/user_roles/me?scope=system"
-		// We expect 403.
-		// We will implement the Logic in Service layer later.
-
-		// We can't easily mock "HasAnySystemRole" here because we don't know what permission/role the service will check yet.
-		// But let's assume we will check for *some* role or verify the user?
-
-		// To match user's explicit request: return 403.
-		// I'll leave the Mock setup empty for now or setup a catch-all that returns false if we add logic.
-
-		// Mock FindUserRoles to return empty list, thus failing the permission check (no role with 'read' capability)
-		// which results in 403 Forbidden
+		// Return empty roles => No read permission => 403
 		mockRepo.On("FindUserRoles", mock.Anything, mock.MatchedBy(func(f model.UserRoleFilter) bool {
-			return f.UserID == "banned_user"
+			return f.UserID == "banned_user" && f.Scope == "system"
 		})).Return([]*model.UserRole{}, nil)
 
+		path := apiPath + "?scope=system"
 		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "banned_user"})
-		// assert.Equal(t, http.StatusForbidden, rec.Code)
-		// NOTE: I will comment out the assertion until I implement the handler logic to avoid blocking compilation/panic
-		// if I'm just filling file structure first.
-		// Wait, I should assert, and let it fail!
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
 
 	t.Run("get user roles forbidden (missing resource read permission) and return 403", func(t *testing.T) {
-		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.GET("/user_roles/me", h.GetUserRolesMe)
+		e := SetupServerWithMiddleware(mockRepo)
 
 		// Return empty roles => No read permission => 403
 		mockRepo.On("FindUserRoles", mock.Anything, mock.MatchedBy(func(f model.UserRoleFilter) bool {
@@ -195,33 +128,34 @@ func TestGetUserRolesMe(t *testing.T) {
 		params := url.Values{}
 		params.Add("scope", "resource")
 		params.Add("resource_type", "dashboard")
-		path := "/user_roles/me?" + params.Encode()
+		path := apiPath + "?" + params.Encode()
 
 		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "u_banned"})
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
 
-	t.Run("get user roles internal server error and return 500", func(t *testing.T) {
-		e := SetupServer()
+	t.Run("get user roles unauthorized (no token) and return 401", func(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.GET("/user_roles/me", h.GetUserRolesMe)
+		e := SetupServerWithMiddleware(mockRepo)
+
+		rec := PerformRequest(e, http.MethodGet, apiPath+"?scope=system", nil, nil)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	})
+
+	t.Run("get user roles internal server error and return 500", func(t *testing.T) {
+		mockRepo := new(MockRBACRepository)
+		e := SetupServerWithMiddleware(mockRepo)
 
 		mockRepo.On("FindUserRoles", mock.Anything, mock.Anything).Return(nil, errors.New("db error"))
 
-		path := "/user_roles/me?scope=system" // Valid request
+		path := apiPath + "?scope=system"
 		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "u_1"})
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	})
 
-	// Response correctness (not only status code)
 	t.Run("get user roles should only return roles of current user", func(t *testing.T) {
-		e := SetupServer()
 		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
-		h := handler.NewSystemHandler(svc)
-		e.GET("/user_roles/me", h.GetUserRolesMe)
+		e := SetupServerWithMiddleware(mockRepo)
 
 		expectedRoles := []*model.UserRole{
 			{UserID: "u_correct", Role: "admin", Scope: "system"},
@@ -230,7 +164,7 @@ func TestGetUserRolesMe(t *testing.T) {
 			return f.UserID == "u_correct"
 		})).Return(expectedRoles, nil)
 
-		path := "/user_roles/me?scope=system"
+		path := apiPath + "?scope=system"
 		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "u_correct"})
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Contains(t, rec.Body.String(), "u_correct")
