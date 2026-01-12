@@ -41,39 +41,39 @@ func TestAllOperationsPolicies(t *testing.T) {
 		expectedPermission     string
 		expectedCheckScope     CheckScope
 		expectedNamespaceReq   bool
+		expectedResourceIDReq  bool
 		expectedParentRequired bool
 	}{
 		// === system.json ===
-		{"system", "assign_owner", "platform.system.add_owner", CheckScopeSystem, false, false},
-		{"system", "transfer_owner", "platform.system.transfer_owner", CheckScopeSystem, false, false},
-		{"system", "assign_user_role", "platform.system.add_member", CheckScopeSystem, false, false},
-		{"system", "assign_user_roles_batch", "platform.system.add_member", CheckScopeSystem, false, false},
-		{"system", "delete_user_role", "platform.system.remove_member", CheckScopeSystem, false, false},
-		{"system", "get_members", "platform.system.get_member", CheckScopeSystem, false, false},
-		{"system", "get_my_roles", "platform.system.read", CheckScopeSelfRoles, false, false},
+		{"system", "assign_owner", "platform.system.add_owner", CheckScopeGlobal, false, false, false},
+		{"system", "transfer_owner", "platform.system.transfer_owner", CheckScopeSystem, true, false, false},
+		{"system", "assign_user_role", "platform.system.add_member", CheckScopeSystem, true, false, false},
+		{"system", "assign_user_roles_batch", "platform.system.add_member", CheckScopeSystem, true, false, false},
+		{"system", "delete_user_role", "platform.system.remove_member", CheckScopeSystem, true, false, false},
+		{"system", "get_members", "platform.system.get_member", CheckScopeSystem, true, false, false},
+		{"system", "get_my_roles", "platform.system.read", CheckScopeSelfRoles, false, false, false},
 
 		// === dashboard.json ===
-		{"dashboard", "assign_owner", "", CheckScopeNone, false, false},
-		{"dashboard", "transfer_owner", "resource.dashboard.transfer_owner", CheckScopeResource, false, false},
-		{"dashboard", "assign_user_role", "resource.dashboard.add_member", CheckScopeResource, false, false},
-		{"dashboard", "assign_user_roles_batch", "resource.dashboard.add_member", CheckScopeResource, false, false},
-		{"dashboard", "delete_user_role", "resource.dashboard.remove_member", CheckScopeResource, false, false},
-		{"dashboard", "get_members", "resource.dashboard.get_member", CheckScopeResource, false, false},
-		{"dashboard", "get_my_roles", "resource.dashboard.read", CheckScopeSelfRoles, false, false},
+		{"dashboard", "assign_owner", "", CheckScopeNone, false, false, false},
+		{"dashboard", "transfer_owner", "resource.dashboard.transfer_owner", CheckScopeResource, false, true, false},
+		{"dashboard", "assign_user_role", "resource.dashboard.add_member", CheckScopeResource, false, true, false},
+		{"dashboard", "assign_user_roles_batch", "resource.dashboard.add_member", CheckScopeResource, false, false, false},
+		{"dashboard", "delete_user_role", "resource.dashboard.remove_member", CheckScopeResource, false, true, false},
+		{"dashboard", "get_members", "resource.dashboard.get_member", CheckScopeResource, false, true, false},
+		{"dashboard", "get_my_roles", "resource.dashboard.read", CheckScopeSelfRoles, false, false, false},
 
 		// === dashboard_widget.json ===
-		{"dashboard_widget", "assign_viewer", "resource.dashboard.add_widget_viewer", CheckScopeParentResource, false, true},
-		{"dashboard_widget", "assign_user_roles_batch", "resource.dashboard.add_widget_viewer", CheckScopeParentResource, false, true},
-		{"dashboard_widget", "delete_viewer", "resource.dashboard.add_widget_viewer", CheckScopeParentResource, false, true},
-		{"dashboard_widget", "get_members", "resource.dashboard_widget.get_member", CheckScopeParentResource, false, true},
-		{"dashboard_widget", "get_my_roles", "resource.dashboard_widget.read", CheckScopeSelfRoles, false, false},
+		{"dashboard_widget", "assign_viewer", "resource.dashboard.add_widget_viewer", CheckScopeParentResource, false, true, true},
+		{"dashboard_widget", "assign_user_roles_batch", "resource.dashboard.add_widget_viewer", CheckScopeParentResource, false, true, true},
+		{"dashboard_widget", "delete_viewer", "resource.dashboard.add_widget_viewer", CheckScopeParentResource, false, true, true},
+		{"dashboard_widget", "get_members", "resource.dashboard_widget.get_member", CheckScopeParentResource, false, true, true},
 
 		// === library_widget.json ===
-		{"library_widget", "assign_viewer", "platform.system.add_member", CheckScopeSystem, true, false},
-		{"library_widget", "assign_viewers_batch", "platform.system.add_member", CheckScopeSystem, true, false},
-		{"library_widget", "delete_viewer", "platform.system.remove_member", CheckScopeSystem, true, false},
-		{"library_widget", "get_members", "resource.library_widget.get_member", CheckScopeSystem, true, false},
-		{"library_widget", "get_my_roles", "resource.library_widget.read", CheckScopeSelfRoles, false, false},
+		{"library_widget", "assign_viewer", "platform.system.add_member", CheckScopeSystem, true, false, false},
+		{"library_widget", "assign_viewers_batch", "platform.system.add_member", CheckScopeSystem, true, false, false},
+		{"library_widget", "delete_viewer", "platform.system.remove_member", CheckScopeSystem, true, false, false},
+		{"library_widget", "get_members", "resource.library_widget.get_member", CheckScopeSystem, true, false, false},
+		{"library_widget", "get_my_roles", "resource.library_widget.read", CheckScopeSelfRoles, false, false, false},
 	}
 
 	for _, tc := range tests {
@@ -88,6 +88,8 @@ func TestAllOperationsPolicies(t *testing.T) {
 				"check_scope mismatch for %s/%s", tc.entity, tc.operation)
 			assert.Equal(t, tc.expectedNamespaceReq, policy.NamespaceRequired,
 				"namespace_required mismatch for %s/%s", tc.entity, tc.operation)
+			assert.Equal(t, tc.expectedResourceIDReq, policy.ResourceIDRequired,
+				"resource_id_required mismatch for %s/%s", tc.entity, tc.operation)
 			assert.Equal(t, tc.expectedParentRequired, policy.ParentResourceRequired,
 				"parent_resource_required mismatch for %s/%s", tc.entity, tc.operation)
 		})
