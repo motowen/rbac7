@@ -590,6 +590,53 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /resources/delete:
+    put:
+      tags:
+        - Resource
+      summary: Soft delete resource
+      description: |
+        Soft delete a resource and all its associated user roles (including owner).
+        This is used when deleting a resource entirely.
+
+        **Permission by resource type:**
+        - `dashboard`: `resource.dashboard.delete` on the dashboard itself
+        - `dashboard_widget`: `resource.dashboard.delete` on the PARENT dashboard
+        - `library_widget`: `system.resource.delete` in the widget's namespace
+
+        **Behavior:**
+        - Dashboard: soft deletes dashboard roles + all child widget roles (if `child_resource_ids` provided)
+        - Dashboard Widget: soft deletes widget roles only
+        - Library Widget: soft deletes widget roles only
+      parameters:
+        - $ref: '#/components/parameters/AuthenticationHeader'
+        - $ref: '#/components/parameters/XUserIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SoftDeleteResourceRequest'
+      responses:
+        '200':
+          description: Resource soft deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+        '400':
+          description: Bad request (missing required fields or invalid resource_type)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
 
 components:
   parameters:
@@ -903,3 +950,32 @@ components:
               reason:
                 type: string
                 example: "owner role protected"
+
+    SoftDeleteResourceRequest:
+      type: object
+      required: [resource_id, resource_type]
+      properties:
+        resource_id:
+          type: string
+          description: ID of the resource to soft delete
+          example: d_123
+        resource_type:
+          type: string
+          enum: [dashboard, dashboard_widget, library_widget]
+          description: Type of resource to delete
+          example: dashboard
+        parent_resource_id:
+          type: string
+          description: Required when resource_type is dashboard_widget. The parent dashboard ID.
+          example: d_123
+        child_resource_ids:
+          type: array
+          items:
+            type: string
+          description: Optional. When deleting a dashboard, include child widget IDs to soft delete their roles too.
+          example: ["w_1", "w_2"]
+        namespace:
+          type: string
+          description: Required when resource_type is library_widget. The publishing team namespace.
+          example: TEAM_ALPHA
+
