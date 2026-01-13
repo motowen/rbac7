@@ -105,6 +105,57 @@ func TestGetUserRolesList(t *testing.T) {
 		assert.Contains(t, rec.Body.String(), "u_2")
 	})
 
+	t.Run("list dashboard_widget resource members success and return 200", func(t *testing.T) {
+		mockRepo := new(MockRBACRepository)
+		e := SetupServerWithMiddleware(mockRepo)
+
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "admin_1", "d_1", "dashboard", mock.Anything).Return(true, nil)
+
+		expectedRoles := []*model.UserRole{
+			{UserID: "u_1", Role: "viewer", ResourceID: "dw_1", ResourceType: "dashboard_widget", Scope: "resource"},
+		}
+		mockRepo.On("FindUserRoles", mock.Anything, mock.MatchedBy(func(f model.UserRoleFilter) bool {
+			return f.Scope == "resource" && f.ResourceID == "dw_1" && f.ResourceType == "dashboard_widget"
+		})).Return(expectedRoles, nil)
+
+		params := url.Values{}
+		params.Add("scope", "resource")
+		params.Add("resource_id", "dw_1")
+		params.Add("resource_type", "dashboard_widget")
+		params.Add("parent_resource_id", "d_1")
+		path := apiPath + "?" + params.Encode()
+
+		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "admin_1"})
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), "u_1")
+	})
+
+	t.Run("list library_widget members success and return 200", func(t *testing.T) {
+		mockRepo := new(MockRBACRepository)
+		e := SetupServerWithMiddleware(mockRepo)
+
+		// RBAC Middleware: permission check
+		mockRepo.On("HasAnySystemRole", mock.Anything, "admin_1", "NS_1", mock.Anything).Return(true, nil)
+
+		expectedRoles := []*model.UserRole{
+			{UserID: "u_1", Role: "viewer", ResourceID: "lw_1", ResourceType: "library_widget", Scope: "resource"},
+		}
+		mockRepo.On("FindUserRoles", mock.Anything, mock.MatchedBy(func(f model.UserRoleFilter) bool {
+			return f.ResourceID == "lw_1" && f.ResourceType == "library_widget" && f.Scope == "resource"
+		})).Return(expectedRoles, nil)
+
+		params := url.Values{}
+		params.Add("scope", "resource")
+		params.Add("resource_id", "lw_1")
+		params.Add("resource_type", "library_widget")
+		params.Add("namespace", "NS_1")
+		path := apiPath + "?" + params.Encode()
+
+		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "admin_1"})
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), "u_1")
+	})
+
 	t.Run("list members missing scope parameter and return 400", func(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		e := SetupServerWithMiddleware(mockRepo)
