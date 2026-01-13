@@ -41,4 +41,6 @@ type RBACRepository interface {
 	CountResourceRoles(ctx context.Context, resourceID, resourceType string) (int64, error)
 	// Bulk upsert user roles (partial success allowed)
 	BulkUpsertUserRoles(ctx context.Context, roles []*model.UserRole) (*model.BatchUpsertResult, error)
+	// Soft delete all user roles for a resource (including owner)
+	SoftDeleteResourceUserRoles(ctx context.Context, req model.SoftDeleteResourceReq, deletedBy string) error
 }

@@ -221,3 +221,18 @@ func (s *Service) DeleteLibraryWidgetViewer(ctx context.Context, callerID string
 
 	return nil
 }
+
+// SoftDeleteResource - Soft delete all user roles for a resource
+// This is used when deleting a resource entirely (dashboard, dashboard_widget, library_widget)
+func (s *Service) SoftDeleteResource(ctx context.Context, callerID string, req model.SoftDeleteResourceReq) error {
+	// Permission check handled by RBAC middleware
+
+	if err := s.Repo.SoftDeleteResourceUserRoles(ctx, req, callerID); err != nil {
+		return err
+	}
+
+	log.Printf("Audit: Resource Soft Deleted. Caller=%s, Resource=%s:%s, ChildResources=%d",
+		callerID, req.ResourceType, req.ResourceID, len(req.ChildResourceIDs))
+
+	return nil
+}

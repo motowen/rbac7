@@ -94,6 +94,20 @@
                 "scope": "resource",
                 "resource_type": "dashboard"
             }
+        },
+        "delete_resource": {
+            "method": "PUT",
+            "path": "/api/v1/resources/delete",
+            "permission": "resource.dashboard.delete",
+            "check_scope": "resource",
+            "resource_id_required": true,
+            "params": {
+                "resource_id": "body.resource_id",
+                "resource_type": "body.resource_type"
+            },
+            "condition": {
+                "resource_type": "dashboard"
+            }
         }
     }
 }

@@ -398,3 +398,38 @@ func (r *MongoRepository) FindUserRoles(ctx context.Context, filter model.UserRo
 
 	return allRoles, nil
 }
+
+// SoftDeleteResourceUserRoles soft deletes all user roles for a resource (including owner).
+// This is used when deleting a resource entirely.
+// For dashboard: also deletes all child widget user roles.
+func (r *MongoRepository) SoftDeleteResourceUserRoles(ctx context.Context, req model.SoftDeleteResourceReq, deletedBy string) error {
+	now := time.Now()
+	update := bson.M{
+		"$set": bson.M{
+			"deleted_at": now,
+			"deleted_by": deletedBy,
+		},
+	}
+
+	// Collect all resource IDs to delete
+	resourceIDs := []string{req.ResourceID}
+	if len(req.ChildResourceIDs) > 0 {
+		resourceIDs = append(resourceIDs, req.ChildResourceIDs...)
+	}
+
+	// Build filter based on resource type
+	filter := bson.M{
+		"resource_id": bson.M{"$in": resourceIDs},
+		"scope":       model.ScopeResource,
+		"deleted_at":  nil, // Only delete active roles
+	}
+
+	// For library_widget, also match namespace
+	if req.ResourceType == "library_widget" && req.Namespace != "" {
+		filter["namespace"] = req.Namespace
+	}
+
+	// Execute update (no owner protection - this deletes everything including owner)
+	_, err := r.ResourceRoles.UpdateMany(ctx, filter, update)
+	return err
+}

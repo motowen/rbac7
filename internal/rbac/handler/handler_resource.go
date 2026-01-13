@@ -152,3 +152,32 @@ func (h *SystemHandler) PostResourceUserRolesBatch(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, result)
 }
+
+// PutDeleteResource handles PUT /resources/delete (Soft Delete Resource)
+func (h *SystemHandler) PutDeleteResource(c echo.Context) error {
+	callerID, err := h.extractCallerID(c)
+	if err != nil {
+		code, body := httpError(err)
+		return c.JSON(code, body)
+	}
+
+	var req model.SoftDeleteResourceReq
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "bad_request", Message: "Invalid body"},
+		})
+	}
+
+	if err := req.Validate(); err != nil {
+		code, body := validationError(err)
+		return c.JSON(code, body)
+	}
+
+	err = h.Service.SoftDeleteResource(c.Request().Context(), callerID, req)
+	if err != nil {
+		code, body := httpError(err)
+		return c.JSON(code, body)
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"status": "success"})
+}

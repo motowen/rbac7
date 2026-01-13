@@ -53,4 +53,7 @@ func RegisterRoutes(e *echo.Echo, h *handler.SystemHandler, policyEngine *policy
 	// Library Widget Routes
 	v1.POST("/user_roles/library_widgets/batch", h.PostLibraryWidgetViewers)
 	v1.DELETE("/user_roles/library_widgets", h.DeleteLibraryWidgetViewer)
+
+	// Resource Management Routes
+	v1.PUT("/resources/delete", h.PutDeleteResource)
 }

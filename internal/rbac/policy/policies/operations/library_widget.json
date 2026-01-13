@@ -52,6 +52,22 @@
                 "scope": "resource",
                 "resource_type": "library_widget"
             }
+        },
+        "delete_resource": {
+            "method": "PUT",
+            "path": "/api/v1/resources/delete",
+            "permission": "system.resource.delete",
+            "check_scope": "system",
+            "namespace_required": true,
+            "resource_id_required": true,
+            "params": {
+                "namespace": "body.namespace",
+                "resource_id": "body.resource_id",
+                "resource_type": "body.resource_type"
+            },
+            "condition": {
+                "resource_type": "library_widget"
+            }
         }
     }
 }

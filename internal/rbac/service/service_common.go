@@ -33,6 +33,8 @@ type RBACService interface {
 	// Library Widget
 	AssignLibraryWidgetViewers(ctx context.Context, callerID string, req model.AssignLibraryWidgetViewersReq) (*model.BatchUpsertResult, error)
 	DeleteLibraryWidgetViewer(ctx context.Context, callerID string, req model.DeleteLibraryWidgetViewerReq) error
+	// Resource Management
+	SoftDeleteResource(ctx context.Context, callerID string, req model.SoftDeleteResourceReq) error
 }
 
 type Service struct {
