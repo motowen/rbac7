@@ -3,7 +3,6 @@ package tests
 import (
 	"errors"
 	"net/http"
-	"net/url"
 	"testing"
 
 	"rbac7/internal/rbac/model"
@@ -12,10 +11,10 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// TestGetDashboardResource tests GET /api/v1/resources/dashboards/:id
+// TestGetDashboardResource tests POST /api/v1/resources/dashboards
 // Returns dashboard user roles + accessible widget IDs based on permission
 func TestGetDashboardResource(t *testing.T) {
-	apiBasePath := "/api/v1/resources/dashboards"
+	apiPath := "/api/v1/resources/dashboards"
 
 	// ============================================================================
 	// Success Cases
@@ -36,10 +35,13 @@ func TestGetDashboardResource(t *testing.T) {
 			return f.ResourceID == "d1" && f.ResourceType == "dashboard" && f.Scope == "resource"
 		})).Return(dashboardRoles, nil)
 
-		path := apiBasePath + "/d1"
+		payload := map[string]interface{}{
+			"resource_id":   "d1",
+			"resource_type": "dashboard",
+		}
 		headers := map[string]string{"x-user-id": "user_1"}
 
-		rec := PerformRequest(e, http.MethodGet, path, nil, headers)
+		rec := PerformRequest(e, http.MethodPost, apiPath, payload, headers)
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Contains(t, rec.Body.String(), "owner_1")
 		assert.Contains(t, rec.Body.String(), "accessible_widget_ids")
@@ -63,13 +65,14 @@ func TestGetDashboardResource(t *testing.T) {
 		mockRepo.On("CountResourceRoles", mock.Anything, "w1", "dashboard_widget").Return(int64(0), nil)
 		mockRepo.On("CountResourceRoles", mock.Anything, "w2", "dashboard_widget").Return(int64(0), nil)
 
-		params := url.Values{}
-		params.Add("child_widget_ids", "w1")
-		params.Add("child_widget_ids", "w2")
-		path := apiBasePath + "/d1?" + params.Encode()
+		payload := map[string]interface{}{
+			"resource_id":        "d1",
+			"resource_type":      "dashboard",
+			"child_resource_ids": []string{"w1", "w2"},
+		}
 		headers := map[string]string{"x-user-id": "user_1"}
 
-		rec := PerformRequest(e, http.MethodGet, path, nil, headers)
+		rec := PerformRequest(e, http.MethodPost, apiPath, payload, headers)
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Contains(t, rec.Body.String(), "w1")
 		assert.Contains(t, rec.Body.String(), "w2")
@@ -98,14 +101,14 @@ func TestGetDashboardResource(t *testing.T) {
 		mockRepo.On("CountResourceRoles", mock.Anything, "w3", "dashboard_widget").Return(int64(1), nil)
 		mockRepo.On("HasAnyResourceRole", mock.Anything, "user_1", "w3", "dashboard_widget", mock.Anything).Return(false, nil)
 
-		params := url.Values{}
-		params.Add("child_widget_ids", "w1")
-		params.Add("child_widget_ids", "w2")
-		params.Add("child_widget_ids", "w3")
-		path := apiBasePath + "/d1?" + params.Encode()
+		payload := map[string]interface{}{
+			"resource_id":        "d1",
+			"resource_type":      "dashboard",
+			"child_resource_ids": []string{"w1", "w2", "w3"},
+		}
 		headers := map[string]string{"x-user-id": "user_1"}
 
-		rec := PerformRequest(e, http.MethodGet, path, nil, headers)
+		rec := PerformRequest(e, http.MethodPost, apiPath, payload, headers)
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Contains(t, rec.Body.String(), "w1")
 		assert.Contains(t, rec.Body.String(), "w2")
@@ -132,13 +135,14 @@ func TestGetDashboardResource(t *testing.T) {
 		mockRepo.On("CountResourceRoles", mock.Anything, "w2", "dashboard_widget").Return(int64(1), nil)
 		mockRepo.On("HasAnyResourceRole", mock.Anything, "user_1", "w2", "dashboard_widget", mock.Anything).Return(false, nil)
 
-		params := url.Values{}
-		params.Add("child_widget_ids", "w1")
-		params.Add("child_widget_ids", "w2")
-		path := apiBasePath + "/d1?" + params.Encode()
+		payload := map[string]interface{}{
+			"resource_id":        "d1",
+			"resource_type":      "dashboard",
+			"child_resource_ids": []string{"w1", "w2"},
+		}
 		headers := map[string]string{"x-user-id": "user_1"}
 
-		rec := PerformRequest(e, http.MethodGet, path, nil, headers)
+		rec := PerformRequest(e, http.MethodPost, apiPath, payload, headers)
 		assert.Equal(t, http.StatusOK, rec.Code)
 		// accessible_widget_ids should be empty
 		assert.Contains(t, rec.Body.String(), `"accessible_widget_ids":[]`)
@@ -164,13 +168,14 @@ func TestGetDashboardResource(t *testing.T) {
 		mockRepo.On("CountResourceRoles", mock.Anything, "w2", "dashboard_widget").Return(int64(1), nil)
 		mockRepo.On("HasAnyResourceRole", mock.Anything, "user_1", "w2", "dashboard_widget", mock.Anything).Return(true, nil)
 
-		params := url.Values{}
-		params.Add("child_widget_ids", "w1")
-		params.Add("child_widget_ids", "w2")
-		path := apiBasePath + "/d1?" + params.Encode()
+		payload := map[string]interface{}{
+			"resource_id":        "d1",
+			"resource_type":      "dashboard",
+			"child_resource_ids": []string{"w1", "w2"},
+		}
 		headers := map[string]string{"x-user-id": "user_1"}
 
-		rec := PerformRequest(e, http.MethodGet, path, nil, headers)
+		rec := PerformRequest(e, http.MethodPost, apiPath, payload, headers)
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Contains(t, rec.Body.String(), "w1")
 		assert.Contains(t, rec.Body.String(), "w2")
@@ -187,10 +192,13 @@ func TestGetDashboardResource(t *testing.T) {
 
 		mockRepo.On("HasAnyResourceRole", mock.Anything, "user_1", "d1", "dashboard", mock.Anything).Return(false, nil)
 
-		path := apiBasePath + "/d1"
+		payload := map[string]interface{}{
+			"resource_id":   "d1",
+			"resource_type": "dashboard",
+		}
 		headers := map[string]string{"x-user-id": "user_1"}
 
-		rec := PerformRequest(e, http.MethodGet, path, nil, headers)
+		rec := PerformRequest(e, http.MethodPost, apiPath, payload, headers)
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
 
@@ -198,15 +206,29 @@ func TestGetDashboardResource(t *testing.T) {
 	// Validation Error Cases
 	// ============================================================================
 
-	t.Run("TC7: missing dashboard_id in path and return 400", func(t *testing.T) {
+	t.Run("TC7: missing resource_id and return 400", func(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		e := SetupServerWithMiddleware(mockRepo)
 
-		path := apiBasePath + "/"
+		payload := map[string]interface{}{
+			"resource_type": "dashboard",
+		}
 		headers := map[string]string{"x-user-id": "user_1"}
 
-		rec := PerformRequest(e, http.MethodGet, path, nil, headers)
-		// Empty path param returns 400 (RBAC middleware detects empty resource_id)
+		rec := PerformRequest(e, http.MethodPost, apiPath, payload, headers)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("TC8: missing resource_type and return 400", func(t *testing.T) {
+		mockRepo := new(MockRBACRepository)
+		e := SetupServerWithMiddleware(mockRepo)
+
+		payload := map[string]interface{}{
+			"resource_id": "d1",
+		}
+		headers := map[string]string{"x-user-id": "user_1"}
+
+		rec := PerformRequest(e, http.MethodPost, apiPath, payload, headers)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
@@ -218,9 +240,12 @@ func TestGetDashboardResource(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		e := SetupServerWithMiddleware(mockRepo)
 
-		path := apiBasePath + "/d1"
+		payload := map[string]interface{}{
+			"resource_id":   "d1",
+			"resource_type": "dashboard",
+		}
 
-		rec := PerformRequest(e, http.MethodGet, path, nil, nil)
+		rec := PerformRequest(e, http.MethodPost, apiPath, payload, nil)
 		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 	})
 
@@ -235,10 +260,13 @@ func TestGetDashboardResource(t *testing.T) {
 		mockRepo.On("HasAnyResourceRole", mock.Anything, "user_1", "d1", "dashboard", mock.Anything).Return(true, nil)
 		mockRepo.On("FindUserRoles", mock.Anything, mock.Anything).Return(nil, errors.New("db error"))
 
-		path := apiBasePath + "/d1"
+		payload := map[string]interface{}{
+			"resource_id":   "d1",
+			"resource_type": "dashboard",
+		}
 		headers := map[string]string{"x-user-id": "user_1"}
 
-		rec := PerformRequest(e, http.MethodGet, path, nil, headers)
+		rec := PerformRequest(e, http.MethodPost, apiPath, payload, headers)
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	})
 
@@ -254,12 +282,14 @@ func TestGetDashboardResource(t *testing.T) {
 		mockRepo.On("FindUserRoles", mock.Anything, mock.Anything).Return(dashboardRoles, nil)
 		mockRepo.On("CountResourceRoles", mock.Anything, "w1", "dashboard_widget").Return(int64(0), errors.New("db error"))
 
-		params := url.Values{}
-		params.Add("child_widget_ids", "w1")
-		path := apiBasePath + "/d1?" + params.Encode()
+		payload := map[string]interface{}{
+			"resource_id":        "d1",
+			"resource_type":      "dashboard",
+			"child_resource_ids": []string{"w1"},
+		}
 		headers := map[string]string{"x-user-id": "user_1"}
 
-		rec := PerformRequest(e, http.MethodGet, path, nil, headers)
+		rec := PerformRequest(e, http.MethodPost, apiPath, payload, headers)
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	})
 }

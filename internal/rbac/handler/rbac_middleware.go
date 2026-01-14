@@ -188,12 +188,6 @@ func (m *RBACMiddleware) buildOperationRequest(c echo.Context, config *policy.AP
 		}
 	}
 
-	// Fallback: use Entity as ResourceType when not explicitly provided
-	// This is common for resource-scoped APIs where the entity name matches resource_type
-	if opReq.ResourceType == "" && config.Policy.CheckScope == policy.CheckScopeResource {
-		opReq.ResourceType = config.Entity
-	}
-
 	return opReq
 }
 

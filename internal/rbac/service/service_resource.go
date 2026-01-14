@@ -245,8 +245,8 @@ func (s *Service) SoftDeleteResource(ctx context.Context, callerID string, req m
 func (s *Service) GetDashboardResource(ctx context.Context, callerID string, req model.GetDashboardResourceReq) (*model.GetDashboardResourceResp, error) {
 	// Get dashboard user roles
 	filter := model.UserRoleFilter{
-		ResourceID:   req.DashboardID,
-		ResourceType: "dashboard",
+		ResourceID:   req.ResourceID,
+		ResourceType: req.ResourceType,
 		Scope:        model.ScopeResource,
 	}
 	userRoles, err := s.Repo.FindUserRoles(ctx, filter)
@@ -268,7 +268,7 @@ func (s *Service) GetDashboardResource(ctx context.Context, callerID string, req
 	accessibleWidgetIDs := make([]string, 0)
 	viewerRoles := s.Policy.GetRolesWithPermission(model.PermResourceDashboardWidgetRead, false)
 
-	for _, widgetID := range req.ChildWidgetIDs {
+	for _, widgetID := range req.ChildResourceIDs {
 		// Check if widget is in whitelist mode (has roles assigned)
 		roleCount, err := s.Repo.CountResourceRoles(ctx, widgetID, "dashboard_widget")
 		if err != nil {

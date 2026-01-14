@@ -182,7 +182,7 @@ func (h *SystemHandler) PutDeleteResource(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{"status": "success"})
 }
 
-// GetDashboardResource handles GET /resources/dashboards/:id
+// GetDashboardResource handles POST /resources/dashboards
 // Returns dashboard user roles and accessible widget IDs
 func (h *SystemHandler) GetDashboardResource(c echo.Context) error {
 	callerID, err := h.extractCallerID(c)

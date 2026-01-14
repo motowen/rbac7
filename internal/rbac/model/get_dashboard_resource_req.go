@@ -4,26 +4,28 @@ import "strings"
 
 // GetDashboardResourceReq represents a request to get dashboard with accessible widgets
 type GetDashboardResourceReq struct {
-	DashboardID    string   `param:"id" validate:"required"`
-	ChildWidgetIDs []string `query:"child_widget_ids"`
+	ResourceID       string   `json:"resource_id" validate:"required,min=1,max=50"`
+	ResourceType     string   `json:"resource_type" validate:"required,min=1,max=50"`
+	ChildResourceIDs []string `json:"child_resource_ids"`
 }
 
 // Validate normalizes and validates the request
 func (r *GetDashboardResourceReq) Validate() error {
-	r.DashboardID = strings.TrimSpace(r.DashboardID)
+	r.ResourceID = strings.TrimSpace(r.ResourceID)
+	r.ResourceType = strings.TrimSpace(r.ResourceType)
 
-	// TrimSpace and remove duplicates from ChildWidgetIDs
-	if len(r.ChildWidgetIDs) > 0 {
+	// TrimSpace and remove duplicates from ChildResourceIDs
+	if len(r.ChildResourceIDs) > 0 {
 		seen := make(map[string]bool)
-		unique := make([]string, 0, len(r.ChildWidgetIDs))
-		for _, id := range r.ChildWidgetIDs {
+		unique := make([]string, 0, len(r.ChildResourceIDs))
+		for _, id := range r.ChildResourceIDs {
 			trimmed := strings.TrimSpace(id)
 			if trimmed != "" && !seen[trimmed] {
 				seen[trimmed] = true
 				unique = append(unique, trimmed)
 			}
 		}
-		r.ChildWidgetIDs = unique
+		r.ChildResourceIDs = unique
 	}
 
 	if err := GetValidator().Struct(r); err != nil {

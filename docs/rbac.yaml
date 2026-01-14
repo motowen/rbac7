@@ -637,8 +637,8 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /resources/dashboards/{id}:
-    get:
+  /resources/dashboards:
+    post:
       tags:
         - Resource
       summary: Get dashboard resource with accessible widgets
@@ -653,20 +653,12 @@ paths:
       parameters:
         - $ref: '#/components/parameters/AuthenticationHeader'
         - $ref: '#/components/parameters/XUserIdHeader'
-        - in: path
-          name: id
-          schema:
-            type: string
-          required: true
-          description: Dashboard ID
-        - in: query
-          name: child_widget_ids
-          schema:
-            type: array
-            items:
-              type: string
-          required: false
-          description: List of child widget IDs to check accessibility
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetDashboardResourceRequest'
       responses:
         '200':
           description: Dashboard resource with user roles and accessible widgets
@@ -675,7 +667,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetDashboardResourceResponse'
         '400':
-          description: Bad request (missing dashboard ID)
+          description: Bad request (missing resource_id or resource_type)
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1024,6 +1016,25 @@ components:
           type: string
           description: Required when resource_type is library_widget. The publishing team namespace.
           example: TEAM_ALPHA
+
+    GetDashboardResourceRequest:
+      type: object
+      required: [resource_id, resource_type]
+      properties:
+        resource_id:
+          type: string
+          description: Dashboard ID to get
+          example: d_123
+        resource_type:
+          type: string
+          description: Resource type (must be 'dashboard')
+          example: dashboard
+        child_resource_ids:
+          type: array
+          items:
+            type: string
+          description: List of child widget IDs to check accessibility
+          example: ["w_1", "w_2"]
 
     GetDashboardResourceResponse:
       type: object
