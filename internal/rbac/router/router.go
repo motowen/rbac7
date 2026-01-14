@@ -56,4 +56,5 @@ func RegisterRoutes(e *echo.Echo, h *handler.SystemHandler, policyEngine *policy
 
 	// Resource Management Routes
 	v1.PUT("/resources/delete", h.PutDeleteResource)
+	v1.GET("/resources/dashboards/:id", h.GetDashboardResource)
 }

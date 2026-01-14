@@ -637,6 +637,52 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /resources/dashboards/{id}:
+    get:
+      tags:
+        - Resource
+      summary: Get dashboard resource with accessible widgets
+      description: |
+        Get dashboard user roles and determine which child widgets the caller can access.
+
+        **Permission**: `resource.dashboard.read` on the dashboard
+
+        **Widget Accessibility Logic:**
+        - **Inheritance mode** (widget has 0 roles): inherits from parent dashboard → accessible
+        - **Whitelist mode** (widget has roles): strict check on widget → accessible only if caller is in whitelist
+      parameters:
+        - $ref: '#/components/parameters/AuthenticationHeader'
+        - $ref: '#/components/parameters/XUserIdHeader'
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: Dashboard ID
+        - in: query
+          name: child_widget_ids
+          schema:
+            type: array
+            items:
+              type: string
+          required: false
+          description: List of child widget IDs to check accessibility
+      responses:
+        '200':
+          description: Dashboard resource with user roles and accessible widgets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetDashboardResourceResponse'
+        '400':
+          description: Bad request (missing dashboard ID)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
 
 components:
   parameters:
@@ -978,4 +1024,29 @@ components:
           type: string
           description: Required when resource_type is library_widget. The publishing team namespace.
           example: TEAM_ALPHA
+
+    GetDashboardResourceResponse:
+      type: object
+      properties:
+        user_roles:
+          type: array
+          items:
+            type: object
+            properties:
+              user_id:
+                type: string
+                example: u_1
+              user_type:
+                type: string
+                example: member
+              role:
+                type: string
+                example: owner
+        accessible_widget_ids:
+          type: array
+          items:
+            type: string
+          description: Widget IDs the caller can access (based on inheritance or whitelist)
+          example: ["w_1", "w_2"]
+
 

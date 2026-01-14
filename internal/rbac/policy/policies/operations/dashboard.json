@@ -108,6 +108,16 @@
             "condition": {
                 "resource_type": "dashboard"
             }
+        },
+        "get_dashboard": {
+            "method": "GET",
+            "path": "/api/v1/resources/dashboards/:id",
+            "permission": "resource.dashboard.read",
+            "check_scope": "resource",
+            "resource_id_required": true,
+            "params": {
+                "resource_id": "path.id"
+            }
         }
     }
 }

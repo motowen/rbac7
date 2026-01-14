@@ -181,3 +181,33 @@ func (h *SystemHandler) PutDeleteResource(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, map[string]string{"status": "success"})
 }
+
+// GetDashboardResource handles GET /resources/dashboards/:id
+// Returns dashboard user roles and accessible widget IDs
+func (h *SystemHandler) GetDashboardResource(c echo.Context) error {
+	callerID, err := h.extractCallerID(c)
+	if err != nil {
+		code, body := httpError(err)
+		return c.JSON(code, body)
+	}
+
+	var req model.GetDashboardResourceReq
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "bad_request", Message: "Invalid parameters"},
+		})
+	}
+
+	if err := req.Validate(); err != nil {
+		code, body := validationError(err)
+		return c.JSON(code, body)
+	}
+
+	result, err := h.Service.GetDashboardResource(c.Request().Context(), callerID, req)
+	if err != nil {
+		code, body := httpError(err)
+		return c.JSON(code, body)
+	}
+
+	return c.JSON(http.StatusOK, result)
+}

@@ -236,3 +236,62 @@ func (s *Service) SoftDeleteResource(ctx context.Context, callerID string, req m
 
 	return nil
 }
+
+// GetDashboardResource - Get dashboard user roles and accessible widget IDs
+// Permission check is handled by RBAC middleware (resource.dashboard.read)
+// For each widget, check if caller can access:
+// - Inheritance mode (0 roles): inherit from parent dashboard -> accessible
+// - Whitelist mode (>0 roles): strict check on widget -> accessible only if caller has role
+func (s *Service) GetDashboardResource(ctx context.Context, callerID string, req model.GetDashboardResourceReq) (*model.GetDashboardResourceResp, error) {
+	// Get dashboard user roles
+	filter := model.UserRoleFilter{
+		ResourceID:   req.DashboardID,
+		ResourceType: "dashboard",
+		Scope:        model.ScopeResource,
+	}
+	userRoles, err := s.Repo.FindUserRoles(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to DTO
+	roleDTOs := make([]*model.UserRoleDTO, 0, len(userRoles))
+	for _, role := range userRoles {
+		roleDTOs = append(roleDTOs, &model.UserRoleDTO{
+			UserID:   role.UserID,
+			UserType: role.UserType,
+			Role:     role.Role,
+		})
+	}
+
+	// Determine accessible widget IDs
+	accessibleWidgetIDs := make([]string, 0)
+	viewerRoles := s.Policy.GetRolesWithPermission(model.PermResourceDashboardWidgetRead, false)
+
+	for _, widgetID := range req.ChildWidgetIDs {
+		// Check if widget is in whitelist mode (has roles assigned)
+		roleCount, err := s.Repo.CountResourceRoles(ctx, widgetID, "dashboard_widget")
+		if err != nil {
+			return nil, err
+		}
+
+		if roleCount == 0 {
+			// Inheritance mode: inherit from parent dashboard -> accessible
+			accessibleWidgetIDs = append(accessibleWidgetIDs, widgetID)
+		} else {
+			// Whitelist mode: strict check on widget
+			hasRole, err := s.Repo.HasAnyResourceRole(ctx, callerID, widgetID, "dashboard_widget", viewerRoles)
+			if err != nil {
+				return nil, err
+			}
+			if hasRole {
+				accessibleWidgetIDs = append(accessibleWidgetIDs, widgetID)
+			}
+		}
+	}
+
+	return &model.GetDashboardResourceResp{
+		UserRoles:           roleDTOs,
+		AccessibleWidgetIDs: accessibleWidgetIDs,
+	}, nil
+}
