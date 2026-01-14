@@ -23,8 +23,7 @@ func (h *SystemHandler) PostLibraryWidgetViewers(c echo.Context) error {
 	}
 
 	if err := req.Validate(); err != nil {
-		code, body := validationError(err)
-		return c.JSON(code, body)
+		return c.JSON(http.StatusBadRequest, validationError(err))
 	}
 
 	result, err := h.Service.AssignLibraryWidgetViewers(c.Request().Context(), callerID, req)
@@ -52,8 +51,7 @@ func (h *SystemHandler) DeleteLibraryWidgetViewer(c echo.Context) error {
 	}
 
 	if err := req.Validate(); err != nil {
-		code, body := validationError(err)
-		return c.JSON(code, body)
+		return c.JSON(http.StatusBadRequest, validationError(err))
 	}
 
 	err = h.Service.DeleteLibraryWidgetViewer(c.Request().Context(), callerID, req)

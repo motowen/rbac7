@@ -42,5 +42,5 @@ type RBACRepository interface {
 	// Bulk upsert user roles (partial success allowed)
 	BulkUpsertUserRoles(ctx context.Context, roles []*model.UserRole) (*model.BatchUpsertResult, error)
 	// Soft delete all user roles for a resource (including owner)
-	SoftDeleteResourceUserRoles(ctx context.Context, req model.SoftDeleteResourceReq, deletedBy string) error
+	SoftDeleteResourceUserRoles(ctx context.Context, req *model.SoftDeleteResourceReq, deletedBy string) error
 }

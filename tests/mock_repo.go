@@ -101,7 +101,7 @@ func (m *MockRBACRepository) BulkUpsertUserRoles(ctx context.Context, roles []*m
 	return args.Get(0).(*model.BatchUpsertResult), args.Error(1)
 }
 
-func (m *MockRBACRepository) SoftDeleteResourceUserRoles(ctx context.Context, req model.SoftDeleteResourceReq, deletedBy string) error {
+func (m *MockRBACRepository) SoftDeleteResourceUserRoles(ctx context.Context, req *model.SoftDeleteResourceReq, deletedBy string) error {
 	args := m.Called(ctx, req, deletedBy)
 	return args.Error(0)
 }

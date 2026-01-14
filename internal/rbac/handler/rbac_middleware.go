@@ -108,7 +108,7 @@ func (m *RBACMiddleware) Middleware() echo.MiddlewareFunc {
 			}
 
 			// 8. Check permission
-			allowed, err := m.policyEngine.CheckOperationPermission(c.Request().Context(), m.repo, opReq)
+			allowed, err := m.policyEngine.CheckOperationPermission(c.Request().Context(), m.repo, &opReq)
 			log.Printf("Audit:RBACMiddleware. allowed=%v, err=%v", allowed, err)
 			if err != nil {
 				return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
@@ -131,7 +131,7 @@ func (m *RBACMiddleware) Middleware() echo.MiddlewareFunc {
 // findMatchingConfig finds the API config that matches the request conditions
 func (m *RBACMiddleware) findMatchingConfig(c echo.Context, configs []*policy.APIConfig, bodyData map[string]interface{}) *policy.APIConfig {
 	for _, config := range configs {
-		if config.Policy.Condition == nil || len(config.Policy.Condition) == 0 {
+		if len(config.Policy.Condition) == 0 {
 			// No condition means it's a catch-all
 			return config
 		}

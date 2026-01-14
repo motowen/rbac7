@@ -189,7 +189,7 @@ func (r *MongoRepository) BulkUpsertUserRoles(ctx context.Context, roles []*mode
 
 	now := time.Now()
 
-	var writeModels []mongo.WriteModel
+	writeModels := make([]mongo.WriteModel, 0, len(roles))
 	for _, role := range roles {
 		role.UpdatedAt = now
 
@@ -402,7 +402,7 @@ func (r *MongoRepository) FindUserRoles(ctx context.Context, filter model.UserRo
 // SoftDeleteResourceUserRoles soft deletes all user roles for a resource (including owner).
 // This is used when deleting a resource entirely.
 // For dashboard: also deletes all child widget user roles.
-func (r *MongoRepository) SoftDeleteResourceUserRoles(ctx context.Context, req model.SoftDeleteResourceReq, deletedBy string) error {
+func (r *MongoRepository) SoftDeleteResourceUserRoles(ctx context.Context, req *model.SoftDeleteResourceReq, deletedBy string) error {
 	now := time.Now()
 	update := bson.M{
 		"$set": bson.M{

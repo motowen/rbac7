@@ -136,7 +136,7 @@ func (s *Service) AssignResourceUserRoles(ctx context.Context, callerID string, 
 	// Permission check handled by RBAC middleware
 
 	// Build roles slice for bulk upsert
-	var roles []*model.UserRole
+	roles := make([]*model.UserRole, 0, len(req.UserIDs))
 	userType := req.UserType
 	if userType == "" {
 		userType = model.UserTypeMember
@@ -224,7 +224,7 @@ func (s *Service) DeleteLibraryWidgetViewer(ctx context.Context, callerID string
 
 // SoftDeleteResource - Soft delete all user roles for a resource
 // This is used when deleting a resource entirely (dashboard, dashboard_widget, library_widget)
-func (s *Service) SoftDeleteResource(ctx context.Context, callerID string, req model.SoftDeleteResourceReq) error {
+func (s *Service) SoftDeleteResource(ctx context.Context, callerID string, req *model.SoftDeleteResourceReq) error {
 	// Permission check handled by RBAC middleware
 
 	if err := s.Repo.SoftDeleteResourceUserRoles(ctx, req, callerID); err != nil {

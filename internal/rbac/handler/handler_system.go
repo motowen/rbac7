@@ -25,8 +25,7 @@ func (h *SystemHandler) PostSystemOwner(c echo.Context) error {
 	}
 
 	if err := req.Validate(); err != nil {
-		code, body := validationError(err)
-		return c.JSON(code, body)
+		return c.JSON(http.StatusBadRequest, validationError(err))
 	}
 
 	err = h.Service.AssignSystemOwner(c.Request().Context(), callerID, req)
@@ -56,8 +55,7 @@ func (h *SystemHandler) PutSystemOwner(c echo.Context) error {
 	}
 
 	if err := req.Validate(); err != nil {
-		code, body := validationError(err)
-		return c.JSON(code, body)
+		return c.JSON(http.StatusBadRequest, validationError(err))
 	}
 
 	// 3. Call Service
@@ -86,8 +84,7 @@ func (h *SystemHandler) PostUserRoles(c echo.Context) error {
 	}
 
 	if err := req.Validate(); err != nil {
-		code, body := validationError(err)
-		return c.JSON(code, body)
+		return c.JSON(http.StatusBadRequest, validationError(err))
 	}
 
 	err = h.Service.AssignSystemUserRole(c.Request().Context(), callerID, req)
@@ -115,8 +112,7 @@ func (h *SystemHandler) PostUserRolesBatch(c echo.Context) error {
 	}
 
 	if err := req.Validate(); err != nil {
-		code, body := validationError(err)
-		return c.JSON(code, body)
+		return c.JSON(http.StatusBadRequest, validationError(err))
 	}
 
 	result, err := h.Service.AssignSystemUserRoles(c.Request().Context(), callerID, req)
@@ -145,8 +141,7 @@ func (h *SystemHandler) DeleteUserRoles(c echo.Context) error {
 	}
 
 	if err := req.Validate(); err != nil {
-		code, body := validationError(err)
-		return c.JSON(code, body)
+		return c.JSON(http.StatusBadRequest, validationError(err))
 	}
 
 	err = h.Service.DeleteSystemUserRole(c.Request().Context(), callerID, req)

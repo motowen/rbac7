@@ -29,7 +29,7 @@ func TestDeleteResource(t *testing.T) {
 		mockRepo.On("HasAnyResourceRole", mock.Anything, "owner_1", "d1", "dashboard", mock.Anything).Return(true, nil)
 
 		// Service: soft delete user roles for dashboard and child widgets
-		mockRepo.On("SoftDeleteResourceUserRoles", mock.Anything, mock.MatchedBy(func(req model.SoftDeleteResourceReq) bool {
+		mockRepo.On("SoftDeleteResourceUserRoles", mock.Anything, mock.MatchedBy(func(req *model.SoftDeleteResourceReq) bool {
 			return req.ResourceID == "d1" &&
 				req.ResourceType == "dashboard" &&
 				len(req.ChildResourceIDs) == 2
@@ -53,7 +53,7 @@ func TestDeleteResource(t *testing.T) {
 
 		mockRepo.On("HasAnyResourceRole", mock.Anything, "owner_1", "d1", "dashboard", mock.Anything).Return(true, nil)
 
-		mockRepo.On("SoftDeleteResourceUserRoles", mock.Anything, mock.MatchedBy(func(req model.SoftDeleteResourceReq) bool {
+		mockRepo.On("SoftDeleteResourceUserRoles", mock.Anything, mock.MatchedBy(func(req *model.SoftDeleteResourceReq) bool {
 			return req.ResourceID == "d1" &&
 				req.ResourceType == "dashboard" &&
 				len(req.ChildResourceIDs) == 0
@@ -117,7 +117,7 @@ func TestDeleteResource(t *testing.T) {
 		mockRepo.On("HasAnyResourceRole", mock.Anything, "owner_1", "d1", "dashboard", mock.Anything).Return(true, nil)
 
 		// Service: soft delete user roles for widget
-		mockRepo.On("SoftDeleteResourceUserRoles", mock.Anything, mock.MatchedBy(func(req model.SoftDeleteResourceReq) bool {
+		mockRepo.On("SoftDeleteResourceUserRoles", mock.Anything, mock.MatchedBy(func(req *model.SoftDeleteResourceReq) bool {
 			return req.ResourceID == "w1" &&
 				req.ResourceType == "dashboard_widget" &&
 				req.ParentResourceID == "d1"
@@ -182,7 +182,7 @@ func TestDeleteResource(t *testing.T) {
 		mockRepo.On("HasAnySystemRole", mock.Anything, "admin_1", "NS1", mock.Anything).Return(true, nil)
 
 		// Service: soft delete user roles for library widget (namespace uppercased by Validate())
-		mockRepo.On("SoftDeleteResourceUserRoles", mock.Anything, mock.MatchedBy(func(req model.SoftDeleteResourceReq) bool {
+		mockRepo.On("SoftDeleteResourceUserRoles", mock.Anything, mock.MatchedBy(func(req *model.SoftDeleteResourceReq) bool {
 			return req.ResourceID == "lw1" &&
 				req.ResourceType == "library_widget" &&
 				req.Namespace == "NS1" // Uppercased by Validate()

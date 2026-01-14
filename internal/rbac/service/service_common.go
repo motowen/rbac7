@@ -34,7 +34,7 @@ type RBACService interface {
 	AssignLibraryWidgetViewers(ctx context.Context, callerID string, req model.AssignLibraryWidgetViewersReq) (*model.BatchUpsertResult, error)
 	DeleteLibraryWidgetViewer(ctx context.Context, callerID string, req model.DeleteLibraryWidgetViewerReq) error
 	// Resource Management
-	SoftDeleteResource(ctx context.Context, callerID string, req model.SoftDeleteResourceReq) error
+	SoftDeleteResource(ctx context.Context, callerID string, req *model.SoftDeleteResourceReq) error
 	GetDashboardResource(ctx context.Context, callerID string, req model.GetDashboardResourceReq) (*model.GetDashboardResourceResp, error)
 }
 

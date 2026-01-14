@@ -65,13 +65,13 @@ func (e *Engine) GetEntityPolicies() map[string]*EntityPolicy {
 
 // normalizeRequest auto-infers Entity from Scope/ResourceType and adjusts Operation for special cases
 // For dashboard_widget with viewer role, it uses viewer-specific operations (assign_viewer, delete_viewer)
-func (e *Engine) normalizeRequest(req OperationRequest) (entity, operation string) {
+func (e *Engine) normalizeRequest(req *OperationRequest) (entity, operation string) {
 	entity = req.Entity
 	operation = req.Operation
 
 	// Auto-infer Entity from Scope/ResourceType if not provided
-	if entity == "" && req.Scope == "system" {
-		entity = "system"
+	if entity == "" && req.Scope == model.ScopeSystem {
+		entity = model.ScopeSystem
 	}
 	if entity == "" && req.ResourceType != "" {
 		// Infer from ResourceType (covers both scope=resource and when scope is not set)
@@ -80,8 +80,8 @@ func (e *Engine) normalizeRequest(req OperationRequest) (entity, operation strin
 
 	// Special handling: dashboard_widget viewer operations
 	// When ResourceType is dashboard_widget and Role is viewer, use viewer-specific operations
-	if req.ResourceType == "dashboard_widget" && req.Role == "viewer" {
-		entity = "dashboard_widget"
+	if req.ResourceType == model.ResourceTypeDashboardWidget && req.Role == model.RoleResourceViewer {
+		entity = model.ResourceTypeDashboardWidget
 		// Map generic operations to viewer-specific ones
 		switch req.Operation {
 		case "assign_user_role", "assign_user_roles_batch":
@@ -115,7 +115,7 @@ func (e *Engine) GetOperationPolicy(entity, operation string) (*OperationPolicy,
 func (e *Engine) CheckOperationPermission(
 	ctx context.Context,
 	repo repository.RBACRepository,
-	req OperationRequest,
+	req *OperationRequest,
 ) (bool, error) {
 	// Normalize request: auto-infer Entity and adjust Operation for special cases
 	entity, operation := e.normalizeRequest(req)
@@ -124,7 +124,7 @@ func (e *Engine) CheckOperationPermission(
 	if err != nil {
 		// For unknown entity/operation, return false (no permission) instead of error
 		// This maintains backward compatibility with existing behavior
-		return false, nil
+		return false, err //nolint:nilerr // intentionally return the error for debugging
 	}
 
 	// No permission required

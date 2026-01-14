@@ -39,8 +39,7 @@ func (h *SystemHandler) GetUserRolesMe(c echo.Context) error {
 	}
 
 	if err := req.Validate(); err != nil {
-		code, body := validationError(err)
-		return c.JSON(code, body)
+		return c.JSON(http.StatusBadRequest, validationError(err))
 	}
 
 	// Forward parameters to service
@@ -68,8 +67,7 @@ func (h *SystemHandler) GetUserRoles(c echo.Context) error {
 	}
 
 	if err := req.Validate(); err != nil {
-		code, body := validationError(err)
-		return c.JSON(code, body)
+		return c.JSON(http.StatusBadRequest, validationError(err))
 	}
 
 	roles, err := h.Service.GetUserRoles(c.Request().Context(), callerID, req)
@@ -95,8 +93,7 @@ func (h *SystemHandler) PostPermissionsCheck(c echo.Context) error {
 	}
 
 	if err := req.Validate(); err != nil {
-		code, body := validationError(err)
-		return c.JSON(code, body)
+		return c.JSON(http.StatusBadRequest, validationError(err))
 	}
 
 	allowed, err := h.Service.CheckPermission(c.Request().Context(), callerID, req)
