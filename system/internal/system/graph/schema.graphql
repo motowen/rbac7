@@ -1,0 +1,39 @@
+# System GraphQL API
+
+type System {
+  namespace: String!
+  name: String!
+  description: String
+}
+
+type SystemWithRole {
+  namespace: String!
+  name: String!
+  description: String
+  role: String!
+}
+
+type Query {
+  """
+  Get systems that the current user has access to, with their roles
+  """
+  systemMe: [SystemWithRole!]!
+  
+  """
+  Get system detail by namespace (requires platform.system.read permission)
+  """
+  systemDetail(namespace: String!): System
+}
+
+type Mutation {
+  """
+  Create a new system (requires platform.system.create permission - moderator only)
+  Owner will be assigned via RBAC
+  """
+  createSystem(namespace: String!, name: String!, description: String, owner: String!): System!
+  
+  """
+  Update system name and/or description (requires platform.system.update permission)
+  """
+  updateSystem(namespace: String!, name: String, description: String): System!
+}

@@ -1,0 +1,19 @@
+schema:
+  - internal/system/graph/*.graphql
+
+exec:
+  filename: internal/system/graph/generated.go
+  package: graph
+
+model:
+  filename: internal/system/graph/model/models_gen.go
+  package: model
+
+resolver:
+  layout: follow-schema
+  dir: internal/system/graph
+  package: graph
+  filename_template: "{name}.resolvers.go"
+
+autobind:
+  - "system/internal/system/model"
