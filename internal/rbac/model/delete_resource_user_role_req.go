@@ -7,6 +7,7 @@ type DeleteResourceUserRoleReq struct {
 	ResourceID       string `query:"resource_id" validate:"required,min=1,max=50"`
 	ResourceType     string `query:"resource_type" validate:"required,min=1,max=50"`
 	ParentResourceID string `query:"parent_resource_id" validate:"omitempty,max=50"`
+	Namespace        string `query:"namespace" validate:"omitempty,max=50"` // Required for library_widget
 }
 
 func (r *DeleteResourceUserRoleReq) Validate() error {
@@ -14,9 +15,14 @@ func (r *DeleteResourceUserRoleReq) Validate() error {
 	r.ResourceID = strings.TrimSpace(r.ResourceID)
 	r.ResourceType = strings.ToLower(strings.TrimSpace(r.ResourceType))
 	r.ParentResourceID = strings.TrimSpace(r.ParentResourceID)
+	r.Namespace = strings.ToUpper(strings.TrimSpace(r.Namespace))
 
 	if err := GetValidator().Struct(r); err != nil {
 		return FormatValidationError(err)
+	}
+
+	if r.ResourceType == ResourceTypeLibraryWidget && r.Namespace == "" {
+		return &ErrorDetail{Code: "bad_request", Message: "namespace is required for library_widget"}
 	}
 
 	if r.ResourceType == ResourceTypeDashboardWidget && r.ParentResourceID == "" {

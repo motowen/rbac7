@@ -120,7 +120,7 @@ func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID string, r
 		return ErrForbidden
 	}
 
-	err = s.Repo.DeleteUserRole(ctx, "", req.UserID, model.ScopeResource, req.ResourceID, req.ResourceType, callerID)
+	err = s.Repo.DeleteUserRole(ctx, req.Namespace, req.UserID, model.ScopeResource, req.ResourceID, req.ResourceType, callerID)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil
@@ -146,7 +146,7 @@ func (s *Service) AssignResourceUserRoles(ctx context.Context, callerID string, 
 			UserID:       userID,
 			Role:         req.Role,
 			Scope:        model.ScopeResource,
-			Namespace:    "",
+			Namespace:    req.Namespace,
 			ResourceID:   req.ResourceID,
 			ResourceType: req.ResourceType,
 			UserType:     userType,
@@ -165,61 +165,6 @@ func (s *Service) AssignResourceUserRoles(ctx context.Context, callerID string, 
 		callerID, result.SuccessCount, result.FailedCount, req.Role, req.ResourceType, req.ResourceID)
 
 	return result, nil
-}
-
-// AssignLibraryWidgetViewers - Batch assign viewers to a library_widget
-func (s *Service) AssignLibraryWidgetViewers(ctx context.Context, callerID string, req model.AssignLibraryWidgetViewersReq) (*model.BatchUpsertResult, error) {
-	// Permission check handled by RBAC middleware
-
-	var roles []*model.UserRole
-	userType := req.UserType
-	if userType == "" {
-		userType = model.UserTypeMember
-	}
-
-	for _, userID := range req.UserIDs {
-		role := &model.UserRole{
-			UserID:       userID,
-			Role:         model.RoleResourceViewer,
-			Scope:        model.ScopeResource,
-			Namespace:    req.Namespace,
-			ResourceID:   req.ResourceID,
-			ResourceType: model.ResourceTypeLibraryWidget,
-			UserType:     userType,
-			CreatedBy:    callerID,
-			UpdatedBy:    callerID,
-		}
-		roles = append(roles, role)
-	}
-
-	result, err := s.Repo.BulkUpsertUserRoles(ctx, roles)
-	if err != nil {
-		return nil, err
-	}
-
-	log.Printf("Audit: Library Widget Viewers Assigned (Batch). Caller=%s, Success=%d, Failed=%d, Widget=%s, Namespace=%s",
-		callerID, result.SuccessCount, result.FailedCount, req.ResourceID, req.Namespace)
-
-	return result, nil
-}
-
-// DeleteLibraryWidgetViewer - Remove a viewer from a library_widget
-func (s *Service) DeleteLibraryWidgetViewer(ctx context.Context, callerID string, req model.DeleteLibraryWidgetViewerReq) error {
-	// Permission check handled by RBAC middleware
-
-	err := s.Repo.DeleteUserRole(ctx, req.Namespace, req.UserID, model.ScopeResource,
-		req.ResourceID, model.ResourceTypeLibraryWidget, callerID)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil // Idempotent: already removed
-		}
-		return err
-	}
-
-	log.Printf("Audit: Library Widget Viewer Deleted. Caller=%s, Target=%s, Widget=%s, Namespace=%s",
-		callerID, req.UserID, req.ResourceID, req.Namespace)
-
-	return nil
 }
 
 // SoftDeleteResource - Soft delete all user roles for a resource

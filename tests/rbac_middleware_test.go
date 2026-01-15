@@ -65,14 +65,6 @@ func setupRBACMiddlewareTest(mockRepo *MockRBACRepository) *echo.Echo {
 		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
 	})
 
-	// Library Widget Routes
-	e.POST("/api/v1/user_roles/library_widgets/batch", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
-	})
-	e.DELETE("/api/v1/user_roles/library_widgets", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
-	})
-
 	return e
 }
 
@@ -245,25 +237,25 @@ func TestRBACMiddlewareConfigMatching(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 	})
 
-	// === library_widget.json operations ===
-	t.Run("library_widget/assign_viewers_batch matches POST /user_roles/library_widgets/batch", func(t *testing.T) {
+	// === library_widget.json operations (now use resources API with resource_type=library_widget) ===
+	t.Run("library_widget/assign_viewers_batch matches POST /user_roles/resources/batch with resource_type=library_widget", func(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		e := setupRBACMiddlewareTest(mockRepo)
 
 		mockRepo.On("HasAnySystemRole", mock.Anything, "caller", "NS1", mock.Anything).Return(true, nil)
 
-		body := map[string]interface{}{"namespace": "ns1", "resource_id": "lw1", "user_ids": []string{"u1"}}
-		rec := performMiddlewareRequest(e, http.MethodPost, "/api/v1/user_roles/library_widgets/batch", body, headers)
+		body := map[string]interface{}{"namespace": "ns1", "resource_id": "lw1", "resource_type": "library_widget", "role": "viewer", "user_ids": []string{"u1"}}
+		rec := performMiddlewareRequest(e, http.MethodPost, "/api/v1/user_roles/resources/batch", body, headers)
 		assert.Equal(t, http.StatusOK, rec.Code)
 	})
 
-	t.Run("library_widget/delete_viewer matches DELETE /user_roles/library_widgets", func(t *testing.T) {
+	t.Run("library_widget/delete_viewer matches DELETE /user_roles/resources with resource_type=library_widget", func(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		e := setupRBACMiddlewareTest(mockRepo)
 
 		mockRepo.On("HasAnySystemRole", mock.Anything, "caller", "NS1", mock.Anything).Return(true, nil)
 
-		rec := performMiddlewareRequest(e, http.MethodDelete, "/api/v1/user_roles/library_widgets?namespace=ns1&resource_id=lw1&user_id=u1", nil, headers)
+		rec := performMiddlewareRequest(e, http.MethodDelete, "/api/v1/user_roles/resources?namespace=ns1&resource_id=lw1&resource_type=library_widget&user_id=u1", nil, headers)
 		assert.Equal(t, http.StatusOK, rec.Code)
 	})
 }

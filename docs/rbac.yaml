@@ -514,81 +514,6 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /user_roles/library_widgets/batch:
-    post:
-      tags:
-        - Resource
-      summary: Batch assign library widget viewers
-      description: |
-        Batch assign viewer role to multiple users for a library widget.
-
-        Permission: `platform.system.add_member` in the widget's publishing namespace.
-      parameters:
-        - $ref: '#/components/parameters/AuthenticationHeader'
-        - $ref: '#/components/parameters/XUserIdHeader'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/BatchLibraryWidgetViewersRequest'
-      responses:
-        '200':
-          description: Batch assignment result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BatchUpsertResult'
-        '400':
-          description: Bad request
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  /user_roles/library_widgets:
-    delete:
-      tags:
-        - Resource
-      summary: Delete library widget viewer
-      description: |
-        Remove a viewer from a library widget.
-
-        Permission: `platform.system.remove_member` in the widget's publishing namespace.
-      parameters:
-        - $ref: '#/components/parameters/AuthenticationHeader'
-        - $ref: '#/components/parameters/XUserIdHeader'
-        - in: query
-          name: user_id
-          schema:
-            type: string
-          required: true
-          description: User ID to remove
-        - in: query
-          name: resource_id
-          schema:
-            type: string
-          required: true
-          description: Library widget ID
-        - in: query
-          name: namespace
-          schema:
-            type: string
-          required: true
-          description: Publishing team namespace
-      responses:
-        '200':
-          description: Viewer removed successfully
-        '400':
-          description: Bad request
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
 
   /resources/delete:
     put:
@@ -923,50 +848,14 @@ components:
           type: string
           description: Required for dashboard_widget
           example: parent_dash_1
-        user_type:
-          type: string
-          description: Optional user type (default member)
-          example: member
-
-    BatchLibraryWidgetViewersRequest:
-      type: object
-      required: [user_ids, resource_id, namespace]
-      properties:
-        user_ids:
-          type: array
-          items:
-            type: string
-          minItems: 1
-          maxItems: 50
-          example: ["u_1", "u_2"]
-        resource_id:
-          type: string
-          description: Library widget ID
-          example: lw_123
         namespace:
           type: string
-          description: Publishing team namespace
+          description: Required for library_widget (publishing team namespace)
           example: TEAM_ALPHA
         user_type:
           type: string
           description: Optional user type (default member)
           example: member
-
-    DeleteLibraryWidgetViewerRequest:
-      type: object
-      required: [user_id, resource_id, namespace]
-      properties:
-        user_id:
-          type: string
-          example: u_1
-        resource_id:
-          type: string
-          description: Library widget ID
-          example: lw_123
-        namespace:
-          type: string
-          description: Publishing team namespace
-          example: TEAM_ALPHA
 
     BatchUpsertResult:
       type: object

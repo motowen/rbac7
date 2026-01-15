@@ -264,4 +264,73 @@ func TestPostResourceUserRolesBatch(t *testing.T) {
 		rec := PerformRequest(e, http.MethodPost, apiPath, reqBody, map[string]string{"x-user-id": "owner_1"})
 		assert.Equal(t, http.StatusOK, rec.Code)
 	})
+
+	// Library Widget Test Cases
+	t.Run("library_widget batch assign viewers success", func(t *testing.T) {
+		mockRepo := new(MockRBACRepository)
+		e := SetupServerWithMiddleware(mockRepo)
+
+		// RBAC Middleware: permission check (system scope for library_widget)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "NS_1", mock.Anything).Return(true, nil)
+
+		// Service: bulk upsert with namespace
+		mockRepo.On("BulkUpsertUserRoles", mock.Anything, mock.MatchedBy(func(roles []*model.UserRole) bool {
+			return len(roles) == 2 &&
+				roles[0].Role == "viewer" &&
+				roles[0].ResourceType == "library_widget" &&
+				roles[0].Namespace == "NS_1"
+		})).Return(&model.BatchUpsertResult{SuccessCount: 2, FailedCount: 0}, nil)
+
+		reqBody := model.AssignResourceUserRolesReq{
+			UserIDs:      []string{"u_1", "u_2"},
+			Role:         "viewer",
+			ResourceID:   "lw_1",
+			ResourceType: "library_widget",
+			Namespace:    "NS_1",
+		}
+		rec := PerformRequest(e, http.MethodPost, apiPath, reqBody, map[string]string{"x-user-id": "owner_1"})
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		var result model.BatchUpsertResult
+		json.Unmarshal(rec.Body.Bytes(), &result)
+		assert.Equal(t, 2, result.SuccessCount)
+	})
+
+	t.Run("library_widget requires namespace return 400", func(t *testing.T) {
+		mockRepo := new(MockRBACRepository)
+		e := SetupServerWithMiddleware(mockRepo)
+
+		mockRepo.On("HasAnySystemRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Maybe()
+		mockRepo.On("HasAnyResourceRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Maybe()
+
+		reqBody := model.AssignResourceUserRolesReq{
+			UserIDs:      []string{"u_1"},
+			Role:         "viewer",
+			ResourceID:   "lw_1",
+			ResourceType: "library_widget",
+			// Namespace is missing
+		}
+		rec := PerformRequest(e, http.MethodPost, apiPath, reqBody, map[string]string{"x-user-id": "owner_1"})
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		assert.Contains(t, rec.Body.String(), "namespace is required")
+	})
+
+	t.Run("library_widget only allows viewer role return 400", func(t *testing.T) {
+		mockRepo := new(MockRBACRepository)
+		e := SetupServerWithMiddleware(mockRepo)
+
+		mockRepo.On("HasAnySystemRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Maybe()
+		mockRepo.On("HasAnyResourceRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Maybe()
+
+		reqBody := model.AssignResourceUserRolesReq{
+			UserIDs:      []string{"u_1"},
+			Role:         "admin", // Should fail - only viewer allowed
+			ResourceID:   "lw_1",
+			ResourceType: "library_widget",
+			Namespace:    "NS_1",
+		}
+		rec := PerformRequest(e, http.MethodPost, apiPath, reqBody, map[string]string{"x-user-id": "owner_1"})
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		assert.Contains(t, rec.Body.String(), "only viewer role is allowed")
+	})
 }

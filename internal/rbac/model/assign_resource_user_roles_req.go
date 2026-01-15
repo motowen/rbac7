@@ -15,6 +15,7 @@ type AssignResourceUserRolesReq struct {
 	ResourceID       string   `json:"resource_id" validate:"required,min=1,max=50"`
 	ResourceType     string   `json:"resource_type" validate:"required,min=1,max=50"`
 	ParentResourceID string   `json:"parent_resource_id" validate:"omitempty,max=50"`
+	Namespace        string   `json:"namespace" validate:"omitempty,max=50"` // Required for library_widget
 	UserType         string   `json:"user_type" validate:"omitempty,max=50"` // Optional
 }
 
@@ -26,6 +27,7 @@ func (r *AssignResourceUserRolesReq) Validate() error {
 	r.ResourceID = strings.TrimSpace(r.ResourceID)
 	r.ResourceType = strings.ToLower(strings.TrimSpace(r.ResourceType))
 	r.ParentResourceID = strings.TrimSpace(r.ParentResourceID)
+	r.Namespace = strings.ToUpper(strings.TrimSpace(r.Namespace))
 	r.UserType = strings.ToLower(strings.TrimSpace(r.UserType))
 
 	// 1. Basic Struct Validation (required, min/max)
@@ -42,7 +44,18 @@ func (r *AssignResourceUserRolesReq) Validate() error {
 		return &ErrorDetail{Code: "bad_request", Message: "cannot assign resource owner role via this API"}
 	}
 
-	// Allowed roles check
+	// Special handling for library_widget
+	if r.ResourceType == ResourceTypeLibraryWidget {
+		if r.Namespace == "" {
+			return &ErrorDetail{Code: "bad_request", Message: "namespace is required for library_widget"}
+		}
+		if r.Role != RoleResourceViewer {
+			return &ErrorDetail{Code: "bad_request", Message: "only viewer role is allowed for library_widget"}
+		}
+		return nil
+	}
+
+	// Allowed roles check for other resource types
 	if !AllowedResourceRoles[r.Role] {
 		return &ErrorDetail{Code: "bad_request", Message: "invalid role: must be one of [admin, editor, viewer]"}
 	}

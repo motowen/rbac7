@@ -9,22 +9,28 @@
         },
         "assign_viewers_batch": {
             "method": "POST",
-            "path": "/api/v1/user_roles/library_widgets/batch",
+            "path": "/api/v1/user_roles/resources/batch",
             "permission": "platform.system.add_member",
             "check_scope": "system",
             "namespace_required": true,
             "params": {
                 "namespace": "body.namespace"
+            },
+            "condition": {
+                "resource_type": "library_widget"
             }
         },
         "delete_viewer": {
             "method": "DELETE",
-            "path": "/api/v1/user_roles/library_widgets",
+            "path": "/api/v1/user_roles/resources",
             "permission": "platform.system.remove_member",
             "check_scope": "system",
             "namespace_required": true,
             "params": {
                 "namespace": "query.namespace"
+            },
+            "condition": {
+                "resource_type": "library_widget"
             }
         },
         "get_members": {

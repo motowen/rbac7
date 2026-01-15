@@ -166,4 +166,37 @@ func TestDeleteResourceUserRole(t *testing.T) {
 		})
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
+
+	// Library Widget tests
+
+	t.Run("delete library_widget viewer success and return 200", func(t *testing.T) {
+		mockRepo := new(MockRBACRepository)
+		e := SetupServerWithMiddleware(mockRepo)
+
+		// RBAC Middleware: permission check (system scope for library_widget)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "caller", "NS_1", mock.Anything).Return(true, nil)
+		// Service: owner check (library_widget has no owner, so return false)
+		mockRepo.On("HasResourceRole", mock.Anything, "u1", "lw_1", "library_widget", model.RoleResourceOwner).Return(false, nil)
+		// Service: delete with namespace
+		mockRepo.On("DeleteUserRole", mock.Anything, "NS_1", "u1", model.ScopeResource, "lw_1", "library_widget", "caller").Return(nil)
+
+		rec := PerformRequest(e, http.MethodDelete, "/api/v1/user_roles/resources?user_id=u1&resource_id=lw_1&resource_type=library_widget&namespace=NS_1", nil, map[string]string{
+			"x-user-id": "caller",
+		})
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("delete library_widget viewer missing namespace and return 400", func(t *testing.T) {
+		mockRepo := new(MockRBACRepository)
+		e := SetupServerWithMiddleware(mockRepo)
+
+		mockRepo.On("HasAnySystemRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Maybe()
+		mockRepo.On("HasAnyResourceRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Maybe()
+
+		rec := PerformRequest(e, http.MethodDelete, "/api/v1/user_roles/resources?user_id=u1&resource_id=lw_1&resource_type=library_widget", nil, map[string]string{
+			"x-user-id": "caller",
+		})
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		assert.Contains(t, rec.Body.String(), "namespace is required")
+	})
 }
