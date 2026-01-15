@@ -17,3 +17,8 @@ resolver:
 
 autobind:
   - "system/internal/system/model"
+
+# Directive configuration
+directives:
+  auth:
+    skip_runtime: false

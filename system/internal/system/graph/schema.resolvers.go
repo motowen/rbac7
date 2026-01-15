@@ -11,26 +11,12 @@ import (
 
 	model1 "system/internal/system/graph/model"
 	"system/internal/system/model"
-
-	"github.com/labstack/echo/v4"
 )
 
-// Helper to get caller ID from context
-func getCallerID(ctx context.Context) (string, error) {
-	ec, ok := ctx.Value("echo_context").(echo.Context)
-	if !ok {
-		return "", fmt.Errorf("unauthorized")
-	}
-	callerID := ec.Request().Header.Get("x-user-id")
-	if callerID == "" {
-		return "", fmt.Errorf("unauthorized")
-	}
-	return callerID, nil
-}
-
 // CreateSystem is the resolver for the createSystem field.
+// Permission check is handled by @auth directive
 func (r *mutationResolver) CreateSystem(ctx context.Context, namespace string, name string, description *string, owner string) (*model.System, error) {
-	callerID, err := getCallerID(ctx)
+	callerID, err := GetCallerID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -38,16 +24,7 @@ func (r *mutationResolver) CreateSystem(ctx context.Context, namespace string, n
 	// Normalize namespace to uppercase
 	namespace = strings.ToUpper(strings.TrimSpace(namespace))
 
-	// 1. Check permission: platform.system.create (moderator only, no namespace needed for create)
-	allowed, err := r.RBACClient.CheckPermission(ctx, callerID, "platform.system.create", "")
-	if err != nil {
-		return nil, fmt.Errorf("permission check failed: %w", err)
-	}
-	if !allowed {
-		return nil, fmt.Errorf("forbidden: no permission to create system")
-	}
-
-	// 2. Check if namespace already exists
+	// Check if namespace already exists
 	existing, err := r.Repo.GetSystemByNamespace(ctx, namespace)
 	if err != nil {
 		return nil, fmt.Errorf("db error: %w", err)
@@ -56,13 +33,13 @@ func (r *mutationResolver) CreateSystem(ctx context.Context, namespace string, n
 		return nil, fmt.Errorf("namespace already exists")
 	}
 
-	// 3. Assign owner via RBAC
+	// Assign owner via RBAC
 	err = r.RBACClient.AssignSystemOwner(ctx, callerID, owner, namespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to assign owner: %w", err)
 	}
 
-	// 4. Create system in MongoDB
+	// Create system in MongoDB
 	desc := ""
 	if description != nil {
 		desc = *description
@@ -81,24 +58,15 @@ func (r *mutationResolver) CreateSystem(ctx context.Context, namespace string, n
 }
 
 // UpdateSystem is the resolver for the updateSystem field.
+// Permission check is handled by @auth directive
 func (r *mutationResolver) UpdateSystem(ctx context.Context, namespace string, name *string, description *string) (*model.System, error) {
-	callerID, err := getCallerID(ctx)
-	if err != nil {
-		return nil, err
+	// Get normalized namespace from directive (already validated)
+	namespace = GetNamespace(ctx)
+	if namespace == "" {
+		namespace = strings.ToUpper(strings.TrimSpace(namespace))
 	}
 
-	namespace = strings.ToUpper(strings.TrimSpace(namespace))
-
-	// 1. Check permission: platform.system.update
-	allowed, err := r.RBACClient.CheckPermission(ctx, callerID, "platform.system.update", namespace)
-	if err != nil {
-		return nil, fmt.Errorf("permission check failed: %w", err)
-	}
-	if !allowed {
-		return nil, fmt.Errorf("forbidden: no permission to update system")
-	}
-
-	// 2. Update in MongoDB
+	// Update in MongoDB
 	if name == nil && description == nil {
 		return nil, fmt.Errorf("at least one of name or description must be provided")
 	}
@@ -112,19 +80,20 @@ func (r *mutationResolver) UpdateSystem(ctx context.Context, namespace string, n
 }
 
 // SystemMe is the resolver for the systemMe field.
+// No @auth directive - uses RBAC /user_roles/me internally
 func (r *queryResolver) SystemMe(ctx context.Context) ([]*model1.SystemWithRole, error) {
-	callerID, err := getCallerID(ctx)
+	callerID, err := GetCallerID(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	// 1. Get user roles from RBAC
+	// Get user roles from RBAC
 	roles, err := r.RBACClient.GetUserRolesMe(ctx, callerID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user roles: %w", err)
 	}
 
-	// 2. Build namespace -> role map
+	// Build namespace -> role map
 	namespaceRoleMap := make(map[string]string)
 	var namespaces []string
 	for _, role := range roles {
@@ -138,13 +107,13 @@ func (r *queryResolver) SystemMe(ctx context.Context) ([]*model1.SystemWithRole,
 		return []*model1.SystemWithRole{}, nil
 	}
 
-	// 3. Get systems from MongoDB
+	// Get systems from MongoDB
 	systems, err := r.Repo.GetSystemsByNamespaces(ctx, namespaces)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get systems: %w", err)
 	}
 
-	// 4. Build response with roles
+	// Build response with roles
 	var result []*model1.SystemWithRole
 	for _, sys := range systems {
 		role := namespaceRoleMap[sys.Namespace]
@@ -160,24 +129,15 @@ func (r *queryResolver) SystemMe(ctx context.Context) ([]*model1.SystemWithRole,
 }
 
 // SystemDetail is the resolver for the systemDetail field.
+// Permission check is handled by @auth directive
 func (r *queryResolver) SystemDetail(ctx context.Context, namespace string) (*model.System, error) {
-	callerID, err := getCallerID(ctx)
-	if err != nil {
-		return nil, err
+	// Get normalized namespace from directive (already validated)
+	namespace = GetNamespace(ctx)
+	if namespace == "" {
+		namespace = strings.ToUpper(strings.TrimSpace(namespace))
 	}
 
-	namespace = strings.ToUpper(strings.TrimSpace(namespace))
-
-	// 1. Check permission: platform.system.read
-	allowed, err := r.RBACClient.CheckPermission(ctx, callerID, "platform.system.read", namespace)
-	if err != nil {
-		return nil, fmt.Errorf("permission check failed: %w", err)
-	}
-	if !allowed {
-		return nil, fmt.Errorf("forbidden: no permission to read system")
-	}
-
-	// 2. Get system from MongoDB
+	// Get system from MongoDB
 	system, err := r.Repo.GetSystemByNamespace(ctx, namespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get system: %w", err)

@@ -1,5 +1,16 @@
 # System GraphQL API
 
+"""
+Auth directive for permission checking.
+If namespace is required, the resolver must provide it in context.
+"""
+directive @auth(
+  """The required permission (e.g., platform.system.create)"""
+  permission: String!
+  """Whether namespace is required for permission check"""
+  namespaceRequired: Boolean = false
+) on FIELD_DEFINITION
+
 type System {
   namespace: String!
   name: String!
@@ -15,25 +26,28 @@ type SystemWithRole {
 
 type Query {
   """
-  Get systems that the current user has access to, with their roles
+  Get systems that the current user has access to, with their roles.
+  No permission check needed - uses RBAC /user_roles/me internally.
   """
   systemMe: [SystemWithRole!]!
   
   """
-  Get system detail by namespace (requires platform.system.read permission)
+  Get system detail by namespace.
+  Requires platform.system.read permission on the namespace.
   """
-  systemDetail(namespace: String!): System
+  systemDetail(namespace: String!): System @auth(permission: "platform.system.read", namespaceRequired: true)
 }
 
 type Mutation {
   """
-  Create a new system (requires platform.system.create permission - moderator only)
-  Owner will be assigned via RBAC
+  Create a new system (requires platform.system.create permission - moderator only).
+  Owner will be assigned via RBAC.
   """
-  createSystem(namespace: String!, name: String!, description: String, owner: String!): System!
+  createSystem(namespace: String!, name: String!, description: String, owner: String!): System! @auth(permission: "platform.system.create")
   
   """
-  Update system name and/or description (requires platform.system.update permission)
+  Update system name and/or description.
+  Requires platform.system.update permission on the namespace.
   """
-  updateSystem(namespace: String!, name: String, description: String): System!
+  updateSystem(namespace: String!, name: String, description: String): System! @auth(permission: "platform.system.update", namespaceRequired: true)
 }

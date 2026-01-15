@@ -45,6 +45,7 @@ type ResolverRoot interface {
 }
 
 type DirectiveRoot struct {
+	Auth func(ctx context.Context, obj interface{}, next graphql.Resolver, permission string, namespaceRequired *bool) (res interface{}, err error)
 }
 
 type ComplexityRoot struct {
@@ -315,6 +316,30 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
 // region    ***************************** args.gotpl *****************************
 
+func (ec *executionContext) dir_auth_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["permission"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("permission"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["permission"] = arg0
+	var arg1 *bool
+	if tmp, ok := rawArgs["namespaceRequired"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("namespaceRequired"))
+		arg1, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["namespaceRequired"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_createSystem_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -471,8 +496,36 @@ func (ec *executionContext) _Mutation_createSystem(ctx context.Context, field gr
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().CreateSystem(rctx, fc.Args["namespace"].(string), fc.Args["name"].(string), fc.Args["description"].(*string), fc.Args["owner"].(string))
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Mutation().CreateSystem(rctx, fc.Args["namespace"].(string), fc.Args["name"].(string), fc.Args["description"].(*string), fc.Args["owner"].(string))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			permission, err := ec.unmarshalNString2string(ctx, "platform.system.create")
+			if err != nil {
+				return nil, err
+			}
+			namespaceRequired, err := ec.unmarshalOBoolean2ᚖbool(ctx, false)
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.Auth == nil {
+				return nil, errors.New("directive auth is not implemented")
+			}
+			return ec.directives.Auth(ctx, nil, directive0, permission, namespaceRequired)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.System); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *system/internal/system/model.System`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -534,8 +587,36 @@ func (ec *executionContext) _Mutation_updateSystem(ctx context.Context, field gr
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().UpdateSystem(rctx, fc.Args["namespace"].(string), fc.Args["name"].(*string), fc.Args["description"].(*string))
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Mutation().UpdateSystem(rctx, fc.Args["namespace"].(string), fc.Args["name"].(*string), fc.Args["description"].(*string))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			permission, err := ec.unmarshalNString2string(ctx, "platform.system.update")
+			if err != nil {
+				return nil, err
+			}
+			namespaceRequired, err := ec.unmarshalOBoolean2ᚖbool(ctx, true)
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.Auth == nil {
+				return nil, errors.New("directive auth is not implemented")
+			}
+			return ec.directives.Auth(ctx, nil, directive0, permission, namespaceRequired)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.System); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *system/internal/system/model.System`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -651,8 +732,36 @@ func (ec *executionContext) _Query_systemDetail(ctx context.Context, field graph
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().SystemDetail(rctx, fc.Args["namespace"].(string))
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Query().SystemDetail(rctx, fc.Args["namespace"].(string))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			permission, err := ec.unmarshalNString2string(ctx, "platform.system.read")
+			if err != nil {
+				return nil, err
+			}
+			namespaceRequired, err := ec.unmarshalOBoolean2ᚖbool(ctx, true)
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.Auth == nil {
+				return nil, errors.New("directive auth is not implemented")
+			}
+			return ec.directives.Auth(ctx, nil, directive0, permission, namespaceRequired)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.System); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *system/internal/system/model.System`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)

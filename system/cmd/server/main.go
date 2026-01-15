@@ -52,13 +52,19 @@ func main() {
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORS())
 
-	// GraphQL handler
-	srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{
+	// GraphQL config with directive
+	cfg := graph.Config{
 		Resolvers: &graph.Resolver{
 			Repo:       repo,
 			RBACClient: rbacClient,
 		},
-	}))
+		Directives: graph.DirectiveRoot{
+			Auth: graph.AuthDirective(rbacClient),
+		},
+	}
+
+	// GraphQL handler
+	srv := handler.NewDefaultServer(graph.NewExecutableSchema(cfg))
 
 	// Middleware to pass echo context to GraphQL context
 	e.POST("/graphql", func(c echo.Context) error {
