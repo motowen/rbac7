@@ -245,6 +245,7 @@ func (s *Service) SoftDeleteResource(ctx context.Context, callerID string, req *
 func (s *Service) GetDashboardResource(ctx context.Context, callerID string, req model.GetDashboardResourceReq) (*model.GetDashboardResourceResp, error) {
 	// Get dashboard user roles
 	filter := model.UserRoleFilter{
+		UserID:       callerID,
 		ResourceID:   req.ResourceID,
 		ResourceType: req.ResourceType,
 		Scope:        model.ScopeResource,

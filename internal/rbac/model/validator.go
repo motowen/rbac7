@@ -1,6 +1,7 @@
 package model
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/go-playground/validator/v10"
@@ -25,8 +26,9 @@ func FormatValidationError(err error) *ErrorDetail {
 		return nil
 	}
 
-	// If it's a ValidationErrors type
-	if validationErrors, ok := err.(validator.ValidationErrors); ok {
+	// Use errors.As() to check error type (handles wrapped errors)
+	var validationErrors validator.ValidationErrors
+	if errors.As(err, &validationErrors) {
 		// Just take the first error for simplicity, or format all.
 		// For now, let's just return the first one to match previous behavior of single error return.
 		e := validationErrors[0]
