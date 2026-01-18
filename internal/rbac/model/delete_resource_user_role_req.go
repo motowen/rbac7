@@ -8,6 +8,7 @@ type DeleteResourceUserRoleReq struct {
 	ResourceType     string `query:"resource_type" validate:"required,min=1,max=50"`
 	ParentResourceID string `query:"parent_resource_id" validate:"omitempty,max=50"`
 	Namespace        string `query:"namespace" validate:"omitempty,max=50"` // Required for library_widget
+	UserType         string `query:"user_type" validate:"omitempty,max=50"` // Optional
 }
 
 func (r *DeleteResourceUserRoleReq) Validate() error {
@@ -16,6 +17,7 @@ func (r *DeleteResourceUserRoleReq) Validate() error {
 	r.ResourceType = strings.ToLower(strings.TrimSpace(r.ResourceType))
 	r.ParentResourceID = strings.TrimSpace(r.ParentResourceID)
 	r.Namespace = strings.ToUpper(strings.TrimSpace(r.Namespace))
+	r.UserType = strings.ToLower(strings.TrimSpace(r.UserType))
 
 	if err := GetValidator().Struct(r); err != nil {
 		return FormatValidationError(err)
