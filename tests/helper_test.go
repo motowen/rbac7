@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"rbac7/internal/rbac/handler"
-	"rbac7/internal/rbac/repository"
 	"rbac7/internal/rbac/router"
 	"rbac7/internal/rbac/service"
 
@@ -21,11 +20,11 @@ func SetupServer() *echo.Echo {
 
 // SetupServerWithMiddleware creates a full Echo server with RBAC middleware (for integration testing)
 // This uses the real router.RegisterRoutes which includes RBAC middleware
-func SetupServerWithMiddleware(mockRepo repository.RBACRepository) *echo.Echo {
+func SetupServerWithMiddleware(mockRepo *MockRBACRepository) *echo.Echo {
 	e := echo.New()
 
-	// Create service with mock repo
-	svc := service.NewService(mockRepo)
+	// Create service with mock repo (same repo for both since MockRBACRepository implements both interfaces)
+	svc := service.NewService(mockRepo, mockRepo)
 	h := handler.NewSystemHandler(svc)
 
 	// Create RBAC middleware
@@ -40,9 +39,9 @@ func SetupServerWithMiddleware(mockRepo repository.RBACRepository) *echo.Echo {
 
 // SetupServerWithHandler creates a server with just handler registration (for testing without middleware)
 // Use this when you want to test handler logic without RBAC middleware
-func SetupServerWithHandler(mockRepo repository.RBACRepository) (*echo.Echo, *handler.SystemHandler) {
+func SetupServerWithHandler(mockRepo *MockRBACRepository) (*echo.Echo, *handler.SystemHandler) {
 	e := echo.New()
-	svc := service.NewService(mockRepo)
+	svc := service.NewService(mockRepo, mockRepo)
 	h := handler.NewSystemHandler(svc)
 	return e, h
 }

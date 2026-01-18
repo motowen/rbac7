@@ -42,6 +42,7 @@ func RegisterRoutes(e *echo.Echo, h *handler.SystemHandler, policyEngine *policy
 	v1.DELETE("/user_roles", h.DeleteUserRoles)
 	v1.GET("/user_roles/me", h.GetUserRolesMe)
 	v1.GET("/user_roles", h.GetUserRoles)
+	v1.GET("/user_roles/logs", h.GetUserRoleHistory) // History logs for both system and resource scope
 
 	// Resource Scope Routes
 	v1.POST("/user_roles/resources/owner", h.PostResourceOwner)

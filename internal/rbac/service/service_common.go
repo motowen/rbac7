@@ -6,6 +6,7 @@ import (
 	"rbac7/internal/rbac/model"
 	"rbac7/internal/rbac/policy"
 	"rbac7/internal/rbac/repository"
+	"time"
 )
 
 var (
@@ -33,20 +34,23 @@ type RBACService interface {
 	// Resource Management
 	SoftDeleteResource(ctx context.Context, callerID string, req *model.SoftDeleteResourceReq) error
 	GetDashboardResource(ctx context.Context, callerID string, req model.GetDashboardResourceReq) (*model.GetDashboardResourceResp, error)
+	// History
+	GetUserRoleHistory(ctx context.Context, callerID string, req model.GetUserRoleHistoryReq) (*model.GetUserRoleHistoryResp, error)
 }
 
 type Service struct {
-	Repo   repository.RBACRepository
-	Policy *policy.Engine
+	Repo        repository.RBACRepository
+	HistoryRepo repository.HistoryRepository
+	Policy      *policy.Engine
 }
 
-func NewService(repo repository.RBACRepository) *Service {
+func NewService(repo repository.RBACRepository, historyRepo repository.HistoryRepository) *Service {
 	policyEngine, err := policy.NewEngine()
 	if err != nil {
 		// Policy engine is essential, panic if it fails to load
 		panic("failed to initialize policy engine: " + err.Error())
 	}
-	return &Service{Repo: repo, Policy: policyEngine}
+	return &Service{Repo: repo, HistoryRepo: historyRepo, Policy: policyEngine}
 }
 
 func (s *Service) GetUserRolesMe(ctx context.Context, callerID string, req model.GetUserRolesMeReq) ([]*model.UserRole, error) {
@@ -105,4 +109,33 @@ func (s *Service) checkSystemPermissionInternal(ctx context.Context, callerID, n
 		return false, nil
 	}
 	return s.Repo.HasAnySystemRole(ctx, callerID, namespace, requiredRoles)
+}
+
+// GetUserRoleHistory retrieves user role history with pagination
+func (s *Service) GetUserRoleHistory(ctx context.Context, callerID string, req model.GetUserRoleHistoryReq) (*model.GetUserRoleHistoryResp, error) {
+	// Permission check handled by RBAC middleware
+
+	data, total, err := s.HistoryRepo.FindHistory(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.GetUserRoleHistoryResp{
+		Data:       data,
+		Page:       req.Page,
+		Size:       req.Size,
+		TotalCount: total,
+	}, nil
+}
+
+// recordHistory is a helper to record history asynchronously (fire-and-forget)
+func (s *Service) recordHistory(history *model.UserRoleHistory) {
+	if s.HistoryRepo == nil {
+		return
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = s.HistoryRepo.CreateHistory(ctx, history)
+	}()
 }

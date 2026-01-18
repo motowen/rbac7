@@ -10,6 +10,7 @@
         "resource.dashboard.add_widget",
         "resource.dashboard.remove_widget",
         "resource.dashboard.add_widget_viewer",
+        "resource.dashboard.read_log",
         "resource.dashboard_widget.read",
         "resource.dashboard_widget.get_member",
         "resource.library_widget.read"
@@ -24,6 +25,7 @@
         "resource.dashboard.add_widget",
         "resource.dashboard.remove_widget",
         "resource.dashboard.add_widget_viewer",
+        "resource.dashboard.read_log",
         "resource.dashboard_widget.read",
         "resource.dashboard_widget.get_member",
         "resource.library_widget.read"

@@ -38,7 +38,7 @@ func TestDashboardWidgetPermissions(t *testing.T) {
 	// Service Logic Tests (Inheritance vs Whitelist) via CheckPermission API
 	t.Run("CheckPermission Service Logic", func(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
-		svc := service.NewService(mockRepo)
+		svc := service.NewService(mockRepo, mockRepo)
 		ctx := context.TODO()
 
 		// Scenario 1: Inherited Read (Widget has 0 roles) -> Checks Parent

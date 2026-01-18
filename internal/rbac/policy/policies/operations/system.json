@@ -69,6 +69,19 @@
       "condition": {
         "scope": "system"
       }
+    },
+    "read_log": {
+      "method": "GET",
+      "path": "/api/v1/user_roles/logs",
+      "permission": "platform.system.read_log",
+      "check_scope": "system",
+      "namespace_required": true,
+      "params": {
+        "namespace": "query.namespace"
+      },
+      "condition": {
+        "scope": "system"
+      }
     }
   }
 }

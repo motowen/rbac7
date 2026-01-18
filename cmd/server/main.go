@@ -56,8 +56,11 @@ func main() {
 		logger.Warn("Failed to ensure indexes", "error", err)
 		// Non-fatal?
 	}
+	if err := repo.EnsureHistoryIndexes(context.Background()); err != nil {
+		logger.Warn("Failed to ensure history indexes", "error", err)
+	}
 
-	svc := service.NewService(repo)
+	svc := service.NewService(repo, repo) // repo implements both RBACRepository and HistoryRepository
 	h := handler.NewSystemHandler(svc)
 
 	// 4. Init Echo & Routes

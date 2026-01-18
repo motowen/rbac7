@@ -104,3 +104,31 @@ func (h *SystemHandler) PostPermissionsCheck(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, model.CheckPermissionResponse{Allowed: allowed})
 }
+
+// GetUserRoleHistory handles GET /user_roles/logs
+func (h *SystemHandler) GetUserRoleHistory(c echo.Context) error {
+	callerID, err := h.extractCallerID(c)
+	if err != nil {
+		code, body := httpError(err)
+		return c.JSON(code, body)
+	}
+
+	var req model.GetUserRoleHistoryReq
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error: model.ErrorDetail{Code: "bad_request", Message: "Invalid parameters"},
+		})
+	}
+
+	if err := req.Validate(); err != nil {
+		return c.JSON(http.StatusBadRequest, validationError(err))
+	}
+
+	result, err := h.Service.GetUserRoleHistory(c.Request().Context(), callerID, req)
+	if err != nil {
+		code, body := httpError(err)
+		return c.JSON(code, body)
+	}
+
+	return c.JSON(http.StatusOK, result)
+}

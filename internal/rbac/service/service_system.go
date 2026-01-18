@@ -33,6 +33,15 @@ func (s *Service) AssignSystemOwner(ctx context.Context, callerID string, req mo
 
 	log.Printf("Audit: System Owner Assigned. Caller=%s, Target=%s, Namespace=%s", callerID, req.UserID, req.Namespace)
 
+	// Record history
+	s.recordHistory(&model.UserRoleHistory{
+		Operation: "assign_owner",
+		CallerID:  callerID,
+		Scope:     model.ScopeSystem,
+		Namespace: req.Namespace,
+		UserID:    req.UserID,
+	})
+
 	return nil
 }
 
@@ -60,6 +69,15 @@ func (s *Service) TransferSystemOwner(ctx context.Context, callerID string, req 
 	}
 
 	log.Printf("Audit: System Owner Transferred. Caller=%s, NewOwner=%s, OldOwner=%s, Namespace=%s", callerID, req.UserID, callerID, req.Namespace)
+
+	// Record history
+	s.recordHistory(&model.UserRoleHistory{
+		Operation:  "transfer_owner",
+		CallerID:   callerID,
+		Scope:      model.ScopeSystem,
+		Namespace:  req.Namespace,
+		NewOwnerID: req.UserID,
+	})
 
 	return nil
 }
@@ -106,6 +124,18 @@ func (s *Service) AssignSystemUserRole(ctx context.Context, callerID string, req
 	}
 
 	log.Printf("Audit: System User Role Assigned. Caller=%s, Target=%s, Role=%s, Namespace=%s", callerID, req.UserID, req.Role, req.Namespace)
+
+	// Record history
+	s.recordHistory(&model.UserRoleHistory{
+		Operation: "assign_user_role",
+		CallerID:  callerID,
+		Scope:     model.ScopeSystem,
+		Namespace: req.Namespace,
+		UserID:    req.UserID,
+		UserType:  req.UserType,
+		Role:      req.Role,
+	})
+
 	return nil
 }
 
@@ -139,6 +169,17 @@ func (s *Service) AssignSystemUserRoles(ctx context.Context, callerID string, re
 	log.Printf("Audit: System User Roles Assigned (Batch). Caller=%s, Success=%d, Failed=%d, Role=%s, Namespace=%s",
 		callerID, result.SuccessCount, result.FailedCount, req.Role, req.Namespace)
 
+	// Record history
+	s.recordHistory(&model.UserRoleHistory{
+		Operation: "assign_user_roles_batch",
+		CallerID:  callerID,
+		Scope:     model.ScopeSystem,
+		Namespace: req.Namespace,
+		UserIDs:   req.UserIDs,
+		UserType:  req.UserType,
+		Role:      req.Role,
+	})
+
 	return result, nil
 }
 
@@ -168,5 +209,16 @@ func (s *Service) DeleteSystemUserRole(ctx context.Context, callerID string, req
 	}
 
 	log.Printf("Audit: System User Role Deleted. Caller=%s, Target=%s, Namespace=%s", callerID, req.UserID, req.Namespace)
+
+	// Record history
+	s.recordHistory(&model.UserRoleHistory{
+		Operation: "delete_user_role",
+		CallerID:  callerID,
+		Scope:     model.ScopeSystem,
+		Namespace: req.Namespace,
+		UserID:    req.UserID,
+		UserType:  req.UserType,
+	})
+
 	return nil
 }

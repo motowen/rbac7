@@ -42,6 +42,17 @@ func (s *Service) AssignResourceOwner(ctx context.Context, callerID string, req 
 	}
 
 	log.Printf("Audit: Resource Owner Assigned. Caller=%s, Target=%s, Resource=%s:%s", callerID, callerID, req.ResourceType, req.ResourceID)
+
+	// Record history
+	s.recordHistory(&model.UserRoleHistory{
+		Operation:    "assign_owner",
+		CallerID:     callerID,
+		Scope:        model.ScopeResource,
+		ResourceID:   req.ResourceID,
+		ResourceType: req.ResourceType,
+		UserID:       callerID,
+	})
+
 	return nil
 }
 
@@ -60,6 +71,17 @@ func (s *Service) TransferResourceOwner(ctx context.Context, callerID string, re
 	}
 
 	log.Printf("Audit: Resource Owner Transferred. Caller=%s, NewOwner=%s, OldOwner=%s, Resource=%s:%s", callerID, req.UserID, oldOwnerID, req.ResourceType, req.ResourceID)
+
+	// Record history
+	s.recordHistory(&model.UserRoleHistory{
+		Operation:    "transfer_owner",
+		CallerID:     callerID,
+		Scope:        model.ScopeResource,
+		ResourceID:   req.ResourceID,
+		ResourceType: req.ResourceType,
+		NewOwnerID:   req.UserID,
+	})
+
 	return nil
 }
 
@@ -101,6 +123,20 @@ func (s *Service) AssignResourceUserRole(ctx context.Context, callerID string, r
 	}
 
 	log.Printf("Audit: Resource User Role Assigned. Caller=%s, Target=%s, Role=%s, Resource=%s:%s", callerID, req.UserID, req.Role, req.ResourceType, req.ResourceID)
+
+	// Record history
+	s.recordHistory(&model.UserRoleHistory{
+		Operation:        "assign_user_role",
+		CallerID:         callerID,
+		Scope:            model.ScopeResource,
+		ResourceID:       req.ResourceID,
+		ResourceType:     req.ResourceType,
+		ParentResourceID: req.ParentResourceID,
+		UserID:           req.UserID,
+		UserType:         req.UserType,
+		Role:             req.Role,
+	})
+
 	return nil
 }
 
@@ -129,6 +165,20 @@ func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID string, r
 	}
 
 	log.Printf("Audit: Resource User Role Deleted. Caller=%s, Target=%s, Resource=%s:%s", callerID, req.UserID, req.ResourceType, req.ResourceID)
+
+	// Record history
+	s.recordHistory(&model.UserRoleHistory{
+		Operation:        "delete_user_role",
+		CallerID:         callerID,
+		Scope:            model.ScopeResource,
+		ResourceID:       req.ResourceID,
+		ResourceType:     req.ResourceType,
+		ParentResourceID: req.ParentResourceID,
+		UserID:           req.UserID,
+		UserType:         req.UserType,
+		Namespace:        req.Namespace,
+	})
+
 	return nil
 }
 
@@ -164,6 +214,20 @@ func (s *Service) AssignResourceUserRoles(ctx context.Context, callerID string, 
 	log.Printf("Audit: Resource User Roles Assigned (Batch). Caller=%s, Success=%d, Failed=%d, Role=%s, Resource=%s:%s",
 		callerID, result.SuccessCount, result.FailedCount, req.Role, req.ResourceType, req.ResourceID)
 
+	// Record history
+	s.recordHistory(&model.UserRoleHistory{
+		Operation:        "assign_user_roles_batch",
+		CallerID:         callerID,
+		Scope:            model.ScopeResource,
+		ResourceID:       req.ResourceID,
+		ResourceType:     req.ResourceType,
+		ParentResourceID: req.ParentResourceID,
+		UserIDs:          req.UserIDs,
+		UserType:         req.UserType,
+		Role:             req.Role,
+		Namespace:        req.Namespace,
+	})
+
 	return result, nil
 }
 
@@ -178,6 +242,17 @@ func (s *Service) SoftDeleteResource(ctx context.Context, callerID string, req *
 
 	log.Printf("Audit: Resource Soft Deleted. Caller=%s, Resource=%s:%s, ChildResources=%d",
 		callerID, req.ResourceType, req.ResourceID, len(req.ChildResourceIDs))
+
+	// Record history
+	s.recordHistory(&model.UserRoleHistory{
+		Operation:        "delete_resource",
+		CallerID:         callerID,
+		Scope:            model.ScopeResource,
+		ResourceID:       req.ResourceID,
+		ResourceType:     req.ResourceType,
+		ParentResourceID: req.ParentResourceID,
+		ChildResourceIDs: req.ChildResourceIDs,
+	})
 
 	return nil
 }

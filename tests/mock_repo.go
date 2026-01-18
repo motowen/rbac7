@@ -105,3 +105,32 @@ func (m *MockRBACRepository) SoftDeleteResourceUserRoles(ctx context.Context, re
 	args := m.Called(ctx, req, deletedBy)
 	return args.Error(0)
 }
+
+// HistoryRepository mock methods
+
+func (m *MockRBACRepository) CreateHistory(ctx context.Context, history *model.UserRoleHistory) error {
+	// Use Maybe pattern - this method may be called asynchronously by recordHistory
+	// Don't fail tests if not explicitly expected
+	if len(m.ExpectedCalls) > 0 {
+		for _, call := range m.ExpectedCalls {
+			if call.Method == "CreateHistory" {
+				args := m.Called(ctx, history)
+				return args.Error(0)
+			}
+		}
+	}
+	return nil // Default: succeed silently for fire-and-forget calls
+}
+
+func (m *MockRBACRepository) FindHistory(ctx context.Context, req model.GetUserRoleHistoryReq) ([]*model.UserRoleHistory, int64, error) {
+	args := m.Called(ctx, req)
+	if args.Get(0) == nil {
+		return nil, args.Get(1).(int64), args.Error(2)
+	}
+	return args.Get(0).([]*model.UserRoleHistory), args.Get(1).(int64), args.Error(2)
+}
+
+func (m *MockRBACRepository) EnsureHistoryIndexes(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}

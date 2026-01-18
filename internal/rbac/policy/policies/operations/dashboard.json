@@ -122,6 +122,21 @@
             "condition": {
                 "resource_type": "dashboard"
             }
+        },
+        "read_log": {
+            "method": "GET",
+            "path": "/api/v1/user_roles/logs",
+            "permission": "resource.dashboard.read_log",
+            "check_scope": "resource",
+            "resource_id_required": true,
+            "params": {
+                "resource_id": "query.resource_id",
+                "resource_type": "query.resource_type"
+            },
+            "condition": {
+                "scope": "resource",
+                "resource_type": "dashboard"
+            }
         }
     }
 }
