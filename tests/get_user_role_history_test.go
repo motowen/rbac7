@@ -183,4 +183,47 @@ func TestGetUserRoleHistory(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Contains(t, rec.Body.String(), "\"total_count\":2")
 	})
+
+	t.Run("get library_widget history success and return 200", func(t *testing.T) {
+		mockRepo := new(MockRBACRepository)
+		e := SetupServerWithMiddleware(mockRepo)
+
+		// RBAC Middleware: library_widget uses system scope check (namespace)
+		mockRepo.On("HasAnySystemRole", mock.Anything, "admin_1", "NS_1", mock.Anything).Return(true, nil)
+
+		expectedHistory := []*model.UserRoleHistory{
+			{ID: "h_6", Operation: "assign_viewers_batch", CallerID: "admin_1", Scope: "resource", ResourceID: "lw_1", ResourceType: "library_widget", CreatedAt: time.Now()},
+		}
+		mockRepo.On("FindHistory", mock.Anything, mock.MatchedBy(func(req model.GetUserRoleHistoryReq) bool {
+			return req.Scope == "resource" && req.ResourceID == "lw_1" && req.ResourceType == "library_widget"
+		})).Return(expectedHistory, int64(1), nil)
+
+		params := url.Values{}
+		params.Add("scope", "resource")
+		params.Add("resource_id", "lw_1")
+		params.Add("resource_type", "library_widget")
+		params.Add("namespace", "NS_1")
+		path := apiPath + "?" + params.Encode()
+
+		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "admin_1"})
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), "assign_viewers_batch")
+	})
+
+	t.Run("get library_widget history forbidden returns 403", func(t *testing.T) {
+		mockRepo := new(MockRBACRepository)
+		e := SetupServerWithMiddleware(mockRepo)
+
+		mockRepo.On("HasAnySystemRole", mock.Anything, "viewer_1", "NS_1", mock.Anything).Return(false, nil)
+
+		params := url.Values{}
+		params.Add("scope", "resource")
+		params.Add("resource_id", "lw_1")
+		params.Add("resource_type", "library_widget")
+		params.Add("namespace", "NS_1")
+		path := apiPath + "?" + params.Encode()
+
+		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "viewer_1"})
+		assert.Equal(t, http.StatusForbidden, rec.Code)
+	})
 }

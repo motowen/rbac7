@@ -610,11 +610,14 @@ paths:
 
         **Permission by scope:**
         - `scope=system`: requires `platform.system.read_log` permission
-        - `scope=resource`: requires `resource.{resource_type}.read_log` permission
+        - `scope=resource`:
+          - `dashboard`: requires `resource.dashboard.read_log` permission
+          - `library_widget`: requires `platform.system.read_log` permission (checked via namespace)
 
         **Query parameters:**
         - `scope=system`: requires `namespace`
         - `scope=resource`: requires `resource_id` and `resource_type`
+          - For `library_widget`: also requires `namespace`
         - `child_resource_ids`: optional, for querying child resource logs together (e.g., dashboard widgets)
       parameters:
         - $ref: '#/components/parameters/AuthenticationHeader'

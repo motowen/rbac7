@@ -74,6 +74,22 @@
             "condition": {
                 "resource_type": "library_widget"
             }
+        },
+        "read_log": {
+            "method": "GET",
+            "path": "/api/v1/user_roles/logs",
+            "permission": "platform.system.read_log",
+            "check_scope": "system",
+            "namespace_required": true,
+            "params": {
+                "namespace": "query.namespace",
+                "resource_id": "query.resource_id",
+                "resource_type": "query.resource_type"
+            },
+            "condition": {
+                "scope": "resource",
+                "resource_type": "library_widget"
+            }
         }
     }
 }
