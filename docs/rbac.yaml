@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: RBAC System API
-  version: 1.2.0
+  version: 1.3.0
   description: API for Role-Based Access Control system (Common + System Scope + Resource Scope).
 servers:
   - url: http://localhost:8080/api/v1
@@ -10,7 +10,7 @@ tags:
   - name: System
     description: System scope management (Assign/Transfer Owner, Assign/Delete Role)
   - name: Common
-    description: Shared APIs (Get User Roles)
+    description: Shared APIs (Get User Roles, History Logs)
   - name: Resource
     description: Resource scope management
 
@@ -600,6 +600,105 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /user_roles/logs:
+    get:
+      tags:
+        - Common
+      summary: Get user role history logs
+      description: |
+        Query audit logs of user role changes (assign, transfer, delete operations).
+
+        **Permission by scope:**
+        - `scope=system`: requires `platform.system.read_log` permission
+        - `scope=resource`: requires `resource.{resource_type}.read_log` permission
+
+        **Query parameters:**
+        - `scope=system`: requires `namespace`
+        - `scope=resource`: requires `resource_id` and `resource_type`
+        - `child_resource_ids`: optional, for querying child resource logs together (e.g., dashboard widgets)
+      parameters:
+        - $ref: '#/components/parameters/AuthenticationHeader'
+        - $ref: '#/components/parameters/XUserIdHeader'
+        - in: query
+          name: scope
+          schema:
+            type: string
+            enum: [system, resource]
+          required: true
+          description: Scope of the history query
+        - in: query
+          name: namespace
+          schema:
+            type: string
+          required: false
+          description: Required when scope=system
+        - in: query
+          name: resource_id
+          schema:
+            type: string
+          required: false
+          description: Required when scope=resource
+        - in: query
+          name: resource_type
+          schema:
+            type: string
+          required: false
+          description: Required when scope=resource
+        - in: query
+          name: child_resource_ids
+          schema:
+            type: array
+            items:
+              type: string
+          required: false
+          description: Optional child resource IDs to include in query (for dashboard widgets)
+        - in: query
+          name: start_time
+          schema:
+            type: string
+            format: date-time
+          required: false
+          description: Filter logs after this time (ISO 8601 format)
+        - in: query
+          name: end_time
+          schema:
+            type: string
+            format: date-time
+          required: false
+          description: Filter logs before this time (ISO 8601 format)
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          required: false
+          description: Page number for pagination
+        - in: query
+          name: size
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+          required: false
+          description: Number of records per page
+      responses:
+        '200':
+          description: User role history logs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetUserRoleHistoryResponse'
+        '400':
+          description: Bad request (missing required parameters)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
 
 components:
   parameters:
@@ -949,4 +1048,94 @@ components:
           description: Widget IDs the caller can access (based on inheritance or whitelist)
           example: ["w_1", "w_2"]
 
+    UserRoleHistory:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique ID of the history record
+          example: h_123
+        operation:
+          type: string
+          enum: [assign_owner, transfer_owner, assign_user_role, assign_user_roles_batch, delete_user_role, delete_resource]
+          description: Type of operation performed
+          example: assign_user_role
+        caller_id:
+          type: string
+          description: User ID who performed the operation
+          example: admin_1
+        scope:
+          type: string
+          enum: [system, resource]
+          description: Scope of the operation
+          example: system
+        namespace:
+          type: string
+          description: Namespace (for system scope)
+          example: NS_1
+        resource_id:
+          type: string
+          description: Resource ID (for resource scope)
+          example: d_123
+        resource_type:
+          type: string
+          description: Resource type (for resource scope)
+          example: dashboard
+        parent_resource_id:
+          type: string
+          description: Parent resource ID (for dashboard_widget)
+          example: d_123
+        user_id:
+          type: string
+          description: Target user ID (for single operations)
+          example: u_1
+        user_ids:
+          type: array
+          items:
+            type: string
+          description: Target user IDs (for batch operations)
+          example: ["u_1", "u_2"]
+        user_type:
+          type: string
+          description: User type
+          example: member
+        role:
+          type: string
+          description: Role assigned/removed
+          example: admin
+        new_owner_id:
+          type: string
+          description: New owner ID (for transfer operations)
+          example: u_2
+        child_resource_ids:
+          type: array
+          items:
+            type: string
+          description: Child resource IDs (for delete_resource)
+          example: ["w_1", "w_2"]
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp of the operation
+          example: "2026-01-18T12:00:00Z"
 
+    GetUserRoleHistoryResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserRoleHistory'
+          description: List of history records
+        page:
+          type: integer
+          description: Current page number
+          example: 1
+        size:
+          type: integer
+          description: Number of records per page
+          example: 100
+        total_count:
+          type: integer
+          description: Total number of records matching the query
+          example: 250
