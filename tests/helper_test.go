@@ -24,7 +24,8 @@ func SetupServerWithMiddleware(mockRepo *MockRBACRepository) *echo.Echo {
 	e := echo.New()
 
 	// Create service with mock repo (same repo for both since MockRBACRepository implements both interfaces)
-	svc := service.NewService(mockRepo, mockRepo)
+	// Pass nil for adapter since tests don't use the adapter directly
+	svc := service.NewService(mockRepo, mockRepo, nil)
 	h := handler.NewSystemHandler(svc)
 
 	// Create RBAC middleware
@@ -41,7 +42,7 @@ func SetupServerWithMiddleware(mockRepo *MockRBACRepository) *echo.Echo {
 // Use this when you want to test handler logic without RBAC middleware
 func SetupServerWithHandler(mockRepo *MockRBACRepository) (*echo.Echo, *handler.SystemHandler) {
 	e := echo.New()
-	svc := service.NewService(mockRepo, mockRepo)
+	svc := service.NewService(mockRepo, mockRepo, nil) // nil adapter for tests
 	h := handler.NewSystemHandler(svc)
 	return e, h
 }

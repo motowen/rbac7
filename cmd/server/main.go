@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"rbac7/internal/rbac/adapter"
 	"rbac7/internal/rbac/config"
 	"rbac7/internal/rbac/handler"
 	"rbac7/internal/rbac/repository"
@@ -60,7 +61,10 @@ func main() {
 		logger.Warn("Failed to ensure history indexes", "error", err)
 	}
 
-	svc := service.NewService(repo, repo) // repo implements both RBACRepository and HistoryRepository
+	// Initialize relation adapter (can be swapped to ExternalRelationAdapter for ReBAC)
+	relationAdapter := adapter.NewLocalRelationAdapter(repo)
+
+	svc := service.NewService(repo, repo, relationAdapter) // repo implements both RBACRepository and HistoryRepository
 	h := handler.NewSystemHandler(svc)
 
 	// 4. Init Echo & Routes

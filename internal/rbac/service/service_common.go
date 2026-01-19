@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"rbac7/internal/rbac/adapter"
 	"rbac7/internal/rbac/model"
 	"rbac7/internal/rbac/policy"
 	"rbac7/internal/rbac/repository"
@@ -41,16 +42,17 @@ type RBACService interface {
 type Service struct {
 	Repo        repository.RBACRepository
 	HistoryRepo repository.HistoryRepository
+	Adapter     adapter.RelationAdapter // For future ReBAC integration
 	Policy      *policy.Engine
 }
 
-func NewService(repo repository.RBACRepository, historyRepo repository.HistoryRepository) *Service {
+func NewService(repo repository.RBACRepository, historyRepo repository.HistoryRepository, relationAdapter adapter.RelationAdapter) *Service {
 	policyEngine, err := policy.NewEngine()
 	if err != nil {
 		// Policy engine is essential, panic if it fails to load
 		panic("failed to initialize policy engine: " + err.Error())
 	}
-	return &Service{Repo: repo, HistoryRepo: historyRepo, Policy: policyEngine}
+	return &Service{Repo: repo, HistoryRepo: historyRepo, Adapter: relationAdapter, Policy: policyEngine}
 }
 
 func (s *Service) GetUserRolesMe(ctx context.Context, callerID string, req model.GetUserRolesMeReq) ([]*model.UserRole, error) {
