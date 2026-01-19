@@ -87,6 +87,23 @@
             "condition": {
                 "resource_type": "dashboard_widget"
             }
+        },
+        "read_log": {
+            "method": "GET",
+            "path": "/api/v1/user_roles/logs",
+            "permission": "resource.dashboard.read_log",
+            "check_scope": "parent_resource",
+            "parent_resource_required": true,
+            "resource_id_required": true,
+            "params": {
+                "resource_id": "query.resource_id",
+                "resource_type": "query.resource_type",
+                "parent_resource_id": "query.parent_resource_id"
+            },
+            "condition": {
+                "scope": "resource",
+                "resource_type": "dashboard_widget"
+            }
         }
     }
 }

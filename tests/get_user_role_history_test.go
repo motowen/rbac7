@@ -157,31 +157,46 @@ func TestGetUserRoleHistory(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
 
-	t.Run("get resource history with child_resource_ids success", func(t *testing.T) {
+	t.Run("get dashboard_widget history success and return 200", func(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		e := SetupServerWithMiddleware(mockRepo)
 
+		// RBAC Middleware: dashboard_widget uses parent_resource check
 		mockRepo.On("HasAnyResourceRole", mock.Anything, "admin_1", "dash_1", "dashboard", mock.Anything).Return(true, nil)
 
 		expectedHistory := []*model.UserRoleHistory{
 			{ID: "h_4", Operation: "assign_viewer", CallerID: "admin_1", Scope: "resource", ResourceID: "widget_1", ResourceType: "dashboard_widget", CreatedAt: time.Now()},
-			{ID: "h_5", Operation: "assign_user_role", CallerID: "admin_1", Scope: "resource", ResourceID: "dash_1", ResourceType: "dashboard", CreatedAt: time.Now()},
 		}
 		mockRepo.On("FindHistory", mock.Anything, mock.MatchedBy(func(req model.GetUserRoleHistoryReq) bool {
-			return req.Scope == "resource" && req.ResourceID == "dash_1" && len(req.ChildResourceIDs) == 2
-		})).Return(expectedHistory, int64(2), nil)
+			return req.Scope == "resource" && req.ResourceID == "widget_1" && req.ResourceType == "dashboard_widget" && req.ParentResourceID == "dash_1"
+		})).Return(expectedHistory, int64(1), nil)
 
 		params := url.Values{}
 		params.Add("scope", "resource")
-		params.Add("resource_id", "dash_1")
-		params.Add("resource_type", "dashboard")
-		params.Add("child_resource_ids", "widget_1")
-		params.Add("child_resource_ids", "widget_2")
+		params.Add("resource_id", "widget_1")
+		params.Add("resource_type", "dashboard_widget")
+		params.Add("parent_resource_id", "dash_1")
 		path := apiPath + "?" + params.Encode()
 
 		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "admin_1"})
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Contains(t, rec.Body.String(), "\"total_count\":2")
+		assert.Contains(t, rec.Body.String(), "assign_viewer")
+	})
+
+	t.Run("get dashboard_widget history missing parent_resource_id returns 400", func(t *testing.T) {
+		mockRepo := new(MockRBACRepository)
+		e := SetupServerWithMiddleware(mockRepo)
+
+		mockRepo.On("HasAnyResourceRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Maybe()
+
+		params := url.Values{}
+		params.Add("scope", "resource")
+		params.Add("resource_id", "widget_1")
+		params.Add("resource_type", "dashboard_widget")
+		path := apiPath + "?" + params.Encode()
+
+		rec := PerformRequest(e, http.MethodGet, path, nil, map[string]string{"x-user-id": "admin_1"})
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
 	t.Run("get library_widget history success and return 200", func(t *testing.T) {

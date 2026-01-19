@@ -14,9 +14,9 @@ type GetUserRoleHistoryReq struct {
 	Namespace string `query:"namespace" validate:"omitempty,max=50"`
 
 	// Resource Scope 參數
-	ResourceID       string   `query:"resource_id" validate:"omitempty,max=50"`
-	ResourceType     string   `query:"resource_type" validate:"omitempty,max=50"` // dashboard
-	ChildResourceIDs []string `query:"child_resource_ids"`                        // 查詢 dashboard_widgets
+	ResourceID       string `query:"resource_id" validate:"omitempty,max=50"`
+	ResourceType     string `query:"resource_type" validate:"omitempty,max=50"`      // dashboard, dashboard_widget, library_widget
+	ParentResourceID string `query:"parent_resource_id" validate:"omitempty,max=50"` // Required for dashboard_widget
 
 	// Time Filter
 	StartTime *time.Time `query:"start_time"`
@@ -32,11 +32,7 @@ func (r *GetUserRoleHistoryReq) Validate() error {
 	r.Namespace = strings.ToUpper(strings.TrimSpace(r.Namespace))
 	r.ResourceID = strings.TrimSpace(r.ResourceID)
 	r.ResourceType = strings.ToLower(strings.TrimSpace(r.ResourceType))
-
-	// Trim child resource IDs
-	for i, id := range r.ChildResourceIDs {
-		r.ChildResourceIDs[i] = strings.TrimSpace(id)
-	}
+	r.ParentResourceID = strings.TrimSpace(r.ParentResourceID)
 
 	// Set default pagination
 	if r.Page <= 0 {
@@ -64,6 +60,10 @@ func (r *GetUserRoleHistoryReq) Validate() error {
 		}
 		if r.ResourceType == "" {
 			return &ErrorDetail{Code: "bad_request", Message: "resource_type is required for resource scope"}
+		}
+		// dashboard_widget requires parent_resource_id
+		if r.ResourceType == ResourceTypeDashboardWidget && r.ParentResourceID == "" {
+			return &ErrorDetail{Code: "bad_request", Message: "parent_resource_id is required for dashboard_widget"}
 		}
 	}
 

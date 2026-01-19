@@ -488,13 +488,7 @@ func (r *MongoRepository) FindHistory(ctx context.Context, req model.GetUserRole
 	if req.Scope == model.ScopeSystem {
 		filter["namespace"] = req.Namespace
 	} else if req.Scope == model.ScopeResource {
-		// For resource scope, include main resource and child resources
-		if len(req.ChildResourceIDs) > 0 {
-			resourceIDs := append([]string{req.ResourceID}, req.ChildResourceIDs...)
-			filter["resource_id"] = bson.M{"$in": resourceIDs}
-		} else {
-			filter["resource_id"] = req.ResourceID
-		}
+		filter["resource_id"] = req.ResourceID
 		filter["resource_type"] = req.ResourceType
 	}
 

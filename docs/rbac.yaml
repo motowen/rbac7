@@ -617,8 +617,8 @@ paths:
         **Query parameters:**
         - `scope=system`: requires `namespace`
         - `scope=resource`: requires `resource_id` and `resource_type`
+          - For `dashboard_widget`: also requires `parent_resource_id`
           - For `library_widget`: also requires `namespace`
-        - `child_resource_ids`: optional, for querying child resource logs together (e.g., dashboard widgets)
       parameters:
         - $ref: '#/components/parameters/AuthenticationHeader'
         - $ref: '#/components/parameters/XUserIdHeader'
@@ -634,7 +634,7 @@ paths:
           schema:
             type: string
           required: false
-          description: Required when scope=system
+          description: Required when scope=system or resource_type=library_widget
         - in: query
           name: resource_id
           schema:
@@ -645,16 +645,15 @@ paths:
           name: resource_type
           schema:
             type: string
+            enum: [dashboard, dashboard_widget, library_widget]
           required: false
           description: Required when scope=resource
         - in: query
-          name: child_resource_ids
+          name: parent_resource_id
           schema:
-            type: array
-            items:
-              type: string
+            type: string
           required: false
-          description: Optional child resource IDs to include in query (for dashboard widgets)
+          description: Required when resource_type=dashboard_widget (parent dashboard ID)
         - in: query
           name: start_time
           schema:
