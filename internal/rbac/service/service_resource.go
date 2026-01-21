@@ -105,15 +105,16 @@ func (s *Service) AssignResourceUserRole(ctx context.Context, callerID string, r
 	}
 
 	role := &model.UserRole{
-		UserID:       req.UserID,
-		Role:         req.Role,
-		Scope:        model.ScopeResource,
-		Namespace:    "",
-		ResourceID:   req.ResourceID,
-		ResourceType: req.ResourceType,
-		UserType:     req.UserType,
-		CreatedBy:    callerID,
-		UpdatedBy:    callerID,
+		UserID:           req.UserID,
+		Role:             req.Role,
+		Scope:            model.ScopeResource,
+		Namespace:        "",
+		ResourceID:       req.ResourceID,
+		ResourceType:     req.ResourceType,
+		ParentResourceID: req.ParentResourceID,
+		UserType:         req.UserType,
+		CreatedBy:        callerID,
+		UpdatedBy:        callerID,
 	}
 	if role.UserType == "" {
 		role.UserType = model.UserTypeMember
@@ -156,7 +157,7 @@ func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID string, r
 		return ErrForbidden
 	}
 
-	err = s.Repo.DeleteUserRole(ctx, req.Namespace, req.UserID, model.ScopeResource, req.ResourceID, req.ResourceType, callerID)
+	err = s.Repo.DeleteUserRole(ctx, req.Namespace, req.UserID, model.ScopeResource, req.ResourceID, req.ResourceType, req.ParentResourceID, callerID)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil
@@ -193,15 +194,16 @@ func (s *Service) AssignResourceUserRoles(ctx context.Context, callerID string, 
 	}
 	for _, userID := range req.UserIDs {
 		role := &model.UserRole{
-			UserID:       userID,
-			Role:         req.Role,
-			Scope:        model.ScopeResource,
-			Namespace:    req.Namespace,
-			ResourceID:   req.ResourceID,
-			ResourceType: req.ResourceType,
-			UserType:     userType,
-			CreatedBy:    callerID,
-			UpdatedBy:    callerID,
+			UserID:           userID,
+			Role:             req.Role,
+			Scope:            model.ScopeResource,
+			Namespace:        req.Namespace,
+			ResourceID:       req.ResourceID,
+			ResourceType:     req.ResourceType,
+			ParentResourceID: req.ParentResourceID,
+			UserType:         userType,
+			CreatedBy:        callerID,
+			UpdatedBy:        callerID,
 		}
 		roles = append(roles, role)
 	}

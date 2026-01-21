@@ -26,7 +26,7 @@ type RBACRepository interface {
 	// Upsert a user role (Create or Update)
 	UpsertUserRole(ctx context.Context, role *model.UserRole) error
 	// Delete a user role (Soft Delete)
-	DeleteUserRole(ctx context.Context, namespace, userID, scope, resourceID, resourceType, deletedBy string) error
+	DeleteUserRole(ctx context.Context, namespace, userID, scope, resourceID, resourceType, parentResourceID, deletedBy string) error
 	// Count owners in a system
 	CountSystemOwners(ctx context.Context, namespace string) (int64, error)
 	// Count owners in a resource

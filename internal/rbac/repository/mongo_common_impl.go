@@ -143,13 +143,14 @@ func (r *MongoRepository) UpsertUserRole(ctx context.Context, role *model.UserRo
 
 	update := bson.M{
 		"$set": bson.M{
-			"role":          role.Role,
-			"updated_at":    now,
-			"updated_by":    role.UpdatedBy,
-			"created_by":    role.CreatedBy,
-			"namespace":     role.Namespace,
-			"resource_id":   role.ResourceID,
-			"resource_type": role.ResourceType,
+			"role":               role.Role,
+			"updated_at":         now,
+			"updated_by":         role.UpdatedBy,
+			"created_by":         role.CreatedBy,
+			"namespace":          role.Namespace,
+			"resource_id":        role.ResourceID,
+			"resource_type":      role.ResourceType,
+			"parent_resource_id": role.ParentResourceID,
 		},
 		"$setOnInsert": bson.M{
 			"created_at": now,
@@ -211,13 +212,14 @@ func (r *MongoRepository) BulkUpsertUserRoles(ctx context.Context, roles []*mode
 
 		update := bson.M{
 			"$set": bson.M{
-				"role":          role.Role,
-				"updated_at":    now,
-				"updated_by":    role.UpdatedBy,
-				"created_by":    role.CreatedBy,
-				"namespace":     role.Namespace,
-				"resource_id":   role.ResourceID,
-				"resource_type": role.ResourceType,
+				"role":               role.Role,
+				"updated_at":         now,
+				"updated_by":         role.UpdatedBy,
+				"created_by":         role.CreatedBy,
+				"namespace":          role.Namespace,
+				"resource_id":        role.ResourceID,
+				"resource_type":      role.ResourceType,
+				"parent_resource_id": role.ParentResourceID,
 			},
 			"$setOnInsert": bson.M{
 				"created_at": now,
@@ -280,7 +282,7 @@ func (r *MongoRepository) BulkUpsertUserRoles(ctx context.Context, roles []*mode
 	return batchResult, nil
 }
 
-func (r *MongoRepository) DeleteUserRole(ctx context.Context, namespace, userID, scope, resourceID, resourceType, deletedBy string) error {
+func (r *MongoRepository) DeleteUserRole(ctx context.Context, namespace, userID, scope, resourceID, resourceType, parentResourceID, deletedBy string) error {
 	filter := bson.M{
 		"user_id":    userID,
 		"scope":      scope,
@@ -305,6 +307,9 @@ func (r *MongoRepository) DeleteUserRole(ctx context.Context, namespace, userID,
 		}
 		if namespace != "" {
 			filter["namespace"] = namespace
+		}
+		if parentResourceID != "" {
+			filter["parent_resource_id"] = parentResourceID
 		}
 	} else {
 		return errors.New("invalid scope")
@@ -347,6 +352,9 @@ func (r *MongoRepository) FindUserRoles(ctx context.Context, filter model.UserRo
 	}
 	if filter.ResourceType != "" {
 		query["resource_type"] = filter.ResourceType
+	}
+	if filter.ParentResourceID != "" {
+		query["parent_resource_id"] = filter.ParentResourceID
 	}
 
 	// Logic: If scope is strict, query that one.

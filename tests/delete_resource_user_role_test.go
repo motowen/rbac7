@@ -22,7 +22,7 @@ func TestDeleteResourceUserRole(t *testing.T) {
 		// Service: owner check
 		mockRepo.On("HasResourceRole", mock.Anything, "u1", "r1", "dashboard", model.RoleResourceOwner).Return(false, nil)
 		// Service: delete
-		mockRepo.On("DeleteUserRole", mock.Anything, "", "u1", model.ScopeResource, "r1", "dashboard", "caller").Return(nil)
+		mockRepo.On("DeleteUserRole", mock.Anything, "", "u1", model.ScopeResource, "r1", "dashboard", "", "caller").Return(nil)
 
 		rec := PerformRequest(e, http.MethodDelete, "/api/v1/user_roles/resources?user_id=u1&resource_id=r1&resource_type=dashboard", nil, map[string]string{
 			"x-user-id": "caller",
@@ -114,7 +114,7 @@ func TestDeleteResourceUserRole(t *testing.T) {
 
 		mockRepo.On("HasAnyResourceRole", mock.Anything, "caller", "r1", "dashboard", mock.Anything).Return(true, nil)
 		mockRepo.On("HasResourceRole", mock.Anything, "u1", "r1", "dashboard", model.RoleResourceOwner).Return(false, nil)
-		mockRepo.On("DeleteUserRole", mock.Anything, "", "u1", model.ScopeResource, "r1", "dashboard", "caller").Return(errors.New("db error"))
+		mockRepo.On("DeleteUserRole", mock.Anything, "", "u1", model.ScopeResource, "r1", "dashboard", "", "caller").Return(errors.New("db error"))
 
 		rec := PerformRequest(e, http.MethodDelete, "/api/v1/user_roles/resources?user_id=u1&resource_id=r1&resource_type=dashboard", nil, map[string]string{
 			"x-user-id": "caller",
@@ -133,7 +133,7 @@ func TestDeleteResourceUserRole(t *testing.T) {
 		// Service: owner check
 		mockRepo.On("HasResourceRole", mock.Anything, "u1", "w1", "dashboard_widget", model.RoleResourceOwner).Return(false, nil)
 		// Service: delete
-		mockRepo.On("DeleteUserRole", mock.Anything, "", "u1", model.ScopeResource, "w1", "dashboard_widget", "caller").Return(nil)
+		mockRepo.On("DeleteUserRole", mock.Anything, "", "u1", model.ScopeResource, "w1", "dashboard_widget", "dash_1", "caller").Return(nil)
 
 		rec := PerformRequest(e, http.MethodDelete, "/api/v1/user_roles/resources?user_id=u1&resource_id=w1&resource_type=dashboard_widget&parent_resource_id=dash_1", nil, map[string]string{
 			"x-user-id": "caller",
@@ -178,7 +178,7 @@ func TestDeleteResourceUserRole(t *testing.T) {
 		// Service: owner check (library_widget has no owner, so return false)
 		mockRepo.On("HasResourceRole", mock.Anything, "u1", "lw_1", "library_widget", model.RoleResourceOwner).Return(false, nil)
 		// Service: delete with namespace
-		mockRepo.On("DeleteUserRole", mock.Anything, "NS_1", "u1", model.ScopeResource, "lw_1", "library_widget", "caller").Return(nil)
+		mockRepo.On("DeleteUserRole", mock.Anything, "NS_1", "u1", model.ScopeResource, "lw_1", "library_widget", "", "caller").Return(nil)
 
 		rec := PerformRequest(e, http.MethodDelete, "/api/v1/user_roles/resources?user_id=u1&resource_id=lw_1&resource_type=library_widget&namespace=NS_1", nil, map[string]string{
 			"x-user-id": "caller",

@@ -23,7 +23,7 @@ func TestDeleteSystemUserRole(t *testing.T) {
 		// Service: check if target is owner
 		mockRepo.On("GetSystemOwner", mock.Anything, "NS_1").Return(nil, nil)
 		// Service: delete
-		mockRepo.On("DeleteUserRole", mock.Anything, "NS_1", "u_2", "system", "", "", "owner_1").Return(nil)
+		mockRepo.On("DeleteUserRole", mock.Anything, "NS_1", "u_2", "system", "", "", "", "owner_1").Return(nil)
 
 		rec := PerformRequest(e, http.MethodDelete, apiPath+"?namespace=NS_1&user_id=u_2", nil, map[string]string{"x-user-id": "owner_1"})
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -89,7 +89,7 @@ func TestDeleteSystemUserRole(t *testing.T) {
 
 		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "NS_1", mock.Anything).Return(true, nil)
 		mockRepo.On("GetSystemOwner", mock.Anything, "NS_1").Return(nil, nil)
-		mockRepo.On("DeleteUserRole", mock.Anything, "NS_1", "u_2", "system", "", "", "owner_1").Return(mongo.ErrNoDocuments)
+		mockRepo.On("DeleteUserRole", mock.Anything, "NS_1", "u_2", "system", "", "", "", "owner_1").Return(mongo.ErrNoDocuments)
 
 		rec := PerformRequest(e, http.MethodDelete, apiPath+"?namespace=NS_1&user_id=u_2", nil, map[string]string{"x-user-id": "owner_1"})
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -101,7 +101,7 @@ func TestDeleteSystemUserRole(t *testing.T) {
 
 		mockRepo.On("HasAnySystemRole", mock.Anything, "owner_1", "NS_1", mock.Anything).Return(true, nil)
 		mockRepo.On("GetSystemOwner", mock.Anything, "NS_1").Return(nil, nil)
-		mockRepo.On("DeleteUserRole", mock.Anything, "NS_1", "u_2", "system", "", "", "owner_1").Return(errors.New("db error"))
+		mockRepo.On("DeleteUserRole", mock.Anything, "NS_1", "u_2", "system", "", "", "", "owner_1").Return(errors.New("db error"))
 
 		rec := PerformRequest(e, http.MethodDelete, apiPath+"?namespace=NS_1&user_id=u_2", nil, map[string]string{"x-user-id": "owner_1"})
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)

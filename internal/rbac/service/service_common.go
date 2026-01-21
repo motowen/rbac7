@@ -81,12 +81,13 @@ func (s *Service) GetUserRoles(ctx context.Context, callerID string, req model.G
 	// Permission check handled by RBAC middleware
 
 	filter := model.UserRoleFilter{
-		UserID:       req.UserID,
-		Namespace:    req.Namespace,
-		Role:         req.Role,
-		Scope:        req.Scope,
-		ResourceID:   req.ResourceID,
-		ResourceType: req.ResourceType,
+		UserID:           req.UserID,
+		Namespace:        req.Namespace,
+		Role:             req.Role,
+		Scope:            req.Scope,
+		ResourceID:       req.ResourceID,
+		ResourceType:     req.ResourceType,
+		ParentResourceID: req.ParentResourceID,
 	}
 
 	return s.Repo.FindUserRoles(ctx, filter)

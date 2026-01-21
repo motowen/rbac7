@@ -58,8 +58,8 @@ func (m *MockRBACRepository) UpsertUserRole(ctx context.Context, role *model.Use
 	return args.Error(0)
 }
 
-func (m *MockRBACRepository) DeleteUserRole(ctx context.Context, namespace, userID, scope, resourceID, resourceType, deletedBy string) error {
-	args := m.Called(ctx, namespace, userID, scope, resourceID, resourceType, deletedBy)
+func (m *MockRBACRepository) DeleteUserRole(ctx context.Context, namespace, userID, scope, resourceID, resourceType, parentResourceID, deletedBy string) error {
+	args := m.Called(ctx, namespace, userID, scope, resourceID, resourceType, parentResourceID, deletedBy)
 	return args.Error(0)
 }
 

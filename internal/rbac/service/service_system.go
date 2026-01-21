@@ -200,7 +200,7 @@ func (s *Service) DeleteSystemUserRole(ctx context.Context, callerID string, req
 		}
 	}
 
-	err = s.Repo.DeleteUserRole(ctx, req.Namespace, req.UserID, model.ScopeSystem, "", "", callerID)
+	err = s.Repo.DeleteUserRole(ctx, req.Namespace, req.UserID, model.ScopeSystem, "", "", "", callerID)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil
