@@ -106,6 +106,11 @@ func (m *MockRBACRepository) SoftDeleteResourceUserRoles(ctx context.Context, re
 	return args.Error(0)
 }
 
+func (m *MockRBACRepository) DeleteUserRolesByParent(ctx context.Context, userID, parentResourceID, resourceType, deletedBy string) error {
+	args := m.Called(ctx, userID, parentResourceID, resourceType, deletedBy)
+	return args.Error(0)
+}
+
 // HistoryRepository mock methods
 
 func (m *MockRBACRepository) CreateHistory(ctx context.Context, history *model.UserRoleHistory) error {

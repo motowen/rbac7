@@ -104,6 +104,18 @@ func (s *Service) AssignResourceUserRole(ctx context.Context, callerID string, r
 		return ErrForbidden
 	}
 
+	// For dashboard_widget: target user must have parent dashboard read permission
+	if req.ResourceType == model.ResourceTypeDashboardWidget {
+		viewerRoles := s.Policy.GetRolesWithPermission(model.PermResourceDashboardRead, false)
+		hasParentAccess, err := s.Repo.HasAnyResourceRole(ctx, req.UserID, req.ParentResourceID, model.ResourceTypeDashboard, viewerRoles)
+		if err != nil {
+			return err
+		}
+		if !hasParentAccess {
+			return ErrBadRequest // User must have parent dashboard read permission to be added to widget whitelist
+		}
+	}
+
 	role := &model.UserRole{
 		UserID:           req.UserID,
 		Role:             req.Role,
@@ -167,6 +179,12 @@ func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID string, r
 
 	log.Printf("Audit: Resource User Role Deleted. Caller=%s, Target=%s, Resource=%s:%s", callerID, req.UserID, req.ResourceType, req.ResourceID)
 
+	// For dashboard: cascade delete user's child widget whitelist roles
+	if req.ResourceType == model.ResourceTypeDashboard {
+		// Ignore errors - this is a best-effort cleanup
+		_ = s.Repo.DeleteUserRolesByParent(ctx, req.UserID, req.ResourceID, model.ResourceTypeDashboardWidget, callerID)
+	}
+
 	// Record history
 	s.recordHistory(&model.UserRoleHistory{
 		Operation:        "delete_user_role",
@@ -186,13 +204,43 @@ func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID string, r
 func (s *Service) AssignResourceUserRoles(ctx context.Context, callerID string, req model.AssignResourceUserRolesReq) (*model.BatchUpsertResult, error) {
 	// Permission check handled by RBAC middleware
 
+	// For dashboard_widget: filter users who have parent dashboard read permission
+	validUserIDs := req.UserIDs
+	var invalidUsers []model.FailedUserInfo
+	if req.ResourceType == model.ResourceTypeDashboardWidget {
+		viewerRoles := s.Policy.GetRolesWithPermission(model.PermResourceDashboardRead, false)
+		validUserIDs = make([]string, 0, len(req.UserIDs))
+		for _, userID := range req.UserIDs {
+			hasParentAccess, err := s.Repo.HasAnyResourceRole(ctx, userID, req.ParentResourceID, model.ResourceTypeDashboard, viewerRoles)
+			if err != nil {
+				return nil, err
+			}
+			if hasParentAccess {
+				validUserIDs = append(validUserIDs, userID)
+			} else {
+				invalidUsers = append(invalidUsers, model.FailedUserInfo{
+					UserID: userID,
+					Reason: "user must have parent dashboard read permission",
+				})
+			}
+		}
+		// If no valid users, return early with failure result
+		if len(validUserIDs) == 0 {
+			return &model.BatchUpsertResult{
+				SuccessCount: 0,
+				FailedCount:  len(invalidUsers),
+				FailedUsers:  invalidUsers,
+			}, nil
+		}
+	}
+
 	// Build roles slice for bulk upsert
-	roles := make([]*model.UserRole, 0, len(req.UserIDs))
+	roles := make([]*model.UserRole, 0, len(validUserIDs))
 	userType := req.UserType
 	if userType == "" {
 		userType = model.UserTypeMember
 	}
-	for _, userID := range req.UserIDs {
+	for _, userID := range validUserIDs {
 		role := &model.UserRole{
 			UserID:           userID,
 			Role:             req.Role,
@@ -211,6 +259,12 @@ func (s *Service) AssignResourceUserRoles(ctx context.Context, callerID string, 
 	result, err := s.Repo.BulkUpsertUserRoles(ctx, roles)
 	if err != nil {
 		return nil, err
+	}
+
+	// Merge invalid users (no parent permission) into result
+	if len(invalidUsers) > 0 {
+		result.FailedCount += len(invalidUsers)
+		result.FailedUsers = append(result.FailedUsers, invalidUsers...)
 	}
 
 	log.Printf("Audit: Resource User Roles Assigned (Batch). Caller=%s, Success=%d, Failed=%d, Role=%s, Resource=%s:%s",

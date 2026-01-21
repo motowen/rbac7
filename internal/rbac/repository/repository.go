@@ -41,6 +41,8 @@ type RBACRepository interface {
 	CountResourceRoles(ctx context.Context, resourceID, resourceType string) (int64, error)
 	// Bulk upsert user roles (partial success allowed)
 	BulkUpsertUserRoles(ctx context.Context, roles []*model.UserRole) (*model.BatchUpsertResult, error)
+	// Delete user roles by parent_resource_id (用於刪除 dashboard member 時移除所有 child widget 權限)
+	DeleteUserRolesByParent(ctx context.Context, userID, parentResourceID, resourceType, deletedBy string) error
 	// Soft delete all user roles for a resource (including owner)
 	SoftDeleteResourceUserRoles(ctx context.Context, req *model.SoftDeleteResourceReq, deletedBy string) error
 }

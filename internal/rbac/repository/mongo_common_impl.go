@@ -409,6 +409,28 @@ func (r *MongoRepository) FindUserRoles(ctx context.Context, filter model.UserRo
 	return allRoles, nil
 }
 
+// DeleteUserRolesByParent soft deletes user roles by parent_resource_id.
+// Used for cascade deletion when removing dashboard member.
+func (r *MongoRepository) DeleteUserRolesByParent(ctx context.Context, userID, parentResourceID, resourceType, deletedBy string) error {
+	filter := bson.M{
+		"user_id":            userID,
+		"parent_resource_id": parentResourceID,
+		"resource_type":      resourceType,
+		"scope":              model.ScopeResource,
+		"deleted_at":         nil,
+	}
+
+	update := bson.M{
+		"$set": bson.M{
+			"deleted_at": time.Now(),
+			"deleted_by": deletedBy,
+		},
+	}
+
+	_, err := r.ResourceRoles.UpdateMany(ctx, filter, update)
+	return err
+}
+
 // SoftDeleteResourceUserRoles soft deletes all user roles for a resource (including owner).
 // This is used when deleting a resource entirely.
 // For dashboard: also deletes all child widget user roles.

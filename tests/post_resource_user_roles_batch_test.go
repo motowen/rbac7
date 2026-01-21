@@ -250,8 +250,10 @@ func TestPostResourceUserRolesBatch(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		e := SetupServerWithMiddleware(mockRepo)
 
-		// Permission checked on parent dashboard
+		// Permission checked on parent dashboard (middleware)
 		mockRepo.On("HasAnyResourceRole", mock.Anything, "owner_1", "dash_1", "dashboard", mock.Anything).Return(true, nil)
+		// Service: target users must have parent dashboard read permission
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "u_2", "dash_1", "dashboard", mock.Anything).Return(true, nil)
 		mockRepo.On("BulkUpsertUserRoles", mock.Anything, mock.Anything).Return(&model.BatchUpsertResult{SuccessCount: 1, FailedCount: 0}, nil)
 
 		reqBody := model.AssignResourceUserRolesReq{
@@ -263,6 +265,34 @@ func TestPostResourceUserRolesBatch(t *testing.T) {
 		}
 		rec := PerformRequest(e, http.MethodPost, apiPath, reqBody, map[string]string{"x-user-id": "owner_1"})
 		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("widget viewer batch fail when target user has no parent dashboard permission", func(t *testing.T) {
+		mockRepo := new(MockRBACRepository)
+		e := SetupServerWithMiddleware(mockRepo)
+
+		// Permission checked on parent dashboard (middleware)
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "owner_1", "dash_1", "dashboard", mock.Anything).Return(true, nil)
+		// Service: target user does NOT have parent dashboard read permission
+		mockRepo.On("HasAnyResourceRole", mock.Anything, "u_no_access", "dash_1", "dashboard", mock.Anything).Return(false, nil)
+
+		reqBody := model.AssignResourceUserRolesReq{
+			UserIDs:          []string{"u_no_access"},
+			Role:             "viewer",
+			ResourceID:       "widget_1",
+			ResourceType:     "dashboard_widget",
+			ParentResourceID: "dash_1",
+		}
+		rec := PerformRequest(e, http.MethodPost, apiPath, reqBody, map[string]string{"x-user-id": "owner_1"})
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		var result model.BatchUpsertResult
+		json.Unmarshal(rec.Body.Bytes(), &result)
+		assert.Equal(t, 0, result.SuccessCount)
+		assert.Equal(t, 1, result.FailedCount)
+		assert.Len(t, result.FailedUsers, 1)
+		assert.Equal(t, "u_no_access", result.FailedUsers[0].UserID)
+		assert.Contains(t, result.FailedUsers[0].Reason, "parent dashboard")
 	})
 
 	// Library Widget Test Cases
