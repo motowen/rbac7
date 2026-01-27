@@ -163,7 +163,7 @@ func TestUpdateSystem(t *testing.T) {
 		e := SetupGraphQLWithMockRepo(mockRepo, rbacClient)
 
 		query := `mutation {
-			updateSystem(namespace: "TEST_NS", name: "New Name") {
+			updateSystem(input: {namespace: "TEST_NS", name: "New Name"}) {
 				namespace
 				name
 			}
@@ -186,7 +186,7 @@ func TestUpdateSystem(t *testing.T) {
 		rbacClient := client.NewRBACClient(rbacServer.URL)
 		e := SetupGraphQLWithMockRepo(mockRepo, rbacClient)
 
-		query := `mutation { updateSystem(namespace: "NS", name: "New") { namespace } }`
+		query := `mutation { updateSystem(input: {namespace: "NS", name: "New"}) { namespace } }`
 		rec := PerformGraphQL(e, query, nil, map[string]string{"x-user-id": "viewer"})
 
 		resp, err := ParseGraphQLResponse(rec)

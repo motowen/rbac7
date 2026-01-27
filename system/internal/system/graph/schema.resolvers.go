@@ -59,19 +59,19 @@ func (r *mutationResolver) CreateSystem(ctx context.Context, namespace string, n
 
 // UpdateSystem is the resolver for the updateSystem field.
 // Permission check is handled by @auth directive
-func (r *mutationResolver) UpdateSystem(ctx context.Context, namespace string, name *string, description *string) (*model.System, error) {
+func (r *mutationResolver) UpdateSystem(ctx context.Context, input model1.UpdateSystemInput) (*model.System, error) {
 	// Get normalized namespace from directive (already validated)
-	namespace = GetNamespace(ctx)
+	namespace := GetNamespace(ctx)
 	if namespace == "" {
-		namespace = strings.ToUpper(strings.TrimSpace(namespace))
+		namespace = strings.ToUpper(strings.TrimSpace(input.Namespace))
 	}
 
 	// Update in MongoDB
-	if name == nil && description == nil {
+	if input.Name == nil && input.Description == nil {
 		return nil, fmt.Errorf("at least one of name or description must be provided")
 	}
 
-	system, err := r.Repo.UpdateSystem(ctx, namespace, name, description)
+	system, err := r.Repo.UpdateSystem(ctx, namespace, input.Name, input.Description)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update system: %w", err)
 	}

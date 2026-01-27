@@ -3,6 +3,7 @@ package graph
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"system/internal/system/client"
@@ -22,8 +23,8 @@ const (
 )
 
 // AuthDirective creates a directive handler for the @auth directive
-func AuthDirective(rbacClient *client.RBACClient) func(ctx context.Context, obj interface{}, next graphql.Resolver, permission string, namespaceRequired *bool) (interface{}, error) {
-	return func(ctx context.Context, obj interface{}, next graphql.Resolver, permission string, namespaceRequired *bool) (interface{}, error) {
+func AuthDirective(rbacClient *client.RBACClient) func(ctx context.Context, obj interface{}, next graphql.Resolver, permission string, namespaceRequired *bool, namespaceField *string) (interface{}, error) {
+	return func(ctx context.Context, obj interface{}, next graphql.Resolver, permission string, namespaceRequired *bool, namespaceField *string) (interface{}, error) {
 		// 1. Get caller ID from context
 		callerID, err := getCallerIDFromContext(ctx)
 		if err != nil {
@@ -33,7 +34,12 @@ func AuthDirective(rbacClient *client.RBACClient) func(ctx context.Context, obj 
 		// 2. Get namespace from GraphQL args if required
 		namespace := ""
 		if namespaceRequired != nil && *namespaceRequired {
-			namespace = getNamespaceFromArgs(ctx)
+			// Use namespaceField to determine the path, default to "namespace"
+			fieldPath := "namespace"
+			if namespaceField != nil && *namespaceField != "" {
+				fieldPath = *namespaceField
+			}
+			namespace = getNamespaceFromPath(ctx, fieldPath)
 			if namespace == "" {
 				return nil, fmt.Errorf("namespace is required for this operation")
 			}
@@ -73,18 +79,74 @@ func getCallerIDFromContext(ctx context.Context) (string, error) {
 	return callerID, nil
 }
 
-// getNamespaceFromArgs extracts namespace from GraphQL field arguments
-func getNamespaceFromArgs(ctx context.Context) string {
+// getNamespaceFromPath extracts namespace from GraphQL field arguments using a dot-separated path
+// For example: "namespace" gets Args["namespace"], "input.namespace" gets Args["input"].Namespace
+func getNamespaceFromPath(ctx context.Context, path string) string {
 	fc := graphql.GetFieldContext(ctx)
 	if fc == nil {
 		return ""
 	}
 
-	// Try to get namespace from args
-	if ns, ok := fc.Args["namespace"].(string); ok {
+	parts := strings.Split(path, ".")
+	if len(parts) == 0 {
+		return ""
+	}
+
+	// Start with Args as initial value
+	var current interface{} = fc.Args
+	for _, part := range parts {
+		if current == nil {
+			return ""
+		}
+
+		switch v := current.(type) {
+		case map[string]interface{}:
+			current = v[part]
+		default:
+			// Use reflection use struct field access
+			current = getFieldByReflection(current, part)
+		}
+	}
+
+	// Convert final value to string
+	if ns, ok := current.(string); ok {
 		return ns
 	}
 	return ""
+}
+
+// getFieldByReflection gets a field value from a struct using reflection
+func getFieldByReflection(obj interface{}, fieldName string) interface{} {
+	val := reflect.ValueOf(obj)
+
+	// Handle pointer types
+	if val.Kind() == reflect.Ptr {
+		if val.IsNil() {
+			return nil
+		}
+		val = val.Elem()
+	}
+
+	if val.Kind() != reflect.Struct {
+		return nil
+	}
+
+	// Try to find field by name (case-insensitive first character for exported fields)
+	field := val.FieldByNameFunc(func(name string) bool {
+		return strings.EqualFold(name, fieldName) ||
+			strings.EqualFold(strings.ToLower(name[:1])+name[1:], fieldName)
+	})
+
+	if !field.IsValid() {
+		return nil
+	}
+
+	return field.Interface()
+}
+
+// getNamespaceFromArgs extracts namespace from GraphQL field arguments (deprecated, use getNamespaceFromPath)
+func getNamespaceFromArgs(ctx context.Context) string {
+	return getNamespaceFromPath(ctx, "namespace")
 }
 
 // GetCallerID gets caller ID from context (for use in resolvers)

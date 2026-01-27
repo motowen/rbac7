@@ -14,3 +14,9 @@ type SystemWithRole struct {
 	Description *string `json:"description,omitempty"`
 	Role        string  `json:"role"`
 }
+
+type UpdateSystemInput struct {
+	Namespace   string  `json:"namespace"`
+	Name        *string `json:"name,omitempty"`
+	Description *string `json:"description,omitempty"`
+}

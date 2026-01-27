@@ -9,6 +9,8 @@ directive @auth(
   permission: String!
   """Whether namespace is required for permission check"""
   namespaceRequired: Boolean = false
+  """Field path to extract namespace from (e.g., 'input.namespace' for nested input)"""
+  namespaceField: String = "namespace"
 ) on FIELD_DEFINITION
 
 type System {
@@ -22,6 +24,12 @@ type SystemWithRole {
   name: String!
   description: String
   role: String!
+}
+
+input UpdateSystemInput {
+  namespace: String!
+  name: String
+  description: String
 }
 
 type Query {
@@ -49,5 +57,5 @@ type Mutation {
   Update system name and/or description.
   Requires platform.system.update permission on the namespace.
   """
-  updateSystem(namespace: String!, name: String, description: String): System! @auth(permission: "platform.system.update", namespaceRequired: true)
+  updateSystem(input: UpdateSystemInput!): System! @auth(permission: "platform.system.update", namespaceRequired: true, namespaceField: "input.namespace")
 }

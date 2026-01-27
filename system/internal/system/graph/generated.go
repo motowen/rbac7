@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
-	model1 "system/internal/system/graph/model"
-	"system/internal/system/model"
+	"system/internal/system/graph/model"
+	model1 "system/internal/system/model"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
@@ -45,13 +45,13 @@ type ResolverRoot interface {
 }
 
 type DirectiveRoot struct {
-	Auth func(ctx context.Context, obj interface{}, next graphql.Resolver, permission string, namespaceRequired *bool) (res interface{}, err error)
+	Auth func(ctx context.Context, obj interface{}, next graphql.Resolver, permission string, namespaceRequired *bool, namespaceField *string) (res interface{}, err error)
 }
 
 type ComplexityRoot struct {
 	Mutation struct {
 		CreateSystem func(childComplexity int, namespace string, name string, description *string, owner string) int
-		UpdateSystem func(childComplexity int, namespace string, name *string, description *string) int
+		UpdateSystem func(childComplexity int, input model.UpdateSystemInput) int
 	}
 
 	Query struct {
@@ -74,12 +74,12 @@ type ComplexityRoot struct {
 }
 
 type MutationResolver interface {
-	CreateSystem(ctx context.Context, namespace string, name string, description *string, owner string) (*model.System, error)
-	UpdateSystem(ctx context.Context, namespace string, name *string, description *string) (*model.System, error)
+	CreateSystem(ctx context.Context, namespace string, name string, description *string, owner string) (*model1.System, error)
+	UpdateSystem(ctx context.Context, input model.UpdateSystemInput) (*model1.System, error)
 }
 type QueryResolver interface {
-	SystemMe(ctx context.Context) ([]*model1.SystemWithRole, error)
-	SystemDetail(ctx context.Context, namespace string) (*model.System, error)
+	SystemMe(ctx context.Context) ([]*model.SystemWithRole, error)
+	SystemDetail(ctx context.Context, namespace string) (*model1.System, error)
 }
 
 type executableSchema struct {
@@ -123,7 +123,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.UpdateSystem(childComplexity, args["namespace"].(string), args["name"].(*string), args["description"].(*string)), true
+		return e.complexity.Mutation.UpdateSystem(childComplexity, args["input"].(model.UpdateSystemInput)), true
 
 	case "Query.systemDetail":
 		if e.complexity.Query.SystemDetail == nil {
@@ -200,7 +200,9 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	rc := graphql.GetOperationContext(ctx)
 	ec := executionContext{rc, e, 0, 0, make(chan graphql.DeferredResult)}
-	inputUnmarshalMap := graphql.BuildUnmarshalerMap()
+	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputUpdateSystemInput,
+	)
 	first := true
 
 	switch rc.Operation.Operation {
@@ -337,6 +339,15 @@ func (ec *executionContext) dir_auth_args(ctx context.Context, rawArgs map[strin
 		}
 	}
 	args["namespaceRequired"] = arg1
+	var arg2 *string
+	if tmp, ok := rawArgs["namespaceField"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("namespaceField"))
+		arg2, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["namespaceField"] = arg2
 	return args, nil
 }
 
@@ -385,33 +396,15 @@ func (ec *executionContext) field_Mutation_createSystem_args(ctx context.Context
 func (ec *executionContext) field_Mutation_updateSystem_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["namespace"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("namespace"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+	var arg0 model.UpdateSystemInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNUpdateSystemInput2systemᚋinternalᚋsystemᚋgraphᚋmodelᚐUpdateSystemInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["namespace"] = arg0
-	var arg1 *string
-	if tmp, ok := rawArgs["name"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
-		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["name"] = arg1
-	var arg2 *string
-	if tmp, ok := rawArgs["description"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
-		arg2, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["description"] = arg2
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -509,10 +502,14 @@ func (ec *executionContext) _Mutation_createSystem(ctx context.Context, field gr
 			if err != nil {
 				return nil, err
 			}
+			namespaceField, err := ec.unmarshalOString2ᚖstring(ctx, "namespace")
+			if err != nil {
+				return nil, err
+			}
 			if ec.directives.Auth == nil {
 				return nil, errors.New("directive auth is not implemented")
 			}
-			return ec.directives.Auth(ctx, nil, directive0, permission, namespaceRequired)
+			return ec.directives.Auth(ctx, nil, directive0, permission, namespaceRequired, namespaceField)
 		}
 
 		tmp, err := directive1(rctx)
@@ -522,7 +519,7 @@ func (ec *executionContext) _Mutation_createSystem(ctx context.Context, field gr
 		if tmp == nil {
 			return nil, nil
 		}
-		if data, ok := tmp.(*model.System); ok {
+		if data, ok := tmp.(*model1.System); ok {
 			return data, nil
 		}
 		return nil, fmt.Errorf(`unexpected type %T from directive, should be *system/internal/system/model.System`, tmp)
@@ -537,7 +534,7 @@ func (ec *executionContext) _Mutation_createSystem(ctx context.Context, field gr
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*model.System)
+	res := resTmp.(*model1.System)
 	fc.Result = res
 	return ec.marshalNSystem2ᚖsystemᚋinternalᚋsystemᚋmodelᚐSystem(ctx, field.Selections, res)
 }
@@ -589,7 +586,7 @@ func (ec *executionContext) _Mutation_updateSystem(ctx context.Context, field gr
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		directive0 := func(rctx context.Context) (interface{}, error) {
 			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.Mutation().UpdateSystem(rctx, fc.Args["namespace"].(string), fc.Args["name"].(*string), fc.Args["description"].(*string))
+			return ec.resolvers.Mutation().UpdateSystem(rctx, fc.Args["input"].(model.UpdateSystemInput))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
 			permission, err := ec.unmarshalNString2string(ctx, "platform.system.update")
@@ -600,10 +597,14 @@ func (ec *executionContext) _Mutation_updateSystem(ctx context.Context, field gr
 			if err != nil {
 				return nil, err
 			}
+			namespaceField, err := ec.unmarshalOString2ᚖstring(ctx, "input.namespace")
+			if err != nil {
+				return nil, err
+			}
 			if ec.directives.Auth == nil {
 				return nil, errors.New("directive auth is not implemented")
 			}
-			return ec.directives.Auth(ctx, nil, directive0, permission, namespaceRequired)
+			return ec.directives.Auth(ctx, nil, directive0, permission, namespaceRequired, namespaceField)
 		}
 
 		tmp, err := directive1(rctx)
@@ -613,7 +614,7 @@ func (ec *executionContext) _Mutation_updateSystem(ctx context.Context, field gr
 		if tmp == nil {
 			return nil, nil
 		}
-		if data, ok := tmp.(*model.System); ok {
+		if data, ok := tmp.(*model1.System); ok {
 			return data, nil
 		}
 		return nil, fmt.Errorf(`unexpected type %T from directive, should be *system/internal/system/model.System`, tmp)
@@ -628,7 +629,7 @@ func (ec *executionContext) _Mutation_updateSystem(ctx context.Context, field gr
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*model.System)
+	res := resTmp.(*model1.System)
 	fc.Result = res
 	return ec.marshalNSystem2ᚖsystemᚋinternalᚋsystemᚋmodelᚐSystem(ctx, field.Selections, res)
 }
@@ -691,7 +692,7 @@ func (ec *executionContext) _Query_systemMe(ctx context.Context, field graphql.C
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model1.SystemWithRole)
+	res := resTmp.([]*model.SystemWithRole)
 	fc.Result = res
 	return ec.marshalNSystemWithRole2ᚕᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐSystemWithRoleᚄ(ctx, field.Selections, res)
 }
@@ -745,10 +746,14 @@ func (ec *executionContext) _Query_systemDetail(ctx context.Context, field graph
 			if err != nil {
 				return nil, err
 			}
+			namespaceField, err := ec.unmarshalOString2ᚖstring(ctx, "namespace")
+			if err != nil {
+				return nil, err
+			}
 			if ec.directives.Auth == nil {
 				return nil, errors.New("directive auth is not implemented")
 			}
-			return ec.directives.Auth(ctx, nil, directive0, permission, namespaceRequired)
+			return ec.directives.Auth(ctx, nil, directive0, permission, namespaceRequired, namespaceField)
 		}
 
 		tmp, err := directive1(rctx)
@@ -758,7 +763,7 @@ func (ec *executionContext) _Query_systemDetail(ctx context.Context, field graph
 		if tmp == nil {
 			return nil, nil
 		}
-		if data, ok := tmp.(*model.System); ok {
+		if data, ok := tmp.(*model1.System); ok {
 			return data, nil
 		}
 		return nil, fmt.Errorf(`unexpected type %T from directive, should be *system/internal/system/model.System`, tmp)
@@ -770,7 +775,7 @@ func (ec *executionContext) _Query_systemDetail(ctx context.Context, field graph
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*model.System)
+	res := resTmp.(*model1.System)
 	fc.Result = res
 	return ec.marshalOSystem2ᚖsystemᚋinternalᚋsystemᚋmodelᚐSystem(ctx, field.Selections, res)
 }
@@ -936,7 +941,7 @@ func (ec *executionContext) fieldContext_Query___schema(ctx context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _System_namespace(ctx context.Context, field graphql.CollectedField, obj *model.System) (ret graphql.Marshaler) {
+func (ec *executionContext) _System_namespace(ctx context.Context, field graphql.CollectedField, obj *model1.System) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_System_namespace(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -980,7 +985,7 @@ func (ec *executionContext) fieldContext_System_namespace(ctx context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _System_name(ctx context.Context, field graphql.CollectedField, obj *model.System) (ret graphql.Marshaler) {
+func (ec *executionContext) _System_name(ctx context.Context, field graphql.CollectedField, obj *model1.System) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_System_name(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -1024,7 +1029,7 @@ func (ec *executionContext) fieldContext_System_name(ctx context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _System_description(ctx context.Context, field graphql.CollectedField, obj *model.System) (ret graphql.Marshaler) {
+func (ec *executionContext) _System_description(ctx context.Context, field graphql.CollectedField, obj *model1.System) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_System_description(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -1065,7 +1070,7 @@ func (ec *executionContext) fieldContext_System_description(ctx context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _SystemWithRole_namespace(ctx context.Context, field graphql.CollectedField, obj *model1.SystemWithRole) (ret graphql.Marshaler) {
+func (ec *executionContext) _SystemWithRole_namespace(ctx context.Context, field graphql.CollectedField, obj *model.SystemWithRole) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SystemWithRole_namespace(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -1109,7 +1114,7 @@ func (ec *executionContext) fieldContext_SystemWithRole_namespace(ctx context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _SystemWithRole_name(ctx context.Context, field graphql.CollectedField, obj *model1.SystemWithRole) (ret graphql.Marshaler) {
+func (ec *executionContext) _SystemWithRole_name(ctx context.Context, field graphql.CollectedField, obj *model.SystemWithRole) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SystemWithRole_name(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -1153,7 +1158,7 @@ func (ec *executionContext) fieldContext_SystemWithRole_name(ctx context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _SystemWithRole_description(ctx context.Context, field graphql.CollectedField, obj *model1.SystemWithRole) (ret graphql.Marshaler) {
+func (ec *executionContext) _SystemWithRole_description(ctx context.Context, field graphql.CollectedField, obj *model.SystemWithRole) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SystemWithRole_description(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -1194,7 +1199,7 @@ func (ec *executionContext) fieldContext_SystemWithRole_description(ctx context.
 	return fc, nil
 }
 
-func (ec *executionContext) _SystemWithRole_role(ctx context.Context, field graphql.CollectedField, obj *model1.SystemWithRole) (ret graphql.Marshaler) {
+func (ec *executionContext) _SystemWithRole_role(ctx context.Context, field graphql.CollectedField, obj *model.SystemWithRole) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SystemWithRole_role(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -3011,6 +3016,47 @@ func (ec *executionContext) fieldContext___Type_specifiedByURL(ctx context.Conte
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputUpdateSystemInput(ctx context.Context, obj interface{}) (model.UpdateSystemInput, error) {
+	var it model.UpdateSystemInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"namespace", "name", "description"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "namespace":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("namespace"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Namespace = data
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
+		}
+	}
+
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -3168,7 +3214,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 
 var systemImplementors = []string{"System"}
 
-func (ec *executionContext) _System(ctx context.Context, sel ast.SelectionSet, obj *model.System) graphql.Marshaler {
+func (ec *executionContext) _System(ctx context.Context, sel ast.SelectionSet, obj *model1.System) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, systemImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -3214,7 +3260,7 @@ func (ec *executionContext) _System(ctx context.Context, sel ast.SelectionSet, o
 
 var systemWithRoleImplementors = []string{"SystemWithRole"}
 
-func (ec *executionContext) _SystemWithRole(ctx context.Context, sel ast.SelectionSet, obj *model1.SystemWithRole) graphql.Marshaler {
+func (ec *executionContext) _SystemWithRole(ctx context.Context, sel ast.SelectionSet, obj *model.SystemWithRole) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, systemWithRoleImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -3619,11 +3665,11 @@ func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.S
 	return res
 }
 
-func (ec *executionContext) marshalNSystem2systemᚋinternalᚋsystemᚋmodelᚐSystem(ctx context.Context, sel ast.SelectionSet, v model.System) graphql.Marshaler {
+func (ec *executionContext) marshalNSystem2systemᚋinternalᚋsystemᚋmodelᚐSystem(ctx context.Context, sel ast.SelectionSet, v model1.System) graphql.Marshaler {
 	return ec._System(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNSystem2ᚖsystemᚋinternalᚋsystemᚋmodelᚐSystem(ctx context.Context, sel ast.SelectionSet, v *model.System) graphql.Marshaler {
+func (ec *executionContext) marshalNSystem2ᚖsystemᚋinternalᚋsystemᚋmodelᚐSystem(ctx context.Context, sel ast.SelectionSet, v *model1.System) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -3633,7 +3679,7 @@ func (ec *executionContext) marshalNSystem2ᚖsystemᚋinternalᚋsystemᚋmodel
 	return ec._System(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNSystemWithRole2ᚕᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐSystemWithRoleᚄ(ctx context.Context, sel ast.SelectionSet, v []*model1.SystemWithRole) graphql.Marshaler {
+func (ec *executionContext) marshalNSystemWithRole2ᚕᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐSystemWithRoleᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.SystemWithRole) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -3677,7 +3723,7 @@ func (ec *executionContext) marshalNSystemWithRole2ᚕᚖsystemᚋinternalᚋsys
 	return ret
 }
 
-func (ec *executionContext) marshalNSystemWithRole2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐSystemWithRole(ctx context.Context, sel ast.SelectionSet, v *model1.SystemWithRole) graphql.Marshaler {
+func (ec *executionContext) marshalNSystemWithRole2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐSystemWithRole(ctx context.Context, sel ast.SelectionSet, v *model.SystemWithRole) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -3685,6 +3731,11 @@ func (ec *executionContext) marshalNSystemWithRole2ᚖsystemᚋinternalᚋsystem
 		return graphql.Null
 	}
 	return ec._SystemWithRole(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNUpdateSystemInput2systemᚋinternalᚋsystemᚋgraphᚋmodelᚐUpdateSystemInput(ctx context.Context, v interface{}) (model.UpdateSystemInput, error) {
+	res, err := ec.unmarshalInputUpdateSystemInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {
@@ -3992,7 +4043,7 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 	return res
 }
 
-func (ec *executionContext) marshalOSystem2ᚖsystemᚋinternalᚋsystemᚋmodelᚐSystem(ctx context.Context, sel ast.SelectionSet, v *model.System) graphql.Marshaler {
+func (ec *executionContext) marshalOSystem2ᚖsystemᚋinternalᚋsystemᚋmodelᚐSystem(ctx context.Context, sel ast.SelectionSet, v *model1.System) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
