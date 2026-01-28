@@ -11,5 +11,6 @@ import (
 
 type Resolver struct {
 	Repo       repository.SystemRepository
+	WidgetRepo repository.WidgetRepository
 	RBACClient *client.RBACClient
 }

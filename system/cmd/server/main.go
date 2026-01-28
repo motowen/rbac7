@@ -44,6 +44,7 @@ func main() {
 
 	db := mongoClient.Database(dbName)
 	repo := repository.NewMongoSystemRepository(db)
+	widgetRepo := repository.NewMongoWidgetRepository(db)
 	rbacClient := client.NewRBACClient(rbacBaseURL)
 
 	// Echo server
@@ -56,6 +57,7 @@ func main() {
 	cfg := graph.Config{
 		Resolvers: &graph.Resolver{
 			Repo:       repo,
+			WidgetRepo: widgetRepo,
 			RBACClient: rbacClient,
 		},
 		Directives: graph.DirectiveRoot{
