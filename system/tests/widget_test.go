@@ -39,13 +39,15 @@ func TestCreateLibraryWidget(t *testing.T) {
 
 		query := `mutation {
 			createLibraryWidget(input: {
+				name: "My Widget"
+				version: "1.0.0"
 				type: "table"
-				metadata: {name: "My Widget", description: "A test widget"}
-				layout: {x: 0, y: 0, w: 4, h: 3}
+				typeVersion: "1.0"
 			}) {
 				id
+				name
+				version
 				type
-				metadata { name description }
 				status
 			}
 		}`
@@ -58,20 +60,18 @@ func TestCreateLibraryWidget(t *testing.T) {
 
 		var data struct {
 			CreateLibraryWidget struct {
-				ID       string `json:"id"`
-				Type     string `json:"type"`
-				Metadata struct {
-					Name        string  `json:"name"`
-					Description *string `json:"description"`
-				} `json:"metadata"`
-				Status string `json:"status"`
+				ID      string `json:"id"`
+				Name    string `json:"name"`
+				Version string `json:"version"`
+				Type    string `json:"type"`
+				Status  string `json:"status"`
 			} `json:"createLibraryWidget"`
 		}
 		json.Unmarshal(resp.Data, &data)
 		assert.Equal(t, "widget-123", data.CreateLibraryWidget.ID)
+		assert.Equal(t, "My Widget", data.CreateLibraryWidget.Name)
 		assert.Equal(t, "table", data.CreateLibraryWidget.Type)
-		assert.Equal(t, "My Widget", data.CreateLibraryWidget.Metadata.Name)
-		assert.Equal(t, "DRAFT", data.CreateLibraryWidget.Status)
+		assert.Equal(t, "draft", data.CreateLibraryWidget.Status)
 	})
 }
 
@@ -84,11 +84,12 @@ func TestUpdateLibraryWidget(t *testing.T) {
 		mockWidgetRepo := &MockWidgetRepository{
 			UpdateLibraryWidgetFunc: func(ctx context.Context, id string, update *repository.LibraryWidgetUpdate) (*model.LibraryWidget, error) {
 				return &model.LibraryWidget{
-					ID:       id,
-					Type:     "chart",
-					Metadata: model.WidgetMetadata{Name: "Updated Widget"},
-					Layout:   model.LibraryWidgetLayout{X: 0, Y: 0, W: 4, H: 3},
-					Status:   "PUBLISHED",
+					ID:          id,
+					Name:        "Updated Widget",
+					Version:     "1.0.0",
+					Type:        "chart",
+					TypeVersion: "1.0",
+					Status:      "published",
 				}, nil
 			},
 		}
@@ -97,7 +98,7 @@ func TestUpdateLibraryWidget(t *testing.T) {
 		e := SetupGraphQLWithMocks(mockRepo, mockWidgetRepo, rbacClient)
 
 		query := `mutation {
-			updateLibraryWidget(input: {id: "widget-123", status: PUBLISHED}) {
+			updateLibraryWidget(input: {id: "widget-123", status: "published"}) {
 				id
 				status
 			}
@@ -116,7 +117,7 @@ func TestUpdateLibraryWidget(t *testing.T) {
 		}
 		json.Unmarshal(resp.Data, &data)
 		assert.Equal(t, "widget-123", data.UpdateLibraryWidget.ID)
-		assert.Equal(t, "PUBLISHED", data.UpdateLibraryWidget.Status)
+		assert.Equal(t, "published", data.UpdateLibraryWidget.Status)
 	})
 
 	t.Run("error - widget not found", func(t *testing.T) {
@@ -176,8 +177,8 @@ func TestLibraryWidgets(t *testing.T) {
 		mockWidgetRepo := &MockWidgetRepository{
 			GetLibraryWidgetsFunc: func(ctx context.Context) ([]*model.LibraryWidget, error) {
 				return []*model.LibraryWidget{
-					{ID: "w1", Type: "table", Metadata: model.WidgetMetadata{Name: "Widget 1"}, Layout: model.LibraryWidgetLayout{X: 0, Y: 0, W: 4, H: 3}, Status: "PUBLISHED"},
-					{ID: "w2", Type: "chart", Metadata: model.WidgetMetadata{Name: "Widget 2"}, Layout: model.LibraryWidgetLayout{X: 4, Y: 0, W: 4, H: 3}, Status: "DRAFT"},
+					{ID: "w1", Name: "Widget 1", Version: "1.0", Type: "table", TypeVersion: "1.0", Status: "published"},
+					{ID: "w2", Name: "Widget 2", Version: "1.0", Type: "chart", TypeVersion: "1.0", Status: "draft"},
 				}, nil
 			},
 		}
@@ -185,7 +186,7 @@ func TestLibraryWidgets(t *testing.T) {
 		rbacClient := client.NewRBACClient(rbacServer.URL)
 		e := SetupGraphQLWithMocks(mockRepo, mockWidgetRepo, rbacClient)
 
-		query := `query { libraryWidgets { id type metadata { name } status } }`
+		query := `query { libraryWidgets { id name type status } }`
 		rec := PerformGraphQL(e, query, nil, map[string]string{"x-user-id": "user1"})
 
 		resp, err := ParseGraphQLResponse(rec)
@@ -194,11 +195,9 @@ func TestLibraryWidgets(t *testing.T) {
 
 		var data struct {
 			LibraryWidgets []struct {
-				ID       string `json:"id"`
-				Type     string `json:"type"`
-				Metadata struct {
-					Name string `json:"name"`
-				} `json:"metadata"`
+				ID     string `json:"id"`
+				Name   string `json:"name"`
+				Type   string `json:"type"`
 				Status string `json:"status"`
 			} `json:"libraryWidgets"`
 		}
@@ -240,11 +239,12 @@ func TestLibraryWidget(t *testing.T) {
 		mockWidgetRepo := &MockWidgetRepository{
 			GetLibraryWidgetFunc: func(ctx context.Context, id string) (*model.LibraryWidget, error) {
 				return &model.LibraryWidget{
-					ID:       id,
-					Type:     "table",
-					Metadata: model.WidgetMetadata{Name: "Test Widget"},
-					Layout:   model.LibraryWidgetLayout{X: 0, Y: 0, W: 4, H: 3},
-					Status:   "PUBLISHED",
+					ID:          id,
+					Name:        "Test Widget",
+					Version:     "1.0.0",
+					Type:        "table",
+					TypeVersion: "1.0",
+					Status:      "published",
 				}, nil
 			},
 		}
@@ -252,7 +252,7 @@ func TestLibraryWidget(t *testing.T) {
 		rbacClient := client.NewRBACClient(rbacServer.URL)
 		e := SetupGraphQLWithMocks(mockRepo, mockWidgetRepo, rbacClient)
 
-		query := `query { libraryWidget(id: "widget-123") { id type metadata { name } } }`
+		query := `query { libraryWidget(id: "widget-123") { id name type } }`
 		rec := PerformGraphQL(e, query, nil, map[string]string{"x-user-id": "user1"})
 
 		resp, err := ParseGraphQLResponse(rec)
@@ -262,6 +262,7 @@ func TestLibraryWidget(t *testing.T) {
 		var data struct {
 			LibraryWidget struct {
 				ID   string `json:"id"`
+				Name string `json:"name"`
 				Type string `json:"type"`
 			} `json:"libraryWidget"`
 		}
@@ -306,11 +307,12 @@ func TestCreateDashboardWidget(t *testing.T) {
 		mockWidgetRepo := &MockWidgetRepository{
 			GetLibraryWidgetFunc: func(ctx context.Context, id string) (*model.LibraryWidget, error) {
 				return &model.LibraryWidget{
-					ID:       id,
-					Type:     "table",
-					Metadata: model.WidgetMetadata{Name: "Source Widget"},
-					Layout:   model.LibraryWidgetLayout{X: 0, Y: 0, W: 4, H: 3},
-					Status:   "PUBLISHED",
+					ID:          id,
+					Name:        "Source Widget",
+					Version:     "1.0.0",
+					Type:        "table",
+					TypeVersion: "1.0",
+					Status:      "published",
 				}, nil
 			},
 			CreateDashboardWidgetFunc: func(ctx context.Context, widget *model.DashboardWidget) (*model.DashboardWidget, error) {
@@ -334,7 +336,6 @@ func TestCreateDashboardWidget(t *testing.T) {
 				dashboardId
 				libraryWidgetId
 				layout { x y w h }
-				libraryWidget { id type metadata { name } }
 			}
 		}`
 		rec := PerformGraphQL(e, query, nil, map[string]string{"x-user-id": "user1"})
@@ -354,10 +355,6 @@ func TestCreateDashboardWidget(t *testing.T) {
 					W int `json:"w"`
 					H int `json:"h"`
 				} `json:"layout"`
-				LibraryWidget struct {
-					ID   string `json:"id"`
-					Type string `json:"type"`
-				} `json:"libraryWidget"`
 			} `json:"createDashboardWidget"`
 		}
 		json.Unmarshal(resp.Data, &data)
@@ -409,15 +406,6 @@ func TestUpdateDashboardWidget(t *testing.T) {
 					DashboardID:     "dashboard-1",
 					LibraryWidgetID: "lw-123",
 					Layout:          *layout,
-				}, nil
-			},
-			GetLibraryWidgetFunc: func(ctx context.Context, id string) (*model.LibraryWidget, error) {
-				return &model.LibraryWidget{
-					ID:       id,
-					Type:     "table",
-					Metadata: model.WidgetMetadata{Name: "Widget"},
-					Layout:   model.LibraryWidgetLayout{X: 0, Y: 0, W: 4, H: 3},
-					Status:   "PUBLISHED",
 				}, nil
 			},
 		}
@@ -492,15 +480,6 @@ func TestDashboardWidgets(t *testing.T) {
 					{ID: "dw2", DashboardID: dashboardID, LibraryWidgetID: "lw2", Layout: model.DashboardWidgetLayout{X: 4, Y: 0, W: 4, H: 3}},
 				}, nil
 			},
-			GetLibraryWidgetFunc: func(ctx context.Context, id string) (*model.LibraryWidget, error) {
-				return &model.LibraryWidget{
-					ID:       id,
-					Type:     "table",
-					Metadata: model.WidgetMetadata{Name: "Widget " + id},
-					Layout:   model.LibraryWidgetLayout{X: 0, Y: 0, W: 4, H: 3},
-					Status:   "PUBLISHED",
-				}, nil
-			},
 		}
 
 		rbacClient := client.NewRBACClient(rbacServer.URL)
@@ -547,21 +526,12 @@ func TestDashboardWidget(t *testing.T) {
 					Layout:          model.DashboardWidgetLayout{X: 0, Y: 0, W: 6, H: 4},
 				}, nil
 			},
-			GetLibraryWidgetFunc: func(ctx context.Context, id string) (*model.LibraryWidget, error) {
-				return &model.LibraryWidget{
-					ID:       id,
-					Type:     "chart",
-					Metadata: model.WidgetMetadata{Name: "Chart Widget"},
-					Layout:   model.LibraryWidgetLayout{X: 0, Y: 0, W: 4, H: 3},
-					Status:   "PUBLISHED",
-				}, nil
-			},
 		}
 
 		rbacClient := client.NewRBACClient(rbacServer.URL)
 		e := SetupGraphQLWithMocks(mockRepo, mockWidgetRepo, rbacClient)
 
-		query := `query { dashboardWidget(id: "dw-123") { id dashboardId libraryWidget { id type } } }`
+		query := `query { dashboardWidget(id: "dw-123") { id dashboardId libraryWidgetId } }`
 		rec := PerformGraphQL(e, query, nil, map[string]string{"x-user-id": "user1"})
 
 		resp, err := ParseGraphQLResponse(rec)
@@ -570,16 +540,13 @@ func TestDashboardWidget(t *testing.T) {
 
 		var data struct {
 			DashboardWidget struct {
-				ID            string `json:"id"`
-				DashboardID   string `json:"dashboardId"`
-				LibraryWidget struct {
-					ID   string `json:"id"`
-					Type string `json:"type"`
-				} `json:"libraryWidget"`
+				ID              string `json:"id"`
+				DashboardID     string `json:"dashboardId"`
+				LibraryWidgetID string `json:"libraryWidgetId"`
 			} `json:"dashboardWidget"`
 		}
 		json.Unmarshal(resp.Data, &data)
 		assert.Equal(t, "dw-123", data.DashboardWidget.ID)
-		assert.Equal(t, "chart", data.DashboardWidget.LibraryWidget.Type)
+		assert.Equal(t, "lw-123", data.DashboardWidget.LibraryWidgetID)
 	})
 }

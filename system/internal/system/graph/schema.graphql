@@ -14,6 +14,13 @@ directive @auth(
 ) on FIELD_DEFINITION
 
 # ============================================
+# Custom Scalars
+# ============================================
+
+"""JSON scalar type for dynamic/flexible data structures (maps to MongoDB BSON Object)"""
+scalar JSON
+
+# ============================================
 # System Types
 # ============================================
 
@@ -83,21 +90,18 @@ input ParamMapInput {
 type Datasource {
   id: String!
   name: String!
+  description: String
   type: String!
-  trigger: DatasourceTrigger!
-  datasourceId: String!
-  transform: String
-  paramMap: [ParamMap!]
+  """動態配置 (JSON 格式，對應 MongoDB BSON Object)"""
+  config: JSON
 }
 
 input DatasourceInput {
   id: String!
   name: String!
+  description: String
   type: String!
-  trigger: DatasourceTrigger!
-  datasourceId: String!
-  transform: String
-  paramMap: [ParamMapInput!]
+  config: JSON
 }
 
 # ============================================
@@ -221,15 +225,21 @@ input DashboardWidgetLayoutInput {
 """Library Widget - 組件庫中的 Widget 模板"""
 type LibraryWidget {
   id: ID!
+  name: String!
+  version: String!
   type: String!
-  metadata: WidgetMetadata!
-  datasource: Datasource
-  props: WidgetProps
-  slots: SlotsConfig
-  layout: LibraryWidgetLayout!
-  status: WidgetStatus!
+  typeVersion: String!
+  """Widget Schema (JSON 格式，對應 MongoDB BSON Object)"""
+  schema: JSON
+  """Datasource 配置列表"""
+  datasource: [Datasource!]
+  status: String!
+  thumbnailUrl: String
   createdAt: String!
   updatedAt: String!
+  publishedAt: String
+  """User Config (JSON 格式，對應 MongoDB BSON Object)"""
+  userConfig: JSON
 }
 
 """Dashboard Widget - Dashboard 中的 Widget 實例"""
@@ -237,8 +247,6 @@ type DashboardWidget {
   id: ID!
   dashboardId: String!
   libraryWidgetId: String!
-  """從 Library Widget 繼承的 Widget"""
-  libraryWidget: LibraryWidget
   """在 Dashboard 中的佈局位置"""
   layout: DashboardWidgetLayout!
   createdAt: String!
@@ -250,24 +258,28 @@ type DashboardWidget {
 # ============================================
 
 input CreateLibraryWidgetInput {
+  name: String!
+  version: String!
   type: String!
-  metadata: WidgetMetadataInput!
-  datasource: DatasourceInput
-  props: WidgetPropsInput
-  slots: SlotsConfigInput
-  layout: LibraryWidgetLayoutInput!
-  status: WidgetStatus = DRAFT
+  typeVersion: String!
+  schema: JSON
+  datasource: [DatasourceInput!]
+  status: String = "draft"
+  thumbnailUrl: String
+  userConfig: JSON
 }
 
 input UpdateLibraryWidgetInput {
   id: ID!
+  name: String
+  version: String
   type: String
-  metadata: WidgetMetadataInput
-  datasource: DatasourceInput
-  props: WidgetPropsInput
-  slots: SlotsConfigInput
-  layout: LibraryWidgetLayoutInput
-  status: WidgetStatus
+  typeVersion: String
+  schema: JSON
+  datasource: [DatasourceInput!]
+  status: String
+  thumbnailUrl: String
+  userConfig: JSON
 }
 
 input CreateDashboardWidgetInput {

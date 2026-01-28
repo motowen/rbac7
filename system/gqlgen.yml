@@ -18,7 +18,14 @@ resolver:
 autobind:
   - "system/internal/system/model"
 
+# JSON scalar type mapping
+models:
+  JSON:
+    model:
+      - github.com/99designs/gqlgen/graphql.Map
+
 # Directive configuration
 directives:
   auth:
     skip_runtime: false
+

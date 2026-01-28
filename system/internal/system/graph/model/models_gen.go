@@ -15,34 +15,15 @@ type CreateDashboardWidgetInput struct {
 }
 
 type CreateLibraryWidgetInput struct {
-	Type       string                    `json:"type"`
-	Metadata   *WidgetMetadataInput      `json:"metadata"`
-	Datasource *DatasourceInput          `json:"datasource,omitempty"`
-	Props      *WidgetPropsInput         `json:"props,omitempty"`
-	Slots      *SlotsConfigInput         `json:"slots,omitempty"`
-	Layout     *LibraryWidgetLayoutInput `json:"layout"`
-	Status     *WidgetStatus             `json:"status,omitempty"`
-}
-
-// Dashboard Widget - Dashboard 中的 Widget 實例
-type DashboardWidget struct {
-	ID              string `json:"id"`
-	DashboardID     string `json:"dashboardId"`
-	LibraryWidgetID string `json:"libraryWidgetId"`
-	// 從 Library Widget 繼承的 Widget
-	LibraryWidget *LibraryWidget `json:"libraryWidget,omitempty"`
-	// 在 Dashboard 中的佈局位置
-	Layout    *DashboardWidgetLayout `json:"layout"`
-	CreatedAt string                 `json:"createdAt"`
-	UpdatedAt string                 `json:"updatedAt"`
-}
-
-// Dashboard Widget 佈局配置 (僅位置和大小)
-type DashboardWidgetLayout struct {
-	X int `json:"x"`
-	Y int `json:"y"`
-	W int `json:"w"`
-	H int `json:"h"`
+	Name         string             `json:"name"`
+	Version      string             `json:"version"`
+	Type         string             `json:"type"`
+	TypeVersion  string             `json:"typeVersion"`
+	Schema       *string            `json:"schema,omitempty"`
+	Datasource   []*DatasourceInput `json:"datasource,omitempty"`
+	Status       *string            `json:"status,omitempty"`
+	ThumbnailURL *string            `json:"thumbnailUrl,omitempty"`
+	UserConfig   *string            `json:"userConfig,omitempty"`
 }
 
 type DashboardWidgetLayoutInput struct {
@@ -52,25 +33,12 @@ type DashboardWidgetLayoutInput struct {
 	H int `json:"h"`
 }
 
-// Datasource 資料來源配置
-type Datasource struct {
-	ID           string            `json:"id"`
-	Name         string            `json:"name"`
-	Type         string            `json:"type"`
-	Trigger      DatasourceTrigger `json:"trigger"`
-	DatasourceID string            `json:"datasourceId"`
-	Transform    *string           `json:"transform,omitempty"`
-	ParamMap     []*ParamMap       `json:"paramMap,omitempty"`
-}
-
 type DatasourceInput struct {
-	ID           string            `json:"id"`
-	Name         string            `json:"name"`
-	Type         string            `json:"type"`
-	Trigger      DatasourceTrigger `json:"trigger"`
-	DatasourceID string            `json:"datasourceId"`
-	Transform    *string           `json:"transform,omitempty"`
-	ParamMap     []*ParamMapInput  `json:"paramMap,omitempty"`
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	Description *string `json:"description,omitempty"`
+	Type        string  `json:"type"`
+	Config      *string `json:"config,omitempty"`
 }
 
 // 欄位配置
@@ -86,20 +54,6 @@ type FieldConfigInput struct {
 	Label string    `json:"label"`
 	Type  FieldType `json:"type"`
 	Width *int      `json:"width,omitempty"`
-}
-
-// Library Widget - 組件庫中的 Widget 模板
-type LibraryWidget struct {
-	ID         string               `json:"id"`
-	Type       string               `json:"type"`
-	Metadata   *WidgetMetadata      `json:"metadata"`
-	Datasource *Datasource          `json:"datasource,omitempty"`
-	Props      *WidgetProps         `json:"props,omitempty"`
-	Slots      *SlotsConfig         `json:"slots,omitempty"`
-	Layout     *LibraryWidgetLayout `json:"layout"`
-	Status     WidgetStatus         `json:"status"`
-	CreatedAt  string               `json:"createdAt"`
-	UpdatedAt  string               `json:"updatedAt"`
 }
 
 // Library Widget 佈局配置 (包含最小尺寸限制)
@@ -174,14 +128,16 @@ type UpdateDashboardWidgetInput struct {
 }
 
 type UpdateLibraryWidgetInput struct {
-	ID         string                    `json:"id"`
-	Type       *string                   `json:"type,omitempty"`
-	Metadata   *WidgetMetadataInput      `json:"metadata,omitempty"`
-	Datasource *DatasourceInput          `json:"datasource,omitempty"`
-	Props      *WidgetPropsInput         `json:"props,omitempty"`
-	Slots      *SlotsConfigInput         `json:"slots,omitempty"`
-	Layout     *LibraryWidgetLayoutInput `json:"layout,omitempty"`
-	Status     *WidgetStatus             `json:"status,omitempty"`
+	ID           string             `json:"id"`
+	Name         *string            `json:"name,omitempty"`
+	Version      *string            `json:"version,omitempty"`
+	Type         *string            `json:"type,omitempty"`
+	TypeVersion  *string            `json:"typeVersion,omitempty"`
+	Schema       *string            `json:"schema,omitempty"`
+	Datasource   []*DatasourceInput `json:"datasource,omitempty"`
+	Status       *string            `json:"status,omitempty"`
+	ThumbnailURL *string            `json:"thumbnailUrl,omitempty"`
+	UserConfig   *string            `json:"userConfig,omitempty"`
 }
 
 type UpdateSystemInput struct {

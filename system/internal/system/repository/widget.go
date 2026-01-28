@@ -31,13 +31,15 @@ type WidgetRepository interface {
 
 // LibraryWidgetUpdate represents fields that can be updated
 type LibraryWidgetUpdate struct {
-	Type       *string
-	Metadata   *model.WidgetMetadata
-	Datasource *model.Datasource
-	Props      *model.WidgetProps
-	Slots      *model.SlotsConfig
-	Layout     *model.LibraryWidgetLayout
-	Status     *string
+	Name         *string
+	Version      *string
+	Type         *string
+	TypeVersion  *string
+	Schema       map[string]interface{}
+	Datasource   []model.Datasource
+	Status       *string
+	ThumbnailURL *string
+	UserConfig   map[string]interface{}
 }
 
 // MongoWidgetRepository implements WidgetRepository using MongoDB
@@ -74,26 +76,32 @@ func (r *MongoWidgetRepository) UpdateLibraryWidget(ctx context.Context, id stri
 	updateDoc := bson.M{"$set": bson.M{"updated_at": time.Now()}}
 	setFields := updateDoc["$set"].(bson.M)
 
+	if update.Name != nil {
+		setFields["name"] = *update.Name
+	}
+	if update.Version != nil {
+		setFields["version"] = *update.Version
+	}
 	if update.Type != nil {
 		setFields["type"] = *update.Type
 	}
-	if update.Metadata != nil {
-		setFields["metadata"] = update.Metadata
+	if update.TypeVersion != nil {
+		setFields["type_version"] = *update.TypeVersion
+	}
+	if update.Schema != nil {
+		setFields["schema"] = update.Schema
 	}
 	if update.Datasource != nil {
 		setFields["datasource"] = update.Datasource
 	}
-	if update.Props != nil {
-		setFields["props"] = update.Props
-	}
-	if update.Slots != nil {
-		setFields["slots"] = update.Slots
-	}
-	if update.Layout != nil {
-		setFields["layout"] = update.Layout
-	}
 	if update.Status != nil {
 		setFields["status"] = *update.Status
+	}
+	if update.ThumbnailURL != nil {
+		setFields["thumbnail_url"] = *update.ThumbnailURL
+	}
+	if update.UserConfig != nil {
+		setFields["user_config"] = update.UserConfig
 	}
 
 	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
