@@ -4,6 +4,7 @@ import (
 	"context"
 	"system/internal/system/client"
 	"system/internal/system/model"
+	"system/internal/system/repository"
 )
 
 // MockSystemRepository is a mock implementation of SystemRepository
@@ -75,4 +76,93 @@ func (m *MockRBACClient) GetUserRolesMe(ctx context.Context, callerID string) ([
 		return m.GetUserRolesMeFunc(ctx, callerID)
 	}
 	return []client.UserRole{}, nil
+}
+
+// MockWidgetRepository is a mock implementation of WidgetRepository
+type MockWidgetRepository struct {
+	// Library Widget mocks
+	CreateLibraryWidgetFunc func(ctx context.Context, widget *model.LibraryWidget) (*model.LibraryWidget, error)
+	UpdateLibraryWidgetFunc func(ctx context.Context, id string, update *repository.LibraryWidgetUpdate) (*model.LibraryWidget, error)
+	DeleteLibraryWidgetFunc func(ctx context.Context, id string) error
+	GetLibraryWidgetFunc    func(ctx context.Context, id string) (*model.LibraryWidget, error)
+	GetLibraryWidgetsFunc   func(ctx context.Context) ([]*model.LibraryWidget, error)
+
+	// Dashboard Widget mocks
+	CreateDashboardWidgetFunc func(ctx context.Context, widget *model.DashboardWidget) (*model.DashboardWidget, error)
+	UpdateDashboardWidgetFunc func(ctx context.Context, id string, layout *model.DashboardWidgetLayout) (*model.DashboardWidget, error)
+	DeleteDashboardWidgetFunc func(ctx context.Context, id string) error
+	GetDashboardWidgetFunc    func(ctx context.Context, id string) (*model.DashboardWidget, error)
+	GetDashboardWidgetsFunc   func(ctx context.Context, dashboardID string) ([]*model.DashboardWidget, error)
+}
+
+func (m *MockWidgetRepository) CreateLibraryWidget(ctx context.Context, widget *model.LibraryWidget) (*model.LibraryWidget, error) {
+	if m.CreateLibraryWidgetFunc != nil {
+		return m.CreateLibraryWidgetFunc(ctx, widget)
+	}
+	widget.ID = "mock-id"
+	return widget, nil
+}
+
+func (m *MockWidgetRepository) UpdateLibraryWidget(ctx context.Context, id string, update *repository.LibraryWidgetUpdate) (*model.LibraryWidget, error) {
+	if m.UpdateLibraryWidgetFunc != nil {
+		return m.UpdateLibraryWidgetFunc(ctx, id, update)
+	}
+	return &model.LibraryWidget{ID: id}, nil
+}
+
+func (m *MockWidgetRepository) DeleteLibraryWidget(ctx context.Context, id string) error {
+	if m.DeleteLibraryWidgetFunc != nil {
+		return m.DeleteLibraryWidgetFunc(ctx, id)
+	}
+	return nil
+}
+
+func (m *MockWidgetRepository) GetLibraryWidget(ctx context.Context, id string) (*model.LibraryWidget, error) {
+	if m.GetLibraryWidgetFunc != nil {
+		return m.GetLibraryWidgetFunc(ctx, id)
+	}
+	return nil, nil
+}
+
+func (m *MockWidgetRepository) GetLibraryWidgets(ctx context.Context) ([]*model.LibraryWidget, error) {
+	if m.GetLibraryWidgetsFunc != nil {
+		return m.GetLibraryWidgetsFunc(ctx)
+	}
+	return []*model.LibraryWidget{}, nil
+}
+
+func (m *MockWidgetRepository) CreateDashboardWidget(ctx context.Context, widget *model.DashboardWidget) (*model.DashboardWidget, error) {
+	if m.CreateDashboardWidgetFunc != nil {
+		return m.CreateDashboardWidgetFunc(ctx, widget)
+	}
+	widget.ID = "mock-id"
+	return widget, nil
+}
+
+func (m *MockWidgetRepository) UpdateDashboardWidget(ctx context.Context, id string, layout *model.DashboardWidgetLayout) (*model.DashboardWidget, error) {
+	if m.UpdateDashboardWidgetFunc != nil {
+		return m.UpdateDashboardWidgetFunc(ctx, id, layout)
+	}
+	return &model.DashboardWidget{ID: id}, nil
+}
+
+func (m *MockWidgetRepository) DeleteDashboardWidget(ctx context.Context, id string) error {
+	if m.DeleteDashboardWidgetFunc != nil {
+		return m.DeleteDashboardWidgetFunc(ctx, id)
+	}
+	return nil
+}
+
+func (m *MockWidgetRepository) GetDashboardWidget(ctx context.Context, id string) (*model.DashboardWidget, error) {
+	if m.GetDashboardWidgetFunc != nil {
+		return m.GetDashboardWidgetFunc(ctx, id)
+	}
+	return nil, nil
+}
+
+func (m *MockWidgetRepository) GetDashboardWidgets(ctx context.Context, dashboardID string) ([]*model.DashboardWidget, error) {
+	if m.GetDashboardWidgetsFunc != nil {
+		return m.GetDashboardWidgetsFunc(ctx, dashboardID)
+	}
+	return []*model.DashboardWidget{}, nil
 }

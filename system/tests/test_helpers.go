@@ -62,11 +62,22 @@ func (ts *TestServer) SetupGraphQL(rbacClient *client.RBACClient) *handler.Serve
 
 // SetupGraphQLWithMockRepo sets up GraphQL with mock repo but real RBAC directive
 func SetupGraphQLWithMockRepo(repo repository.SystemRepository, rbacClient *client.RBACClient) *echo.Echo {
+	return SetupGraphQLWithMocks(repo, nil, rbacClient)
+}
+
+// SetupGraphQLWithMocks sets up GraphQL with mock repos (SystemRepository and WidgetRepository)
+func SetupGraphQLWithMocks(repo repository.SystemRepository, widgetRepo repository.WidgetRepository, rbacClient *client.RBACClient) *echo.Echo {
 	e := echo.New()
+
+	// Use a default mock widget repo if not provided
+	if widgetRepo == nil {
+		widgetRepo = &MockWidgetRepository{}
+	}
 
 	cfg := graph.Config{
 		Resolvers: &graph.Resolver{
 			Repo:       repo,
+			WidgetRepo: widgetRepo,
 			RBACClient: rbacClient,
 		},
 		Directives: graph.DirectiveRoot{
