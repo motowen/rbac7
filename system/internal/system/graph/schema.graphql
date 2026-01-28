@@ -13,6 +13,10 @@ directive @auth(
   namespaceField: String = "namespace"
 ) on FIELD_DEFINITION
 
+# ============================================
+# System Types
+# ============================================
+
 type System {
   namespace: String!
   name: String!
@@ -32,6 +36,255 @@ input UpdateSystemInput {
   description: String
 }
 
+# ============================================
+# Widget Enums
+# ============================================
+
+"""Widget 狀態"""
+enum WidgetStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+"""Datasource 觸發類型"""
+enum DatasourceTrigger {
+  ON_LOAD
+  ON_DEMAND
+  INTERVAL
+}
+
+"""欄位類型"""
+enum FieldType {
+  STRING
+  NUMBER
+  DATE
+  BOOLEAN
+  OBJECT
+  ARRAY
+}
+
+# ============================================
+# Datasource Types
+# ============================================
+
+"""Datasource 參數映射"""
+type ParamMap {
+  key: String!
+  value: String!
+}
+
+input ParamMapInput {
+  key: String!
+  value: String!
+}
+
+"""Datasource 資料來源配置"""
+type Datasource {
+  id: String!
+  name: String!
+  type: String!
+  trigger: DatasourceTrigger!
+  datasourceId: String!
+  transform: String
+  paramMap: [ParamMap!]
+}
+
+input DatasourceInput {
+  id: String!
+  name: String!
+  type: String!
+  trigger: DatasourceTrigger!
+  datasourceId: String!
+  transform: String
+  paramMap: [ParamMapInput!]
+}
+
+# ============================================
+# Widget Metadata Types
+# ============================================
+
+"""Widget 元資料"""
+type WidgetMetadata {
+  name: String!
+  description: String
+}
+
+input WidgetMetadataInput {
+  name: String!
+  description: String
+}
+
+# ============================================
+# Widget Props Types
+# ============================================
+
+"""欄位配置"""
+type FieldConfig {
+  key: String!
+  label: String!
+  type: FieldType!
+  width: Int
+}
+
+input FieldConfigInput {
+  key: String!
+  label: String!
+  type: FieldType!
+  width: Int
+}
+
+"""Props 選項設定"""
+type PropsOptions {
+  enablePagination: Boolean
+  pageSize: Int
+  enableSorting: Boolean
+}
+
+input PropsOptionsInput {
+  enablePagination: Boolean
+  pageSize: Int
+  enableSorting: Boolean
+}
+
+"""Widget 屬性配置"""
+type WidgetProps {
+  title: String
+  description: String
+  fields: [FieldConfig!]
+  options: PropsOptions
+}
+
+input WidgetPropsInput {
+  title: String
+  description: String
+  fields: [FieldConfigInput!]
+  options: PropsOptionsInput
+}
+
+# ============================================
+# Widget Slots Types
+# ============================================
+
+"""Slots 配置 (JSON 格式)"""
+type SlotsConfig {
+  """JSON 格式的 slots 配置"""
+  config: String
+}
+
+input SlotsConfigInput {
+  config: String
+}
+
+# ============================================
+# Widget Layout Types
+# ============================================
+
+"""Library Widget 佈局配置 (包含最小尺寸限制)"""
+type LibraryWidgetLayout {
+  x: Int!
+  y: Int!
+  w: Int!
+  h: Int!
+  minW: Int
+  minH: Int
+}
+
+input LibraryWidgetLayoutInput {
+  x: Int!
+  y: Int!
+  w: Int!
+  h: Int!
+  minW: Int
+  minH: Int
+}
+
+"""Dashboard Widget 佈局配置 (僅位置和大小)"""
+type DashboardWidgetLayout {
+  x: Int!
+  y: Int!
+  w: Int!
+  h: Int!
+}
+
+input DashboardWidgetLayoutInput {
+  x: Int!
+  y: Int!
+  w: Int!
+  h: Int!
+}
+
+# ============================================
+# Widget Main Types
+# ============================================
+
+"""Library Widget - 組件庫中的 Widget 模板"""
+type LibraryWidget {
+  id: ID!
+  type: String!
+  metadata: WidgetMetadata!
+  datasource: Datasource
+  props: WidgetProps
+  slots: SlotsConfig
+  layout: LibraryWidgetLayout!
+  status: WidgetStatus!
+  createdAt: String!
+  updatedAt: String!
+}
+
+"""Dashboard Widget - Dashboard 中的 Widget 實例"""
+type DashboardWidget {
+  id: ID!
+  dashboardId: String!
+  libraryWidgetId: String!
+  """從 Library Widget 繼承的 Widget"""
+  libraryWidget: LibraryWidget
+  """在 Dashboard 中的佈局位置"""
+  layout: DashboardWidgetLayout!
+  createdAt: String!
+  updatedAt: String!
+}
+
+# ============================================
+# Widget Input Types
+# ============================================
+
+input CreateLibraryWidgetInput {
+  type: String!
+  metadata: WidgetMetadataInput!
+  datasource: DatasourceInput
+  props: WidgetPropsInput
+  slots: SlotsConfigInput
+  layout: LibraryWidgetLayoutInput!
+  status: WidgetStatus = DRAFT
+}
+
+input UpdateLibraryWidgetInput {
+  id: ID!
+  type: String
+  metadata: WidgetMetadataInput
+  datasource: DatasourceInput
+  props: WidgetPropsInput
+  slots: SlotsConfigInput
+  layout: LibraryWidgetLayoutInput
+  status: WidgetStatus
+}
+
+input CreateDashboardWidgetInput {
+  dashboardId: String!
+  libraryWidgetId: String!
+  layout: DashboardWidgetLayoutInput!
+}
+
+input UpdateDashboardWidgetInput {
+  id: ID!
+  layout: DashboardWidgetLayoutInput
+}
+
+# ============================================
+# Query
+# ============================================
+
 type Query {
   """
   Get systems that the current user has access to, with their roles.
@@ -44,7 +297,27 @@ type Query {
   Requires platform.system.read permission on the namespace.
   """
   systemDetail(namespace: String!): System @auth(permission: "platform.system.read", namespaceRequired: true)
+
+  # ----- Library Widget Queries -----
+  
+  """Get all library widgets"""
+  libraryWidgets: [LibraryWidget!]!
+  
+  """Get a library widget by ID"""
+  libraryWidget(id: ID!): LibraryWidget
+
+  # ----- Dashboard Widget Queries -----
+  
+  """Get all dashboard widgets for a specific dashboard"""
+  dashboardWidgets(dashboardId: String!): [DashboardWidget!]!
+  
+  """Get a dashboard widget by ID"""
+  dashboardWidget(id: ID!): DashboardWidget
 }
+
+# ============================================
+# Mutation
+# ============================================
 
 type Mutation {
   """
@@ -58,4 +331,27 @@ type Mutation {
   Requires platform.system.update permission on the namespace.
   """
   updateSystem(input: UpdateSystemInput!): System! @auth(permission: "platform.system.update", namespaceRequired: true, namespaceField: "input.namespace")
+
+  # ----- Library Widget Mutations -----
+  
+  """Create a new library widget"""
+  createLibraryWidget(input: CreateLibraryWidgetInput!): LibraryWidget!
+  
+  """Update an existing library widget"""
+  updateLibraryWidget(input: UpdateLibraryWidgetInput!): LibraryWidget!
+  
+  """Delete a library widget by ID"""
+  deleteLibraryWidget(id: ID!): Boolean!
+
+  # ----- Dashboard Widget Mutations -----
+  
+  """Create a new dashboard widget (add a library widget to a dashboard)"""
+  createDashboardWidget(input: CreateDashboardWidgetInput!): DashboardWidget!
+  
+  """Update a dashboard widget's layout"""
+  updateDashboardWidget(input: UpdateDashboardWidgetInput!): DashboardWidget!
+  
+  """Delete a dashboard widget by ID"""
+  deleteDashboardWidget(id: ID!): Boolean!
 }
+

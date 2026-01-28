@@ -49,14 +49,95 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	DashboardWidget struct {
+		CreatedAt       func(childComplexity int) int
+		DashboardID     func(childComplexity int) int
+		ID              func(childComplexity int) int
+		Layout          func(childComplexity int) int
+		LibraryWidget   func(childComplexity int) int
+		LibraryWidgetID func(childComplexity int) int
+		UpdatedAt       func(childComplexity int) int
+	}
+
+	DashboardWidgetLayout struct {
+		H func(childComplexity int) int
+		W func(childComplexity int) int
+		X func(childComplexity int) int
+		Y func(childComplexity int) int
+	}
+
+	Datasource struct {
+		DatasourceID func(childComplexity int) int
+		ID           func(childComplexity int) int
+		Name         func(childComplexity int) int
+		ParamMap     func(childComplexity int) int
+		Transform    func(childComplexity int) int
+		Trigger      func(childComplexity int) int
+		Type         func(childComplexity int) int
+	}
+
+	FieldConfig struct {
+		Key   func(childComplexity int) int
+		Label func(childComplexity int) int
+		Type  func(childComplexity int) int
+		Width func(childComplexity int) int
+	}
+
+	LibraryWidget struct {
+		CreatedAt  func(childComplexity int) int
+		Datasource func(childComplexity int) int
+		ID         func(childComplexity int) int
+		Layout     func(childComplexity int) int
+		Metadata   func(childComplexity int) int
+		Props      func(childComplexity int) int
+		Slots      func(childComplexity int) int
+		Status     func(childComplexity int) int
+		Type       func(childComplexity int) int
+		UpdatedAt  func(childComplexity int) int
+	}
+
+	LibraryWidgetLayout struct {
+		H    func(childComplexity int) int
+		MinH func(childComplexity int) int
+		MinW func(childComplexity int) int
+		W    func(childComplexity int) int
+		X    func(childComplexity int) int
+		Y    func(childComplexity int) int
+	}
+
 	Mutation struct {
-		CreateSystem func(childComplexity int, namespace string, name string, description *string, owner string) int
-		UpdateSystem func(childComplexity int, input model.UpdateSystemInput) int
+		CreateDashboardWidget func(childComplexity int, input model.CreateDashboardWidgetInput) int
+		CreateLibraryWidget   func(childComplexity int, input model.CreateLibraryWidgetInput) int
+		CreateSystem          func(childComplexity int, namespace string, name string, description *string, owner string) int
+		DeleteDashboardWidget func(childComplexity int, id string) int
+		DeleteLibraryWidget   func(childComplexity int, id string) int
+		UpdateDashboardWidget func(childComplexity int, input model.UpdateDashboardWidgetInput) int
+		UpdateLibraryWidget   func(childComplexity int, input model.UpdateLibraryWidgetInput) int
+		UpdateSystem          func(childComplexity int, input model.UpdateSystemInput) int
+	}
+
+	ParamMap struct {
+		Key   func(childComplexity int) int
+		Value func(childComplexity int) int
+	}
+
+	PropsOptions struct {
+		EnablePagination func(childComplexity int) int
+		EnableSorting    func(childComplexity int) int
+		PageSize         func(childComplexity int) int
 	}
 
 	Query struct {
-		SystemDetail func(childComplexity int, namespace string) int
-		SystemMe     func(childComplexity int) int
+		DashboardWidget  func(childComplexity int, id string) int
+		DashboardWidgets func(childComplexity int, dashboardID string) int
+		LibraryWidget    func(childComplexity int, id string) int
+		LibraryWidgets   func(childComplexity int) int
+		SystemDetail     func(childComplexity int, namespace string) int
+		SystemMe         func(childComplexity int) int
+	}
+
+	SlotsConfig struct {
+		Config func(childComplexity int) int
 	}
 
 	System struct {
@@ -71,15 +152,37 @@ type ComplexityRoot struct {
 		Namespace   func(childComplexity int) int
 		Role        func(childComplexity int) int
 	}
+
+	WidgetMetadata struct {
+		Description func(childComplexity int) int
+		Name        func(childComplexity int) int
+	}
+
+	WidgetProps struct {
+		Description func(childComplexity int) int
+		Fields      func(childComplexity int) int
+		Options     func(childComplexity int) int
+		Title       func(childComplexity int) int
+	}
 }
 
 type MutationResolver interface {
 	CreateSystem(ctx context.Context, namespace string, name string, description *string, owner string) (*model1.System, error)
 	UpdateSystem(ctx context.Context, input model.UpdateSystemInput) (*model1.System, error)
+	CreateLibraryWidget(ctx context.Context, input model.CreateLibraryWidgetInput) (*model.LibraryWidget, error)
+	UpdateLibraryWidget(ctx context.Context, input model.UpdateLibraryWidgetInput) (*model.LibraryWidget, error)
+	DeleteLibraryWidget(ctx context.Context, id string) (bool, error)
+	CreateDashboardWidget(ctx context.Context, input model.CreateDashboardWidgetInput) (*model.DashboardWidget, error)
+	UpdateDashboardWidget(ctx context.Context, input model.UpdateDashboardWidgetInput) (*model.DashboardWidget, error)
+	DeleteDashboardWidget(ctx context.Context, id string) (bool, error)
 }
 type QueryResolver interface {
 	SystemMe(ctx context.Context) ([]*model.SystemWithRole, error)
 	SystemDetail(ctx context.Context, namespace string) (*model1.System, error)
+	LibraryWidgets(ctx context.Context) ([]*model.LibraryWidget, error)
+	LibraryWidget(ctx context.Context, id string) (*model.LibraryWidget, error)
+	DashboardWidgets(ctx context.Context, dashboardID string) ([]*model.DashboardWidget, error)
+	DashboardWidget(ctx context.Context, id string) (*model.DashboardWidget, error)
 }
 
 type executableSchema struct {
@@ -101,6 +204,296 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	_ = ec
 	switch typeName + "." + field {
 
+	case "DashboardWidget.createdAt":
+		if e.complexity.DashboardWidget.CreatedAt == nil {
+			break
+		}
+
+		return e.complexity.DashboardWidget.CreatedAt(childComplexity), true
+
+	case "DashboardWidget.dashboardId":
+		if e.complexity.DashboardWidget.DashboardID == nil {
+			break
+		}
+
+		return e.complexity.DashboardWidget.DashboardID(childComplexity), true
+
+	case "DashboardWidget.id":
+		if e.complexity.DashboardWidget.ID == nil {
+			break
+		}
+
+		return e.complexity.DashboardWidget.ID(childComplexity), true
+
+	case "DashboardWidget.layout":
+		if e.complexity.DashboardWidget.Layout == nil {
+			break
+		}
+
+		return e.complexity.DashboardWidget.Layout(childComplexity), true
+
+	case "DashboardWidget.libraryWidget":
+		if e.complexity.DashboardWidget.LibraryWidget == nil {
+			break
+		}
+
+		return e.complexity.DashboardWidget.LibraryWidget(childComplexity), true
+
+	case "DashboardWidget.libraryWidgetId":
+		if e.complexity.DashboardWidget.LibraryWidgetID == nil {
+			break
+		}
+
+		return e.complexity.DashboardWidget.LibraryWidgetID(childComplexity), true
+
+	case "DashboardWidget.updatedAt":
+		if e.complexity.DashboardWidget.UpdatedAt == nil {
+			break
+		}
+
+		return e.complexity.DashboardWidget.UpdatedAt(childComplexity), true
+
+	case "DashboardWidgetLayout.h":
+		if e.complexity.DashboardWidgetLayout.H == nil {
+			break
+		}
+
+		return e.complexity.DashboardWidgetLayout.H(childComplexity), true
+
+	case "DashboardWidgetLayout.w":
+		if e.complexity.DashboardWidgetLayout.W == nil {
+			break
+		}
+
+		return e.complexity.DashboardWidgetLayout.W(childComplexity), true
+
+	case "DashboardWidgetLayout.x":
+		if e.complexity.DashboardWidgetLayout.X == nil {
+			break
+		}
+
+		return e.complexity.DashboardWidgetLayout.X(childComplexity), true
+
+	case "DashboardWidgetLayout.y":
+		if e.complexity.DashboardWidgetLayout.Y == nil {
+			break
+		}
+
+		return e.complexity.DashboardWidgetLayout.Y(childComplexity), true
+
+	case "Datasource.datasourceId":
+		if e.complexity.Datasource.DatasourceID == nil {
+			break
+		}
+
+		return e.complexity.Datasource.DatasourceID(childComplexity), true
+
+	case "Datasource.id":
+		if e.complexity.Datasource.ID == nil {
+			break
+		}
+
+		return e.complexity.Datasource.ID(childComplexity), true
+
+	case "Datasource.name":
+		if e.complexity.Datasource.Name == nil {
+			break
+		}
+
+		return e.complexity.Datasource.Name(childComplexity), true
+
+	case "Datasource.paramMap":
+		if e.complexity.Datasource.ParamMap == nil {
+			break
+		}
+
+		return e.complexity.Datasource.ParamMap(childComplexity), true
+
+	case "Datasource.transform":
+		if e.complexity.Datasource.Transform == nil {
+			break
+		}
+
+		return e.complexity.Datasource.Transform(childComplexity), true
+
+	case "Datasource.trigger":
+		if e.complexity.Datasource.Trigger == nil {
+			break
+		}
+
+		return e.complexity.Datasource.Trigger(childComplexity), true
+
+	case "Datasource.type":
+		if e.complexity.Datasource.Type == nil {
+			break
+		}
+
+		return e.complexity.Datasource.Type(childComplexity), true
+
+	case "FieldConfig.key":
+		if e.complexity.FieldConfig.Key == nil {
+			break
+		}
+
+		return e.complexity.FieldConfig.Key(childComplexity), true
+
+	case "FieldConfig.label":
+		if e.complexity.FieldConfig.Label == nil {
+			break
+		}
+
+		return e.complexity.FieldConfig.Label(childComplexity), true
+
+	case "FieldConfig.type":
+		if e.complexity.FieldConfig.Type == nil {
+			break
+		}
+
+		return e.complexity.FieldConfig.Type(childComplexity), true
+
+	case "FieldConfig.width":
+		if e.complexity.FieldConfig.Width == nil {
+			break
+		}
+
+		return e.complexity.FieldConfig.Width(childComplexity), true
+
+	case "LibraryWidget.createdAt":
+		if e.complexity.LibraryWidget.CreatedAt == nil {
+			break
+		}
+
+		return e.complexity.LibraryWidget.CreatedAt(childComplexity), true
+
+	case "LibraryWidget.datasource":
+		if e.complexity.LibraryWidget.Datasource == nil {
+			break
+		}
+
+		return e.complexity.LibraryWidget.Datasource(childComplexity), true
+
+	case "LibraryWidget.id":
+		if e.complexity.LibraryWidget.ID == nil {
+			break
+		}
+
+		return e.complexity.LibraryWidget.ID(childComplexity), true
+
+	case "LibraryWidget.layout":
+		if e.complexity.LibraryWidget.Layout == nil {
+			break
+		}
+
+		return e.complexity.LibraryWidget.Layout(childComplexity), true
+
+	case "LibraryWidget.metadata":
+		if e.complexity.LibraryWidget.Metadata == nil {
+			break
+		}
+
+		return e.complexity.LibraryWidget.Metadata(childComplexity), true
+
+	case "LibraryWidget.props":
+		if e.complexity.LibraryWidget.Props == nil {
+			break
+		}
+
+		return e.complexity.LibraryWidget.Props(childComplexity), true
+
+	case "LibraryWidget.slots":
+		if e.complexity.LibraryWidget.Slots == nil {
+			break
+		}
+
+		return e.complexity.LibraryWidget.Slots(childComplexity), true
+
+	case "LibraryWidget.status":
+		if e.complexity.LibraryWidget.Status == nil {
+			break
+		}
+
+		return e.complexity.LibraryWidget.Status(childComplexity), true
+
+	case "LibraryWidget.type":
+		if e.complexity.LibraryWidget.Type == nil {
+			break
+		}
+
+		return e.complexity.LibraryWidget.Type(childComplexity), true
+
+	case "LibraryWidget.updatedAt":
+		if e.complexity.LibraryWidget.UpdatedAt == nil {
+			break
+		}
+
+		return e.complexity.LibraryWidget.UpdatedAt(childComplexity), true
+
+	case "LibraryWidgetLayout.h":
+		if e.complexity.LibraryWidgetLayout.H == nil {
+			break
+		}
+
+		return e.complexity.LibraryWidgetLayout.H(childComplexity), true
+
+	case "LibraryWidgetLayout.minH":
+		if e.complexity.LibraryWidgetLayout.MinH == nil {
+			break
+		}
+
+		return e.complexity.LibraryWidgetLayout.MinH(childComplexity), true
+
+	case "LibraryWidgetLayout.minW":
+		if e.complexity.LibraryWidgetLayout.MinW == nil {
+			break
+		}
+
+		return e.complexity.LibraryWidgetLayout.MinW(childComplexity), true
+
+	case "LibraryWidgetLayout.w":
+		if e.complexity.LibraryWidgetLayout.W == nil {
+			break
+		}
+
+		return e.complexity.LibraryWidgetLayout.W(childComplexity), true
+
+	case "LibraryWidgetLayout.x":
+		if e.complexity.LibraryWidgetLayout.X == nil {
+			break
+		}
+
+		return e.complexity.LibraryWidgetLayout.X(childComplexity), true
+
+	case "LibraryWidgetLayout.y":
+		if e.complexity.LibraryWidgetLayout.Y == nil {
+			break
+		}
+
+		return e.complexity.LibraryWidgetLayout.Y(childComplexity), true
+
+	case "Mutation.createDashboardWidget":
+		if e.complexity.Mutation.CreateDashboardWidget == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createDashboardWidget_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CreateDashboardWidget(childComplexity, args["input"].(model.CreateDashboardWidgetInput)), true
+
+	case "Mutation.createLibraryWidget":
+		if e.complexity.Mutation.CreateLibraryWidget == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createLibraryWidget_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CreateLibraryWidget(childComplexity, args["input"].(model.CreateLibraryWidgetInput)), true
+
 	case "Mutation.createSystem":
 		if e.complexity.Mutation.CreateSystem == nil {
 			break
@@ -113,6 +506,54 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.CreateSystem(childComplexity, args["namespace"].(string), args["name"].(string), args["description"].(*string), args["owner"].(string)), true
 
+	case "Mutation.deleteDashboardWidget":
+		if e.complexity.Mutation.DeleteDashboardWidget == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteDashboardWidget_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteDashboardWidget(childComplexity, args["id"].(string)), true
+
+	case "Mutation.deleteLibraryWidget":
+		if e.complexity.Mutation.DeleteLibraryWidget == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteLibraryWidget_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteLibraryWidget(childComplexity, args["id"].(string)), true
+
+	case "Mutation.updateDashboardWidget":
+		if e.complexity.Mutation.UpdateDashboardWidget == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateDashboardWidget_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateDashboardWidget(childComplexity, args["input"].(model.UpdateDashboardWidgetInput)), true
+
+	case "Mutation.updateLibraryWidget":
+		if e.complexity.Mutation.UpdateLibraryWidget == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateLibraryWidget_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateLibraryWidget(childComplexity, args["input"].(model.UpdateLibraryWidgetInput)), true
+
 	case "Mutation.updateSystem":
 		if e.complexity.Mutation.UpdateSystem == nil {
 			break
@@ -124,6 +565,84 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.UpdateSystem(childComplexity, args["input"].(model.UpdateSystemInput)), true
+
+	case "ParamMap.key":
+		if e.complexity.ParamMap.Key == nil {
+			break
+		}
+
+		return e.complexity.ParamMap.Key(childComplexity), true
+
+	case "ParamMap.value":
+		if e.complexity.ParamMap.Value == nil {
+			break
+		}
+
+		return e.complexity.ParamMap.Value(childComplexity), true
+
+	case "PropsOptions.enablePagination":
+		if e.complexity.PropsOptions.EnablePagination == nil {
+			break
+		}
+
+		return e.complexity.PropsOptions.EnablePagination(childComplexity), true
+
+	case "PropsOptions.enableSorting":
+		if e.complexity.PropsOptions.EnableSorting == nil {
+			break
+		}
+
+		return e.complexity.PropsOptions.EnableSorting(childComplexity), true
+
+	case "PropsOptions.pageSize":
+		if e.complexity.PropsOptions.PageSize == nil {
+			break
+		}
+
+		return e.complexity.PropsOptions.PageSize(childComplexity), true
+
+	case "Query.dashboardWidget":
+		if e.complexity.Query.DashboardWidget == nil {
+			break
+		}
+
+		args, err := ec.field_Query_dashboardWidget_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.DashboardWidget(childComplexity, args["id"].(string)), true
+
+	case "Query.dashboardWidgets":
+		if e.complexity.Query.DashboardWidgets == nil {
+			break
+		}
+
+		args, err := ec.field_Query_dashboardWidgets_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.DashboardWidgets(childComplexity, args["dashboardId"].(string)), true
+
+	case "Query.libraryWidget":
+		if e.complexity.Query.LibraryWidget == nil {
+			break
+		}
+
+		args, err := ec.field_Query_libraryWidget_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.LibraryWidget(childComplexity, args["id"].(string)), true
+
+	case "Query.libraryWidgets":
+		if e.complexity.Query.LibraryWidgets == nil {
+			break
+		}
+
+		return e.complexity.Query.LibraryWidgets(childComplexity), true
 
 	case "Query.systemDetail":
 		if e.complexity.Query.SystemDetail == nil {
@@ -143,6 +662,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.SystemMe(childComplexity), true
+
+	case "SlotsConfig.config":
+		if e.complexity.SlotsConfig.Config == nil {
+			break
+		}
+
+		return e.complexity.SlotsConfig.Config(childComplexity), true
 
 	case "System.description":
 		if e.complexity.System.Description == nil {
@@ -193,6 +719,48 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.SystemWithRole.Role(childComplexity), true
 
+	case "WidgetMetadata.description":
+		if e.complexity.WidgetMetadata.Description == nil {
+			break
+		}
+
+		return e.complexity.WidgetMetadata.Description(childComplexity), true
+
+	case "WidgetMetadata.name":
+		if e.complexity.WidgetMetadata.Name == nil {
+			break
+		}
+
+		return e.complexity.WidgetMetadata.Name(childComplexity), true
+
+	case "WidgetProps.description":
+		if e.complexity.WidgetProps.Description == nil {
+			break
+		}
+
+		return e.complexity.WidgetProps.Description(childComplexity), true
+
+	case "WidgetProps.fields":
+		if e.complexity.WidgetProps.Fields == nil {
+			break
+		}
+
+		return e.complexity.WidgetProps.Fields(childComplexity), true
+
+	case "WidgetProps.options":
+		if e.complexity.WidgetProps.Options == nil {
+			break
+		}
+
+		return e.complexity.WidgetProps.Options(childComplexity), true
+
+	case "WidgetProps.title":
+		if e.complexity.WidgetProps.Title == nil {
+			break
+		}
+
+		return e.complexity.WidgetProps.Title(childComplexity), true
+
 	}
 	return 0, false
 }
@@ -201,7 +769,20 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	rc := graphql.GetOperationContext(ctx)
 	ec := executionContext{rc, e, 0, 0, make(chan graphql.DeferredResult)}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputCreateDashboardWidgetInput,
+		ec.unmarshalInputCreateLibraryWidgetInput,
+		ec.unmarshalInputDashboardWidgetLayoutInput,
+		ec.unmarshalInputDatasourceInput,
+		ec.unmarshalInputFieldConfigInput,
+		ec.unmarshalInputLibraryWidgetLayoutInput,
+		ec.unmarshalInputParamMapInput,
+		ec.unmarshalInputPropsOptionsInput,
+		ec.unmarshalInputSlotsConfigInput,
+		ec.unmarshalInputUpdateDashboardWidgetInput,
+		ec.unmarshalInputUpdateLibraryWidgetInput,
 		ec.unmarshalInputUpdateSystemInput,
+		ec.unmarshalInputWidgetMetadataInput,
+		ec.unmarshalInputWidgetPropsInput,
 	)
 	first := true
 
@@ -351,6 +932,36 @@ func (ec *executionContext) dir_auth_args(ctx context.Context, rawArgs map[strin
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_createDashboardWidget_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 model.CreateDashboardWidgetInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNCreateDashboardWidgetInput2systemᚋinternalᚋsystemᚋgraphᚋmodelᚐCreateDashboardWidgetInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_createLibraryWidget_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 model.CreateLibraryWidgetInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNCreateLibraryWidgetInput2systemᚋinternalᚋsystemᚋgraphᚋmodelᚐCreateLibraryWidgetInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_createSystem_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -393,6 +1004,66 @@ func (ec *executionContext) field_Mutation_createSystem_args(ctx context.Context
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_deleteDashboardWidget_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteLibraryWidget_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateDashboardWidget_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 model.UpdateDashboardWidgetInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNUpdateDashboardWidgetInput2systemᚋinternalᚋsystemᚋgraphᚋmodelᚐUpdateDashboardWidgetInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateLibraryWidget_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 model.UpdateLibraryWidgetInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNUpdateLibraryWidgetInput2systemᚋinternalᚋsystemᚋgraphᚋmodelᚐUpdateLibraryWidgetInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_updateSystem_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -420,6 +1091,51 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		}
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_dashboardWidget_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_dashboardWidgets_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["dashboardId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dashboardId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["dashboardId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_libraryWidget_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -475,6 +1191,1739 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 // endregion ************************** directives.gotpl **************************
 
 // region    **************************** field.gotpl *****************************
+
+func (ec *executionContext) _DashboardWidget_id(ctx context.Context, field graphql.CollectedField, obj *model.DashboardWidget) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DashboardWidget_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNID2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DashboardWidget_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DashboardWidget",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DashboardWidget_dashboardId(ctx context.Context, field graphql.CollectedField, obj *model.DashboardWidget) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DashboardWidget_dashboardId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DashboardID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DashboardWidget_dashboardId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DashboardWidget",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DashboardWidget_libraryWidgetId(ctx context.Context, field graphql.CollectedField, obj *model.DashboardWidget) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DashboardWidget_libraryWidgetId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LibraryWidgetID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DashboardWidget_libraryWidgetId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DashboardWidget",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DashboardWidget_libraryWidget(ctx context.Context, field graphql.CollectedField, obj *model.DashboardWidget) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DashboardWidget_libraryWidget(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LibraryWidget, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.LibraryWidget)
+	fc.Result = res
+	return ec.marshalOLibraryWidget2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐLibraryWidget(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DashboardWidget_libraryWidget(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DashboardWidget",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_LibraryWidget_id(ctx, field)
+			case "type":
+				return ec.fieldContext_LibraryWidget_type(ctx, field)
+			case "metadata":
+				return ec.fieldContext_LibraryWidget_metadata(ctx, field)
+			case "datasource":
+				return ec.fieldContext_LibraryWidget_datasource(ctx, field)
+			case "props":
+				return ec.fieldContext_LibraryWidget_props(ctx, field)
+			case "slots":
+				return ec.fieldContext_LibraryWidget_slots(ctx, field)
+			case "layout":
+				return ec.fieldContext_LibraryWidget_layout(ctx, field)
+			case "status":
+				return ec.fieldContext_LibraryWidget_status(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_LibraryWidget_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_LibraryWidget_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LibraryWidget", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DashboardWidget_layout(ctx context.Context, field graphql.CollectedField, obj *model.DashboardWidget) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DashboardWidget_layout(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Layout, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.DashboardWidgetLayout)
+	fc.Result = res
+	return ec.marshalNDashboardWidgetLayout2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐDashboardWidgetLayout(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DashboardWidget_layout(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DashboardWidget",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "x":
+				return ec.fieldContext_DashboardWidgetLayout_x(ctx, field)
+			case "y":
+				return ec.fieldContext_DashboardWidgetLayout_y(ctx, field)
+			case "w":
+				return ec.fieldContext_DashboardWidgetLayout_w(ctx, field)
+			case "h":
+				return ec.fieldContext_DashboardWidgetLayout_h(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DashboardWidgetLayout", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DashboardWidget_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.DashboardWidget) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DashboardWidget_createdAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CreatedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DashboardWidget_createdAt(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DashboardWidget",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DashboardWidget_updatedAt(ctx context.Context, field graphql.CollectedField, obj *model.DashboardWidget) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DashboardWidget_updatedAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UpdatedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DashboardWidget_updatedAt(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DashboardWidget",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DashboardWidgetLayout_x(ctx context.Context, field graphql.CollectedField, obj *model.DashboardWidgetLayout) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DashboardWidgetLayout_x(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.X, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DashboardWidgetLayout_x(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DashboardWidgetLayout",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DashboardWidgetLayout_y(ctx context.Context, field graphql.CollectedField, obj *model.DashboardWidgetLayout) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DashboardWidgetLayout_y(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Y, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DashboardWidgetLayout_y(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DashboardWidgetLayout",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DashboardWidgetLayout_w(ctx context.Context, field graphql.CollectedField, obj *model.DashboardWidgetLayout) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DashboardWidgetLayout_w(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.W, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DashboardWidgetLayout_w(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DashboardWidgetLayout",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DashboardWidgetLayout_h(ctx context.Context, field graphql.CollectedField, obj *model.DashboardWidgetLayout) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DashboardWidgetLayout_h(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.H, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DashboardWidgetLayout_h(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DashboardWidgetLayout",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Datasource_id(ctx context.Context, field graphql.CollectedField, obj *model.Datasource) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Datasource_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Datasource_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Datasource",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Datasource_name(ctx context.Context, field graphql.CollectedField, obj *model.Datasource) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Datasource_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Datasource_name(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Datasource",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Datasource_type(ctx context.Context, field graphql.CollectedField, obj *model.Datasource) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Datasource_type(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Type, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Datasource_type(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Datasource",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Datasource_trigger(ctx context.Context, field graphql.CollectedField, obj *model.Datasource) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Datasource_trigger(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Trigger, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.DatasourceTrigger)
+	fc.Result = res
+	return ec.marshalNDatasourceTrigger2systemᚋinternalᚋsystemᚋgraphᚋmodelᚐDatasourceTrigger(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Datasource_trigger(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Datasource",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type DatasourceTrigger does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Datasource_datasourceId(ctx context.Context, field graphql.CollectedField, obj *model.Datasource) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Datasource_datasourceId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DatasourceID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Datasource_datasourceId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Datasource",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Datasource_transform(ctx context.Context, field graphql.CollectedField, obj *model.Datasource) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Datasource_transform(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Transform, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Datasource_transform(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Datasource",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Datasource_paramMap(ctx context.Context, field graphql.CollectedField, obj *model.Datasource) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Datasource_paramMap(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ParamMap, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.ParamMap)
+	fc.Result = res
+	return ec.marshalOParamMap2ᚕᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐParamMapᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Datasource_paramMap(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Datasource",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "key":
+				return ec.fieldContext_ParamMap_key(ctx, field)
+			case "value":
+				return ec.fieldContext_ParamMap_value(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ParamMap", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FieldConfig_key(ctx context.Context, field graphql.CollectedField, obj *model.FieldConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FieldConfig_key(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Key, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FieldConfig_key(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FieldConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FieldConfig_label(ctx context.Context, field graphql.CollectedField, obj *model.FieldConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FieldConfig_label(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Label, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FieldConfig_label(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FieldConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FieldConfig_type(ctx context.Context, field graphql.CollectedField, obj *model.FieldConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FieldConfig_type(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Type, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.FieldType)
+	fc.Result = res
+	return ec.marshalNFieldType2systemᚋinternalᚋsystemᚋgraphᚋmodelᚐFieldType(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FieldConfig_type(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FieldConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type FieldType does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FieldConfig_width(ctx context.Context, field graphql.CollectedField, obj *model.FieldConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FieldConfig_width(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Width, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FieldConfig_width(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FieldConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LibraryWidget_id(ctx context.Context, field graphql.CollectedField, obj *model.LibraryWidget) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LibraryWidget_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNID2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LibraryWidget_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LibraryWidget",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LibraryWidget_type(ctx context.Context, field graphql.CollectedField, obj *model.LibraryWidget) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LibraryWidget_type(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Type, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LibraryWidget_type(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LibraryWidget",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LibraryWidget_metadata(ctx context.Context, field graphql.CollectedField, obj *model.LibraryWidget) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LibraryWidget_metadata(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Metadata, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.WidgetMetadata)
+	fc.Result = res
+	return ec.marshalNWidgetMetadata2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐWidgetMetadata(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LibraryWidget_metadata(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LibraryWidget",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_WidgetMetadata_name(ctx, field)
+			case "description":
+				return ec.fieldContext_WidgetMetadata_description(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WidgetMetadata", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LibraryWidget_datasource(ctx context.Context, field graphql.CollectedField, obj *model.LibraryWidget) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LibraryWidget_datasource(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Datasource, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.Datasource)
+	fc.Result = res
+	return ec.marshalODatasource2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐDatasource(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LibraryWidget_datasource(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LibraryWidget",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Datasource_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Datasource_name(ctx, field)
+			case "type":
+				return ec.fieldContext_Datasource_type(ctx, field)
+			case "trigger":
+				return ec.fieldContext_Datasource_trigger(ctx, field)
+			case "datasourceId":
+				return ec.fieldContext_Datasource_datasourceId(ctx, field)
+			case "transform":
+				return ec.fieldContext_Datasource_transform(ctx, field)
+			case "paramMap":
+				return ec.fieldContext_Datasource_paramMap(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Datasource", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LibraryWidget_props(ctx context.Context, field graphql.CollectedField, obj *model.LibraryWidget) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LibraryWidget_props(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Props, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.WidgetProps)
+	fc.Result = res
+	return ec.marshalOWidgetProps2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐWidgetProps(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LibraryWidget_props(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LibraryWidget",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "title":
+				return ec.fieldContext_WidgetProps_title(ctx, field)
+			case "description":
+				return ec.fieldContext_WidgetProps_description(ctx, field)
+			case "fields":
+				return ec.fieldContext_WidgetProps_fields(ctx, field)
+			case "options":
+				return ec.fieldContext_WidgetProps_options(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WidgetProps", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LibraryWidget_slots(ctx context.Context, field graphql.CollectedField, obj *model.LibraryWidget) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LibraryWidget_slots(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Slots, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.SlotsConfig)
+	fc.Result = res
+	return ec.marshalOSlotsConfig2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐSlotsConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LibraryWidget_slots(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LibraryWidget",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "config":
+				return ec.fieldContext_SlotsConfig_config(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SlotsConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LibraryWidget_layout(ctx context.Context, field graphql.CollectedField, obj *model.LibraryWidget) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LibraryWidget_layout(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Layout, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.LibraryWidgetLayout)
+	fc.Result = res
+	return ec.marshalNLibraryWidgetLayout2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐLibraryWidgetLayout(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LibraryWidget_layout(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LibraryWidget",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "x":
+				return ec.fieldContext_LibraryWidgetLayout_x(ctx, field)
+			case "y":
+				return ec.fieldContext_LibraryWidgetLayout_y(ctx, field)
+			case "w":
+				return ec.fieldContext_LibraryWidgetLayout_w(ctx, field)
+			case "h":
+				return ec.fieldContext_LibraryWidgetLayout_h(ctx, field)
+			case "minW":
+				return ec.fieldContext_LibraryWidgetLayout_minW(ctx, field)
+			case "minH":
+				return ec.fieldContext_LibraryWidgetLayout_minH(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LibraryWidgetLayout", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LibraryWidget_status(ctx context.Context, field graphql.CollectedField, obj *model.LibraryWidget) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LibraryWidget_status(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Status, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.WidgetStatus)
+	fc.Result = res
+	return ec.marshalNWidgetStatus2systemᚋinternalᚋsystemᚋgraphᚋmodelᚐWidgetStatus(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LibraryWidget_status(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LibraryWidget",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type WidgetStatus does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LibraryWidget_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.LibraryWidget) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LibraryWidget_createdAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CreatedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LibraryWidget_createdAt(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LibraryWidget",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LibraryWidget_updatedAt(ctx context.Context, field graphql.CollectedField, obj *model.LibraryWidget) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LibraryWidget_updatedAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UpdatedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LibraryWidget_updatedAt(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LibraryWidget",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LibraryWidgetLayout_x(ctx context.Context, field graphql.CollectedField, obj *model.LibraryWidgetLayout) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LibraryWidgetLayout_x(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.X, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LibraryWidgetLayout_x(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LibraryWidgetLayout",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LibraryWidgetLayout_y(ctx context.Context, field graphql.CollectedField, obj *model.LibraryWidgetLayout) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LibraryWidgetLayout_y(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Y, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LibraryWidgetLayout_y(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LibraryWidgetLayout",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LibraryWidgetLayout_w(ctx context.Context, field graphql.CollectedField, obj *model.LibraryWidgetLayout) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LibraryWidgetLayout_w(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.W, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LibraryWidgetLayout_w(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LibraryWidgetLayout",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LibraryWidgetLayout_h(ctx context.Context, field graphql.CollectedField, obj *model.LibraryWidgetLayout) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LibraryWidgetLayout_h(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.H, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LibraryWidgetLayout_h(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LibraryWidgetLayout",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LibraryWidgetLayout_minW(ctx context.Context, field graphql.CollectedField, obj *model.LibraryWidgetLayout) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LibraryWidgetLayout_minW(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MinW, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LibraryWidgetLayout_minW(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LibraryWidgetLayout",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LibraryWidgetLayout_minH(ctx context.Context, field graphql.CollectedField, obj *model.LibraryWidgetLayout) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LibraryWidgetLayout_minH(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MinH, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LibraryWidgetLayout_minH(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LibraryWidgetLayout",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
 
 func (ec *executionContext) _Mutation_createSystem(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_createSystem(ctx, field)
@@ -666,6 +3115,623 @@ func (ec *executionContext) fieldContext_Mutation_updateSystem(ctx context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_createLibraryWidget(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_createLibraryWidget(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CreateLibraryWidget(rctx, fc.Args["input"].(model.CreateLibraryWidgetInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.LibraryWidget)
+	fc.Result = res
+	return ec.marshalNLibraryWidget2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐLibraryWidget(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_createLibraryWidget(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_LibraryWidget_id(ctx, field)
+			case "type":
+				return ec.fieldContext_LibraryWidget_type(ctx, field)
+			case "metadata":
+				return ec.fieldContext_LibraryWidget_metadata(ctx, field)
+			case "datasource":
+				return ec.fieldContext_LibraryWidget_datasource(ctx, field)
+			case "props":
+				return ec.fieldContext_LibraryWidget_props(ctx, field)
+			case "slots":
+				return ec.fieldContext_LibraryWidget_slots(ctx, field)
+			case "layout":
+				return ec.fieldContext_LibraryWidget_layout(ctx, field)
+			case "status":
+				return ec.fieldContext_LibraryWidget_status(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_LibraryWidget_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_LibraryWidget_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LibraryWidget", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createLibraryWidget_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateLibraryWidget(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateLibraryWidget(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateLibraryWidget(rctx, fc.Args["input"].(model.UpdateLibraryWidgetInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.LibraryWidget)
+	fc.Result = res
+	return ec.marshalNLibraryWidget2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐLibraryWidget(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateLibraryWidget(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_LibraryWidget_id(ctx, field)
+			case "type":
+				return ec.fieldContext_LibraryWidget_type(ctx, field)
+			case "metadata":
+				return ec.fieldContext_LibraryWidget_metadata(ctx, field)
+			case "datasource":
+				return ec.fieldContext_LibraryWidget_datasource(ctx, field)
+			case "props":
+				return ec.fieldContext_LibraryWidget_props(ctx, field)
+			case "slots":
+				return ec.fieldContext_LibraryWidget_slots(ctx, field)
+			case "layout":
+				return ec.fieldContext_LibraryWidget_layout(ctx, field)
+			case "status":
+				return ec.fieldContext_LibraryWidget_status(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_LibraryWidget_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_LibraryWidget_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LibraryWidget", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateLibraryWidget_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteLibraryWidget(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_deleteLibraryWidget(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeleteLibraryWidget(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteLibraryWidget(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteLibraryWidget_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_createDashboardWidget(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_createDashboardWidget(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CreateDashboardWidget(rctx, fc.Args["input"].(model.CreateDashboardWidgetInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.DashboardWidget)
+	fc.Result = res
+	return ec.marshalNDashboardWidget2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐDashboardWidget(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_createDashboardWidget(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_DashboardWidget_id(ctx, field)
+			case "dashboardId":
+				return ec.fieldContext_DashboardWidget_dashboardId(ctx, field)
+			case "libraryWidgetId":
+				return ec.fieldContext_DashboardWidget_libraryWidgetId(ctx, field)
+			case "libraryWidget":
+				return ec.fieldContext_DashboardWidget_libraryWidget(ctx, field)
+			case "layout":
+				return ec.fieldContext_DashboardWidget_layout(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_DashboardWidget_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_DashboardWidget_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DashboardWidget", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createDashboardWidget_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateDashboardWidget(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateDashboardWidget(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateDashboardWidget(rctx, fc.Args["input"].(model.UpdateDashboardWidgetInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.DashboardWidget)
+	fc.Result = res
+	return ec.marshalNDashboardWidget2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐDashboardWidget(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateDashboardWidget(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_DashboardWidget_id(ctx, field)
+			case "dashboardId":
+				return ec.fieldContext_DashboardWidget_dashboardId(ctx, field)
+			case "libraryWidgetId":
+				return ec.fieldContext_DashboardWidget_libraryWidgetId(ctx, field)
+			case "libraryWidget":
+				return ec.fieldContext_DashboardWidget_libraryWidget(ctx, field)
+			case "layout":
+				return ec.fieldContext_DashboardWidget_layout(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_DashboardWidget_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_DashboardWidget_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DashboardWidget", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateDashboardWidget_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteDashboardWidget(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_deleteDashboardWidget(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeleteDashboardWidget(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteDashboardWidget(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteDashboardWidget_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ParamMap_key(ctx context.Context, field graphql.CollectedField, obj *model.ParamMap) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ParamMap_key(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Key, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ParamMap_key(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ParamMap",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ParamMap_value(ctx context.Context, field graphql.CollectedField, obj *model.ParamMap) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ParamMap_value(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Value, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ParamMap_value(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ParamMap",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PropsOptions_enablePagination(ctx context.Context, field graphql.CollectedField, obj *model.PropsOptions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PropsOptions_enablePagination(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.EnablePagination, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PropsOptions_enablePagination(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PropsOptions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PropsOptions_pageSize(ctx context.Context, field graphql.CollectedField, obj *model.PropsOptions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PropsOptions_pageSize(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PageSize, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PropsOptions_pageSize(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PropsOptions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PropsOptions_enableSorting(ctx context.Context, field graphql.CollectedField, obj *model.PropsOptions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PropsOptions_enableSorting(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.EnableSorting, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PropsOptions_enableSorting(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PropsOptions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_systemMe(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_systemMe(ctx, field)
 	if err != nil {
@@ -812,6 +3878,285 @@ func (ec *executionContext) fieldContext_Query_systemDetail(ctx context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_libraryWidgets(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_libraryWidgets(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().LibraryWidgets(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.LibraryWidget)
+	fc.Result = res
+	return ec.marshalNLibraryWidget2ᚕᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐLibraryWidgetᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_libraryWidgets(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_LibraryWidget_id(ctx, field)
+			case "type":
+				return ec.fieldContext_LibraryWidget_type(ctx, field)
+			case "metadata":
+				return ec.fieldContext_LibraryWidget_metadata(ctx, field)
+			case "datasource":
+				return ec.fieldContext_LibraryWidget_datasource(ctx, field)
+			case "props":
+				return ec.fieldContext_LibraryWidget_props(ctx, field)
+			case "slots":
+				return ec.fieldContext_LibraryWidget_slots(ctx, field)
+			case "layout":
+				return ec.fieldContext_LibraryWidget_layout(ctx, field)
+			case "status":
+				return ec.fieldContext_LibraryWidget_status(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_LibraryWidget_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_LibraryWidget_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LibraryWidget", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_libraryWidget(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_libraryWidget(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().LibraryWidget(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.LibraryWidget)
+	fc.Result = res
+	return ec.marshalOLibraryWidget2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐLibraryWidget(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_libraryWidget(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_LibraryWidget_id(ctx, field)
+			case "type":
+				return ec.fieldContext_LibraryWidget_type(ctx, field)
+			case "metadata":
+				return ec.fieldContext_LibraryWidget_metadata(ctx, field)
+			case "datasource":
+				return ec.fieldContext_LibraryWidget_datasource(ctx, field)
+			case "props":
+				return ec.fieldContext_LibraryWidget_props(ctx, field)
+			case "slots":
+				return ec.fieldContext_LibraryWidget_slots(ctx, field)
+			case "layout":
+				return ec.fieldContext_LibraryWidget_layout(ctx, field)
+			case "status":
+				return ec.fieldContext_LibraryWidget_status(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_LibraryWidget_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_LibraryWidget_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LibraryWidget", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_libraryWidget_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_dashboardWidgets(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_dashboardWidgets(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().DashboardWidgets(rctx, fc.Args["dashboardId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.DashboardWidget)
+	fc.Result = res
+	return ec.marshalNDashboardWidget2ᚕᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐDashboardWidgetᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_dashboardWidgets(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_DashboardWidget_id(ctx, field)
+			case "dashboardId":
+				return ec.fieldContext_DashboardWidget_dashboardId(ctx, field)
+			case "libraryWidgetId":
+				return ec.fieldContext_DashboardWidget_libraryWidgetId(ctx, field)
+			case "libraryWidget":
+				return ec.fieldContext_DashboardWidget_libraryWidget(ctx, field)
+			case "layout":
+				return ec.fieldContext_DashboardWidget_layout(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_DashboardWidget_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_DashboardWidget_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DashboardWidget", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_dashboardWidgets_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_dashboardWidget(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_dashboardWidget(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().DashboardWidget(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.DashboardWidget)
+	fc.Result = res
+	return ec.marshalODashboardWidget2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐDashboardWidget(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_dashboardWidget(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_DashboardWidget_id(ctx, field)
+			case "dashboardId":
+				return ec.fieldContext_DashboardWidget_dashboardId(ctx, field)
+			case "libraryWidgetId":
+				return ec.fieldContext_DashboardWidget_libraryWidgetId(ctx, field)
+			case "libraryWidget":
+				return ec.fieldContext_DashboardWidget_libraryWidget(ctx, field)
+			case "layout":
+				return ec.fieldContext_DashboardWidget_layout(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_DashboardWidget_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_DashboardWidget_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DashboardWidget", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_dashboardWidget_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query___type(ctx, field)
 	if err != nil {
@@ -936,6 +4281,47 @@ func (ec *executionContext) fieldContext_Query___schema(ctx context.Context, fie
 				return ec.fieldContext___Schema_directives(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type __Schema", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SlotsConfig_config(ctx context.Context, field graphql.CollectedField, obj *model.SlotsConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SlotsConfig_config(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Config, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SlotsConfig_config(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SlotsConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -1238,6 +4624,273 @@ func (ec *executionContext) fieldContext_SystemWithRole_role(ctx context.Context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WidgetMetadata_name(ctx context.Context, field graphql.CollectedField, obj *model.WidgetMetadata) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WidgetMetadata_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WidgetMetadata_name(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WidgetMetadata",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WidgetMetadata_description(ctx context.Context, field graphql.CollectedField, obj *model.WidgetMetadata) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WidgetMetadata_description(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Description, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WidgetMetadata_description(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WidgetMetadata",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WidgetProps_title(ctx context.Context, field graphql.CollectedField, obj *model.WidgetProps) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WidgetProps_title(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Title, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WidgetProps_title(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WidgetProps",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WidgetProps_description(ctx context.Context, field graphql.CollectedField, obj *model.WidgetProps) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WidgetProps_description(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Description, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WidgetProps_description(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WidgetProps",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WidgetProps_fields(ctx context.Context, field graphql.CollectedField, obj *model.WidgetProps) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WidgetProps_fields(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Fields, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.FieldConfig)
+	fc.Result = res
+	return ec.marshalOFieldConfig2ᚕᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐFieldConfigᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WidgetProps_fields(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WidgetProps",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "key":
+				return ec.fieldContext_FieldConfig_key(ctx, field)
+			case "label":
+				return ec.fieldContext_FieldConfig_label(ctx, field)
+			case "type":
+				return ec.fieldContext_FieldConfig_type(ctx, field)
+			case "width":
+				return ec.fieldContext_FieldConfig_width(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type FieldConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WidgetProps_options(ctx context.Context, field graphql.CollectedField, obj *model.WidgetProps) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WidgetProps_options(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Options, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.PropsOptions)
+	fc.Result = res
+	return ec.marshalOPropsOptions2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐPropsOptions(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WidgetProps_options(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WidgetProps",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "enablePagination":
+				return ec.fieldContext_PropsOptions_enablePagination(ctx, field)
+			case "pageSize":
+				return ec.fieldContext_PropsOptions_pageSize(ctx, field)
+			case "enableSorting":
+				return ec.fieldContext_PropsOptions_enableSorting(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PropsOptions", field.Name)
 		},
 	}
 	return fc, nil
@@ -3016,6 +6669,559 @@ func (ec *executionContext) fieldContext___Type_specifiedByURL(ctx context.Conte
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputCreateDashboardWidgetInput(ctx context.Context, obj interface{}) (model.CreateDashboardWidgetInput, error) {
+	var it model.CreateDashboardWidgetInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"dashboardId", "libraryWidgetId", "layout"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "dashboardId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dashboardId"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DashboardID = data
+		case "libraryWidgetId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("libraryWidgetId"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LibraryWidgetID = data
+		case "layout":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("layout"))
+			data, err := ec.unmarshalNDashboardWidgetLayoutInput2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐDashboardWidgetLayoutInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Layout = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputCreateLibraryWidgetInput(ctx context.Context, obj interface{}) (model.CreateLibraryWidgetInput, error) {
+	var it model.CreateLibraryWidgetInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	if _, present := asMap["status"]; !present {
+		asMap["status"] = "DRAFT"
+	}
+
+	fieldsInOrder := [...]string{"type", "metadata", "datasource", "props", "slots", "layout", "status"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "type":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Type = data
+		case "metadata":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metadata"))
+			data, err := ec.unmarshalNWidgetMetadataInput2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐWidgetMetadataInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Metadata = data
+		case "datasource":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("datasource"))
+			data, err := ec.unmarshalODatasourceInput2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐDatasourceInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Datasource = data
+		case "props":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("props"))
+			data, err := ec.unmarshalOWidgetPropsInput2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐWidgetPropsInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Props = data
+		case "slots":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slots"))
+			data, err := ec.unmarshalOSlotsConfigInput2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐSlotsConfigInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Slots = data
+		case "layout":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("layout"))
+			data, err := ec.unmarshalNLibraryWidgetLayoutInput2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐLibraryWidgetLayoutInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Layout = data
+		case "status":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
+			data, err := ec.unmarshalOWidgetStatus2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐWidgetStatus(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Status = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputDashboardWidgetLayoutInput(ctx context.Context, obj interface{}) (model.DashboardWidgetLayoutInput, error) {
+	var it model.DashboardWidgetLayoutInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"x", "y", "w", "h"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "x":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("x"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.X = data
+		case "y":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("y"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Y = data
+		case "w":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("w"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.W = data
+		case "h":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("h"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.H = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputDatasourceInput(ctx context.Context, obj interface{}) (model.DatasourceInput, error) {
+	var it model.DatasourceInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"id", "name", "type", "trigger", "datasourceId", "transform", "paramMap"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "type":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Type = data
+		case "trigger":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("trigger"))
+			data, err := ec.unmarshalNDatasourceTrigger2systemᚋinternalᚋsystemᚋgraphᚋmodelᚐDatasourceTrigger(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Trigger = data
+		case "datasourceId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("datasourceId"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DatasourceID = data
+		case "transform":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("transform"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Transform = data
+		case "paramMap":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("paramMap"))
+			data, err := ec.unmarshalOParamMapInput2ᚕᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐParamMapInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ParamMap = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputFieldConfigInput(ctx context.Context, obj interface{}) (model.FieldConfigInput, error) {
+	var it model.FieldConfigInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"key", "label", "type", "width"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "key":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("key"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Key = data
+		case "label":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("label"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Label = data
+		case "type":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			data, err := ec.unmarshalNFieldType2systemᚋinternalᚋsystemᚋgraphᚋmodelᚐFieldType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Type = data
+		case "width":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("width"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Width = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputLibraryWidgetLayoutInput(ctx context.Context, obj interface{}) (model.LibraryWidgetLayoutInput, error) {
+	var it model.LibraryWidgetLayoutInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"x", "y", "w", "h", "minW", "minH"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "x":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("x"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.X = data
+		case "y":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("y"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Y = data
+		case "w":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("w"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.W = data
+		case "h":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("h"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.H = data
+		case "minW":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("minW"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MinW = data
+		case "minH":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("minH"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MinH = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputParamMapInput(ctx context.Context, obj interface{}) (model.ParamMapInput, error) {
+	var it model.ParamMapInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"key", "value"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "key":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("key"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Key = data
+		case "value":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("value"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Value = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputPropsOptionsInput(ctx context.Context, obj interface{}) (model.PropsOptionsInput, error) {
+	var it model.PropsOptionsInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"enablePagination", "pageSize", "enableSorting"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "enablePagination":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enablePagination"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EnablePagination = data
+		case "pageSize":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("pageSize"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PageSize = data
+		case "enableSorting":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enableSorting"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EnableSorting = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputSlotsConfigInput(ctx context.Context, obj interface{}) (model.SlotsConfigInput, error) {
+	var it model.SlotsConfigInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"config"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "config":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("config"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Config = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpdateDashboardWidgetInput(ctx context.Context, obj interface{}) (model.UpdateDashboardWidgetInput, error) {
+	var it model.UpdateDashboardWidgetInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"id", "layout"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
+		case "layout":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("layout"))
+			data, err := ec.unmarshalODashboardWidgetLayoutInput2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐDashboardWidgetLayoutInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Layout = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpdateLibraryWidgetInput(ctx context.Context, obj interface{}) (model.UpdateLibraryWidgetInput, error) {
+	var it model.UpdateLibraryWidgetInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"id", "type", "metadata", "datasource", "props", "slots", "layout", "status"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
+		case "type":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Type = data
+		case "metadata":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metadata"))
+			data, err := ec.unmarshalOWidgetMetadataInput2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐWidgetMetadataInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Metadata = data
+		case "datasource":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("datasource"))
+			data, err := ec.unmarshalODatasourceInput2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐDatasourceInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Datasource = data
+		case "props":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("props"))
+			data, err := ec.unmarshalOWidgetPropsInput2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐWidgetPropsInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Props = data
+		case "slots":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slots"))
+			data, err := ec.unmarshalOSlotsConfigInput2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐSlotsConfigInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Slots = data
+		case "layout":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("layout"))
+			data, err := ec.unmarshalOLibraryWidgetLayoutInput2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐLibraryWidgetLayoutInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Layout = data
+		case "status":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
+			data, err := ec.unmarshalOWidgetStatus2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐWidgetStatus(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Status = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateSystemInput(ctx context.Context, obj interface{}) (model.UpdateSystemInput, error) {
 	var it model.UpdateSystemInput
 	asMap := map[string]interface{}{}
@@ -3057,6 +7263,88 @@ func (ec *executionContext) unmarshalInputUpdateSystemInput(ctx context.Context,
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputWidgetMetadataInput(ctx context.Context, obj interface{}) (model.WidgetMetadataInput, error) {
+	var it model.WidgetMetadataInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"name", "description"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputWidgetPropsInput(ctx context.Context, obj interface{}) (model.WidgetPropsInput, error) {
+	var it model.WidgetPropsInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"title", "description", "fields", "options"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "title":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("title"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Title = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
+		case "fields":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fields"))
+			data, err := ec.unmarshalOFieldConfigInput2ᚕᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐFieldConfigInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Fields = data
+		case "options":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("options"))
+			data, err := ec.unmarshalOPropsOptionsInput2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐPropsOptionsInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Options = data
+		}
+	}
+
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -3064,6 +7352,373 @@ func (ec *executionContext) unmarshalInputUpdateSystemInput(ctx context.Context,
 // endregion ************************** interface.gotpl ***************************
 
 // region    **************************** object.gotpl ****************************
+
+var dashboardWidgetImplementors = []string{"DashboardWidget"}
+
+func (ec *executionContext) _DashboardWidget(ctx context.Context, sel ast.SelectionSet, obj *model.DashboardWidget) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, dashboardWidgetImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DashboardWidget")
+		case "id":
+			out.Values[i] = ec._DashboardWidget_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "dashboardId":
+			out.Values[i] = ec._DashboardWidget_dashboardId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "libraryWidgetId":
+			out.Values[i] = ec._DashboardWidget_libraryWidgetId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "libraryWidget":
+			out.Values[i] = ec._DashboardWidget_libraryWidget(ctx, field, obj)
+		case "layout":
+			out.Values[i] = ec._DashboardWidget_layout(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._DashboardWidget_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updatedAt":
+			out.Values[i] = ec._DashboardWidget_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var dashboardWidgetLayoutImplementors = []string{"DashboardWidgetLayout"}
+
+func (ec *executionContext) _DashboardWidgetLayout(ctx context.Context, sel ast.SelectionSet, obj *model.DashboardWidgetLayout) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, dashboardWidgetLayoutImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DashboardWidgetLayout")
+		case "x":
+			out.Values[i] = ec._DashboardWidgetLayout_x(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "y":
+			out.Values[i] = ec._DashboardWidgetLayout_y(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "w":
+			out.Values[i] = ec._DashboardWidgetLayout_w(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "h":
+			out.Values[i] = ec._DashboardWidgetLayout_h(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var datasourceImplementors = []string{"Datasource"}
+
+func (ec *executionContext) _Datasource(ctx context.Context, sel ast.SelectionSet, obj *model.Datasource) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, datasourceImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Datasource")
+		case "id":
+			out.Values[i] = ec._Datasource_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._Datasource_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "type":
+			out.Values[i] = ec._Datasource_type(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "trigger":
+			out.Values[i] = ec._Datasource_trigger(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "datasourceId":
+			out.Values[i] = ec._Datasource_datasourceId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "transform":
+			out.Values[i] = ec._Datasource_transform(ctx, field, obj)
+		case "paramMap":
+			out.Values[i] = ec._Datasource_paramMap(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var fieldConfigImplementors = []string{"FieldConfig"}
+
+func (ec *executionContext) _FieldConfig(ctx context.Context, sel ast.SelectionSet, obj *model.FieldConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, fieldConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FieldConfig")
+		case "key":
+			out.Values[i] = ec._FieldConfig_key(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "label":
+			out.Values[i] = ec._FieldConfig_label(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "type":
+			out.Values[i] = ec._FieldConfig_type(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "width":
+			out.Values[i] = ec._FieldConfig_width(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var libraryWidgetImplementors = []string{"LibraryWidget"}
+
+func (ec *executionContext) _LibraryWidget(ctx context.Context, sel ast.SelectionSet, obj *model.LibraryWidget) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, libraryWidgetImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("LibraryWidget")
+		case "id":
+			out.Values[i] = ec._LibraryWidget_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "type":
+			out.Values[i] = ec._LibraryWidget_type(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "metadata":
+			out.Values[i] = ec._LibraryWidget_metadata(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "datasource":
+			out.Values[i] = ec._LibraryWidget_datasource(ctx, field, obj)
+		case "props":
+			out.Values[i] = ec._LibraryWidget_props(ctx, field, obj)
+		case "slots":
+			out.Values[i] = ec._LibraryWidget_slots(ctx, field, obj)
+		case "layout":
+			out.Values[i] = ec._LibraryWidget_layout(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "status":
+			out.Values[i] = ec._LibraryWidget_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._LibraryWidget_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updatedAt":
+			out.Values[i] = ec._LibraryWidget_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var libraryWidgetLayoutImplementors = []string{"LibraryWidgetLayout"}
+
+func (ec *executionContext) _LibraryWidgetLayout(ctx context.Context, sel ast.SelectionSet, obj *model.LibraryWidgetLayout) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, libraryWidgetLayoutImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("LibraryWidgetLayout")
+		case "x":
+			out.Values[i] = ec._LibraryWidgetLayout_x(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "y":
+			out.Values[i] = ec._LibraryWidgetLayout_y(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "w":
+			out.Values[i] = ec._LibraryWidgetLayout_w(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "h":
+			out.Values[i] = ec._LibraryWidgetLayout_h(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "minW":
+			out.Values[i] = ec._LibraryWidgetLayout_minW(ctx, field, obj)
+		case "minH":
+			out.Values[i] = ec._LibraryWidgetLayout_minH(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
 
 var mutationImplementors = []string{"Mutation"}
 
@@ -3098,6 +7753,132 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "createLibraryWidget":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createLibraryWidget(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateLibraryWidget":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateLibraryWidget(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteLibraryWidget":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteLibraryWidget(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createDashboardWidget":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createDashboardWidget(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateDashboardWidget":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateDashboardWidget(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteDashboardWidget":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteDashboardWidget(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var paramMapImplementors = []string{"ParamMap"}
+
+func (ec *executionContext) _ParamMap(ctx context.Context, sel ast.SelectionSet, obj *model.ParamMap) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, paramMapImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ParamMap")
+		case "key":
+			out.Values[i] = ec._ParamMap_key(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "value":
+			out.Values[i] = ec._ParamMap_value(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var propsOptionsImplementors = []string{"PropsOptions"}
+
+func (ec *executionContext) _PropsOptions(ctx context.Context, sel ast.SelectionSet, obj *model.PropsOptions) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, propsOptionsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PropsOptions")
+		case "enablePagination":
+			out.Values[i] = ec._PropsOptions_enablePagination(ctx, field, obj)
+		case "pageSize":
+			out.Values[i] = ec._PropsOptions_pageSize(ctx, field, obj)
+		case "enableSorting":
+			out.Values[i] = ec._PropsOptions_enableSorting(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -3181,6 +7962,88 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "libraryWidgets":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_libraryWidgets(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "libraryWidget":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_libraryWidget(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "dashboardWidgets":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_dashboardWidgets(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "dashboardWidget":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_dashboardWidget(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "__type":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Query___type(ctx, field)
@@ -3189,6 +8052,42 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Query___schema(ctx, field)
 			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var slotsConfigImplementors = []string{"SlotsConfig"}
+
+func (ec *executionContext) _SlotsConfig(ctx context.Context, sel ast.SelectionSet, obj *model.SlotsConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, slotsConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SlotsConfig")
+		case "config":
+			out.Values[i] = ec._SlotsConfig_config(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -3286,6 +8185,89 @@ func (ec *executionContext) _SystemWithRole(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var widgetMetadataImplementors = []string{"WidgetMetadata"}
+
+func (ec *executionContext) _WidgetMetadata(ctx context.Context, sel ast.SelectionSet, obj *model.WidgetMetadata) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, widgetMetadataImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("WidgetMetadata")
+		case "name":
+			out.Values[i] = ec._WidgetMetadata_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "description":
+			out.Values[i] = ec._WidgetMetadata_description(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var widgetPropsImplementors = []string{"WidgetProps"}
+
+func (ec *executionContext) _WidgetProps(ctx context.Context, sel ast.SelectionSet, obj *model.WidgetProps) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, widgetPropsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("WidgetProps")
+		case "title":
+			out.Values[i] = ec._WidgetProps_title(ctx, field, obj)
+		case "description":
+			out.Values[i] = ec._WidgetProps_description(ctx, field, obj)
+		case "fields":
+			out.Values[i] = ec._WidgetProps_fields(ctx, field, obj)
+		case "options":
+			out.Values[i] = ec._WidgetProps_options(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -3650,6 +8632,242 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
+func (ec *executionContext) unmarshalNCreateDashboardWidgetInput2systemᚋinternalᚋsystemᚋgraphᚋmodelᚐCreateDashboardWidgetInput(ctx context.Context, v interface{}) (model.CreateDashboardWidgetInput, error) {
+	res, err := ec.unmarshalInputCreateDashboardWidgetInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNCreateLibraryWidgetInput2systemᚋinternalᚋsystemᚋgraphᚋmodelᚐCreateLibraryWidgetInput(ctx context.Context, v interface{}) (model.CreateLibraryWidgetInput, error) {
+	res, err := ec.unmarshalInputCreateLibraryWidgetInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNDashboardWidget2systemᚋinternalᚋsystemᚋgraphᚋmodelᚐDashboardWidget(ctx context.Context, sel ast.SelectionSet, v model.DashboardWidget) graphql.Marshaler {
+	return ec._DashboardWidget(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNDashboardWidget2ᚕᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐDashboardWidgetᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.DashboardWidget) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNDashboardWidget2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐDashboardWidget(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNDashboardWidget2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐDashboardWidget(ctx context.Context, sel ast.SelectionSet, v *model.DashboardWidget) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._DashboardWidget(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNDashboardWidgetLayout2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐDashboardWidgetLayout(ctx context.Context, sel ast.SelectionSet, v *model.DashboardWidgetLayout) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._DashboardWidgetLayout(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNDashboardWidgetLayoutInput2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐDashboardWidgetLayoutInput(ctx context.Context, v interface{}) (*model.DashboardWidgetLayoutInput, error) {
+	res, err := ec.unmarshalInputDashboardWidgetLayoutInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNDatasourceTrigger2systemᚋinternalᚋsystemᚋgraphᚋmodelᚐDatasourceTrigger(ctx context.Context, v interface{}) (model.DatasourceTrigger, error) {
+	var res model.DatasourceTrigger
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNDatasourceTrigger2systemᚋinternalᚋsystemᚋgraphᚋmodelᚐDatasourceTrigger(ctx context.Context, sel ast.SelectionSet, v model.DatasourceTrigger) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) marshalNFieldConfig2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐFieldConfig(ctx context.Context, sel ast.SelectionSet, v *model.FieldConfig) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._FieldConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNFieldConfigInput2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐFieldConfigInput(ctx context.Context, v interface{}) (*model.FieldConfigInput, error) {
+	res, err := ec.unmarshalInputFieldConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNFieldType2systemᚋinternalᚋsystemᚋgraphᚋmodelᚐFieldType(ctx context.Context, v interface{}) (model.FieldType, error) {
+	var res model.FieldType
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNFieldType2systemᚋinternalᚋsystemᚋgraphᚋmodelᚐFieldType(ctx context.Context, sel ast.SelectionSet, v model.FieldType) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalNID2string(ctx context.Context, v interface{}) (string, error) {
+	res, err := graphql.UnmarshalID(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNID2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	res := graphql.MarshalID(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v interface{}) (int, error) {
+	res, err := graphql.UnmarshalInt(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.SelectionSet, v int) graphql.Marshaler {
+	res := graphql.MarshalInt(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) marshalNLibraryWidget2systemᚋinternalᚋsystemᚋgraphᚋmodelᚐLibraryWidget(ctx context.Context, sel ast.SelectionSet, v model.LibraryWidget) graphql.Marshaler {
+	return ec._LibraryWidget(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNLibraryWidget2ᚕᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐLibraryWidgetᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.LibraryWidget) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNLibraryWidget2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐLibraryWidget(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNLibraryWidget2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐLibraryWidget(ctx context.Context, sel ast.SelectionSet, v *model.LibraryWidget) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._LibraryWidget(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNLibraryWidgetLayout2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐLibraryWidgetLayout(ctx context.Context, sel ast.SelectionSet, v *model.LibraryWidgetLayout) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._LibraryWidgetLayout(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNLibraryWidgetLayoutInput2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐLibraryWidgetLayoutInput(ctx context.Context, v interface{}) (*model.LibraryWidgetLayoutInput, error) {
+	res, err := ec.unmarshalInputLibraryWidgetLayoutInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNParamMap2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐParamMap(ctx context.Context, sel ast.SelectionSet, v *model.ParamMap) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ParamMap(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNParamMapInput2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐParamMapInput(ctx context.Context, v interface{}) (*model.ParamMapInput, error) {
+	res, err := ec.unmarshalInputParamMapInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v interface{}) (string, error) {
 	res, err := graphql.UnmarshalString(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -3733,9 +8951,44 @@ func (ec *executionContext) marshalNSystemWithRole2ᚖsystemᚋinternalᚋsystem
 	return ec._SystemWithRole(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNUpdateDashboardWidgetInput2systemᚋinternalᚋsystemᚋgraphᚋmodelᚐUpdateDashboardWidgetInput(ctx context.Context, v interface{}) (model.UpdateDashboardWidgetInput, error) {
+	res, err := ec.unmarshalInputUpdateDashboardWidgetInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateLibraryWidgetInput2systemᚋinternalᚋsystemᚋgraphᚋmodelᚐUpdateLibraryWidgetInput(ctx context.Context, v interface{}) (model.UpdateLibraryWidgetInput, error) {
+	res, err := ec.unmarshalInputUpdateLibraryWidgetInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNUpdateSystemInput2systemᚋinternalᚋsystemᚋgraphᚋmodelᚐUpdateSystemInput(ctx context.Context, v interface{}) (model.UpdateSystemInput, error) {
 	res, err := ec.unmarshalInputUpdateSystemInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNWidgetMetadata2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐWidgetMetadata(ctx context.Context, sel ast.SelectionSet, v *model.WidgetMetadata) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._WidgetMetadata(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNWidgetMetadataInput2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐWidgetMetadataInput(ctx context.Context, v interface{}) (*model.WidgetMetadataInput, error) {
+	res, err := ec.unmarshalInputWidgetMetadataInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNWidgetStatus2systemᚋinternalᚋsystemᚋgraphᚋmodelᚐWidgetStatus(ctx context.Context, v interface{}) (model.WidgetStatus, error) {
+	var res model.WidgetStatus
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNWidgetStatus2systemᚋinternalᚋsystemᚋgraphᚋmodelᚐWidgetStatus(ctx context.Context, sel ast.SelectionSet, v model.WidgetStatus) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {
@@ -4017,6 +9270,231 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return res
 }
 
+func (ec *executionContext) marshalODashboardWidget2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐDashboardWidget(ctx context.Context, sel ast.SelectionSet, v *model.DashboardWidget) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._DashboardWidget(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalODashboardWidgetLayoutInput2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐDashboardWidgetLayoutInput(ctx context.Context, v interface{}) (*model.DashboardWidgetLayoutInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputDashboardWidgetLayoutInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalODatasource2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐDatasource(ctx context.Context, sel ast.SelectionSet, v *model.Datasource) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Datasource(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalODatasourceInput2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐDatasourceInput(ctx context.Context, v interface{}) (*model.DatasourceInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputDatasourceInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOFieldConfig2ᚕᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐFieldConfigᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.FieldConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNFieldConfig2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐFieldConfig(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOFieldConfigInput2ᚕᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐFieldConfigInputᚄ(ctx context.Context, v interface{}) ([]*model.FieldConfigInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]*model.FieldConfigInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNFieldConfigInput2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐFieldConfigInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v interface{}) (*int, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalInt(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.SelectionSet, v *int) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	res := graphql.MarshalInt(*v)
+	return res
+}
+
+func (ec *executionContext) marshalOLibraryWidget2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐLibraryWidget(ctx context.Context, sel ast.SelectionSet, v *model.LibraryWidget) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._LibraryWidget(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOLibraryWidgetLayoutInput2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐLibraryWidgetLayoutInput(ctx context.Context, v interface{}) (*model.LibraryWidgetLayoutInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputLibraryWidgetLayoutInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOParamMap2ᚕᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐParamMapᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ParamMap) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNParamMap2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐParamMap(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOParamMapInput2ᚕᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐParamMapInputᚄ(ctx context.Context, v interface{}) ([]*model.ParamMapInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]*model.ParamMapInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNParamMapInput2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐParamMapInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOPropsOptions2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐPropsOptions(ctx context.Context, sel ast.SelectionSet, v *model.PropsOptions) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._PropsOptions(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOPropsOptionsInput2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐPropsOptionsInput(ctx context.Context, v interface{}) (*model.PropsOptionsInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputPropsOptionsInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOSlotsConfig2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐSlotsConfig(ctx context.Context, sel ast.SelectionSet, v *model.SlotsConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SlotsConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOSlotsConfigInput2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐSlotsConfigInput(ctx context.Context, v interface{}) (*model.SlotsConfigInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputSlotsConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalOString2string(ctx context.Context, v interface{}) (string, error) {
 	res, err := graphql.UnmarshalString(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -4048,6 +9526,45 @@ func (ec *executionContext) marshalOSystem2ᚖsystemᚋinternalᚋsystemᚋmodel
 		return graphql.Null
 	}
 	return ec._System(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOWidgetMetadataInput2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐWidgetMetadataInput(ctx context.Context, v interface{}) (*model.WidgetMetadataInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputWidgetMetadataInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOWidgetProps2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐWidgetProps(ctx context.Context, sel ast.SelectionSet, v *model.WidgetProps) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._WidgetProps(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOWidgetPropsInput2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐWidgetPropsInput(ctx context.Context, v interface{}) (*model.WidgetPropsInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputWidgetPropsInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOWidgetStatus2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐWidgetStatus(ctx context.Context, v interface{}) (*model.WidgetStatus, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(model.WidgetStatus)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOWidgetStatus2ᚖsystemᚋinternalᚋsystemᚋgraphᚋmodelᚐWidgetStatus(ctx context.Context, sel ast.SelectionSet, v *model.WidgetStatus) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalO__EnumValue2ᚕgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐEnumValueᚄ(ctx context.Context, sel ast.SelectionSet, v []introspection.EnumValue) graphql.Marshaler {

@@ -2,10 +2,163 @@
 
 package model
 
+import (
+	"fmt"
+	"io"
+	"strconv"
+)
+
+type CreateDashboardWidgetInput struct {
+	DashboardID     string                      `json:"dashboardId"`
+	LibraryWidgetID string                      `json:"libraryWidgetId"`
+	Layout          *DashboardWidgetLayoutInput `json:"layout"`
+}
+
+type CreateLibraryWidgetInput struct {
+	Type       string                    `json:"type"`
+	Metadata   *WidgetMetadataInput      `json:"metadata"`
+	Datasource *DatasourceInput          `json:"datasource,omitempty"`
+	Props      *WidgetPropsInput         `json:"props,omitempty"`
+	Slots      *SlotsConfigInput         `json:"slots,omitempty"`
+	Layout     *LibraryWidgetLayoutInput `json:"layout"`
+	Status     *WidgetStatus             `json:"status,omitempty"`
+}
+
+// Dashboard Widget - Dashboard 中的 Widget 實例
+type DashboardWidget struct {
+	ID              string `json:"id"`
+	DashboardID     string `json:"dashboardId"`
+	LibraryWidgetID string `json:"libraryWidgetId"`
+	// 從 Library Widget 繼承的 Widget
+	LibraryWidget *LibraryWidget `json:"libraryWidget,omitempty"`
+	// 在 Dashboard 中的佈局位置
+	Layout    *DashboardWidgetLayout `json:"layout"`
+	CreatedAt string                 `json:"createdAt"`
+	UpdatedAt string                 `json:"updatedAt"`
+}
+
+// Dashboard Widget 佈局配置 (僅位置和大小)
+type DashboardWidgetLayout struct {
+	X int `json:"x"`
+	Y int `json:"y"`
+	W int `json:"w"`
+	H int `json:"h"`
+}
+
+type DashboardWidgetLayoutInput struct {
+	X int `json:"x"`
+	Y int `json:"y"`
+	W int `json:"w"`
+	H int `json:"h"`
+}
+
+// Datasource 資料來源配置
+type Datasource struct {
+	ID           string            `json:"id"`
+	Name         string            `json:"name"`
+	Type         string            `json:"type"`
+	Trigger      DatasourceTrigger `json:"trigger"`
+	DatasourceID string            `json:"datasourceId"`
+	Transform    *string           `json:"transform,omitempty"`
+	ParamMap     []*ParamMap       `json:"paramMap,omitempty"`
+}
+
+type DatasourceInput struct {
+	ID           string            `json:"id"`
+	Name         string            `json:"name"`
+	Type         string            `json:"type"`
+	Trigger      DatasourceTrigger `json:"trigger"`
+	DatasourceID string            `json:"datasourceId"`
+	Transform    *string           `json:"transform,omitempty"`
+	ParamMap     []*ParamMapInput  `json:"paramMap,omitempty"`
+}
+
+// 欄位配置
+type FieldConfig struct {
+	Key   string    `json:"key"`
+	Label string    `json:"label"`
+	Type  FieldType `json:"type"`
+	Width *int      `json:"width,omitempty"`
+}
+
+type FieldConfigInput struct {
+	Key   string    `json:"key"`
+	Label string    `json:"label"`
+	Type  FieldType `json:"type"`
+	Width *int      `json:"width,omitempty"`
+}
+
+// Library Widget - 組件庫中的 Widget 模板
+type LibraryWidget struct {
+	ID         string               `json:"id"`
+	Type       string               `json:"type"`
+	Metadata   *WidgetMetadata      `json:"metadata"`
+	Datasource *Datasource          `json:"datasource,omitempty"`
+	Props      *WidgetProps         `json:"props,omitempty"`
+	Slots      *SlotsConfig         `json:"slots,omitempty"`
+	Layout     *LibraryWidgetLayout `json:"layout"`
+	Status     WidgetStatus         `json:"status"`
+	CreatedAt  string               `json:"createdAt"`
+	UpdatedAt  string               `json:"updatedAt"`
+}
+
+// Library Widget 佈局配置 (包含最小尺寸限制)
+type LibraryWidgetLayout struct {
+	X    int  `json:"x"`
+	Y    int  `json:"y"`
+	W    int  `json:"w"`
+	H    int  `json:"h"`
+	MinW *int `json:"minW,omitempty"`
+	MinH *int `json:"minH,omitempty"`
+}
+
+type LibraryWidgetLayoutInput struct {
+	X    int  `json:"x"`
+	Y    int  `json:"y"`
+	W    int  `json:"w"`
+	H    int  `json:"h"`
+	MinW *int `json:"minW,omitempty"`
+	MinH *int `json:"minH,omitempty"`
+}
+
 type Mutation struct {
 }
 
+// Datasource 參數映射
+type ParamMap struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+type ParamMapInput struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+// Props 選項設定
+type PropsOptions struct {
+	EnablePagination *bool `json:"enablePagination,omitempty"`
+	PageSize         *int  `json:"pageSize,omitempty"`
+	EnableSorting    *bool `json:"enableSorting,omitempty"`
+}
+
+type PropsOptionsInput struct {
+	EnablePagination *bool `json:"enablePagination,omitempty"`
+	PageSize         *int  `json:"pageSize,omitempty"`
+	EnableSorting    *bool `json:"enableSorting,omitempty"`
+}
+
 type Query struct {
+}
+
+// Slots 配置 (JSON 格式)
+type SlotsConfig struct {
+	// JSON 格式的 slots 配置
+	Config *string `json:"config,omitempty"`
+}
+
+type SlotsConfigInput struct {
+	Config *string `json:"config,omitempty"`
 }
 
 type SystemWithRole struct {
@@ -15,8 +168,188 @@ type SystemWithRole struct {
 	Role        string  `json:"role"`
 }
 
+type UpdateDashboardWidgetInput struct {
+	ID     string                      `json:"id"`
+	Layout *DashboardWidgetLayoutInput `json:"layout,omitempty"`
+}
+
+type UpdateLibraryWidgetInput struct {
+	ID         string                    `json:"id"`
+	Type       *string                   `json:"type,omitempty"`
+	Metadata   *WidgetMetadataInput      `json:"metadata,omitempty"`
+	Datasource *DatasourceInput          `json:"datasource,omitempty"`
+	Props      *WidgetPropsInput         `json:"props,omitempty"`
+	Slots      *SlotsConfigInput         `json:"slots,omitempty"`
+	Layout     *LibraryWidgetLayoutInput `json:"layout,omitempty"`
+	Status     *WidgetStatus             `json:"status,omitempty"`
+}
+
 type UpdateSystemInput struct {
 	Namespace   string  `json:"namespace"`
 	Name        *string `json:"name,omitempty"`
 	Description *string `json:"description,omitempty"`
+}
+
+// Widget 元資料
+type WidgetMetadata struct {
+	Name        string  `json:"name"`
+	Description *string `json:"description,omitempty"`
+}
+
+type WidgetMetadataInput struct {
+	Name        string  `json:"name"`
+	Description *string `json:"description,omitempty"`
+}
+
+// Widget 屬性配置
+type WidgetProps struct {
+	Title       *string        `json:"title,omitempty"`
+	Description *string        `json:"description,omitempty"`
+	Fields      []*FieldConfig `json:"fields,omitempty"`
+	Options     *PropsOptions  `json:"options,omitempty"`
+}
+
+type WidgetPropsInput struct {
+	Title       *string             `json:"title,omitempty"`
+	Description *string             `json:"description,omitempty"`
+	Fields      []*FieldConfigInput `json:"fields,omitempty"`
+	Options     *PropsOptionsInput  `json:"options,omitempty"`
+}
+
+// Datasource 觸發類型
+type DatasourceTrigger string
+
+const (
+	DatasourceTriggerOnLoad   DatasourceTrigger = "ON_LOAD"
+	DatasourceTriggerOnDemand DatasourceTrigger = "ON_DEMAND"
+	DatasourceTriggerInterval DatasourceTrigger = "INTERVAL"
+)
+
+var AllDatasourceTrigger = []DatasourceTrigger{
+	DatasourceTriggerOnLoad,
+	DatasourceTriggerOnDemand,
+	DatasourceTriggerInterval,
+}
+
+func (e DatasourceTrigger) IsValid() bool {
+	switch e {
+	case DatasourceTriggerOnLoad, DatasourceTriggerOnDemand, DatasourceTriggerInterval:
+		return true
+	}
+	return false
+}
+
+func (e DatasourceTrigger) String() string {
+	return string(e)
+}
+
+func (e *DatasourceTrigger) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = DatasourceTrigger(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid DatasourceTrigger", str)
+	}
+	return nil
+}
+
+func (e DatasourceTrigger) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+// 欄位類型
+type FieldType string
+
+const (
+	FieldTypeString  FieldType = "STRING"
+	FieldTypeNumber  FieldType = "NUMBER"
+	FieldTypeDate    FieldType = "DATE"
+	FieldTypeBoolean FieldType = "BOOLEAN"
+	FieldTypeObject  FieldType = "OBJECT"
+	FieldTypeArray   FieldType = "ARRAY"
+)
+
+var AllFieldType = []FieldType{
+	FieldTypeString,
+	FieldTypeNumber,
+	FieldTypeDate,
+	FieldTypeBoolean,
+	FieldTypeObject,
+	FieldTypeArray,
+}
+
+func (e FieldType) IsValid() bool {
+	switch e {
+	case FieldTypeString, FieldTypeNumber, FieldTypeDate, FieldTypeBoolean, FieldTypeObject, FieldTypeArray:
+		return true
+	}
+	return false
+}
+
+func (e FieldType) String() string {
+	return string(e)
+}
+
+func (e *FieldType) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = FieldType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid FieldType", str)
+	}
+	return nil
+}
+
+func (e FieldType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+// Widget 狀態
+type WidgetStatus string
+
+const (
+	WidgetStatusDraft     WidgetStatus = "DRAFT"
+	WidgetStatusPublished WidgetStatus = "PUBLISHED"
+	WidgetStatusArchived  WidgetStatus = "ARCHIVED"
+)
+
+var AllWidgetStatus = []WidgetStatus{
+	WidgetStatusDraft,
+	WidgetStatusPublished,
+	WidgetStatusArchived,
+}
+
+func (e WidgetStatus) IsValid() bool {
+	switch e {
+	case WidgetStatusDraft, WidgetStatusPublished, WidgetStatusArchived:
+		return true
+	}
+	return false
+}
+
+func (e WidgetStatus) String() string {
+	return string(e)
+}
+
+func (e *WidgetStatus) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = WidgetStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid WidgetStatus", str)
+	}
+	return nil
+}
+
+func (e WidgetStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
 }
