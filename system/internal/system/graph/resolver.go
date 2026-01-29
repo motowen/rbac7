@@ -18,12 +18,8 @@ type Resolver struct {
 // DashboardWidget returns DashboardWidgetResolver implementation.
 func (r *Resolver) DashboardWidget() DashboardWidgetResolver { return &dashboardWidgetResolver{r} }
 
-// Datasource returns DatasourceResolver implementation.
-func (r *Resolver) Datasource() DatasourceResolver { return &datasourceResolver{r} }
-
 // LibraryWidget returns LibraryWidgetResolver implementation.
 func (r *Resolver) LibraryWidget() LibraryWidgetResolver { return &libraryWidgetResolver{r} }
 
 type dashboardWidgetResolver struct{ *Resolver }
-type datasourceResolver struct{ *Resolver }
 type libraryWidgetResolver struct{ *Resolver }

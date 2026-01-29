@@ -4,7 +4,6 @@ package graph
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -26,22 +25,18 @@ func (r *mutationResolver) CreateLibraryWidget(ctx context.Context, input model1
 		Type:        input.Type,
 		TypeVersion: input.TypeVersion,
 		Status:      "draft",
+		Schema:      input.Schema,
+		UserConfig:  input.UserConfig,
 	}
 
 	if input.Status != nil {
 		widget.Status = *input.Status
-	}
-	if input.Schema != nil {
-		widget.Schema = parseJSONString(*input.Schema)
 	}
 	if input.Datasource != nil {
 		widget.Datasource = convertDatasourceInputsToModel(input.Datasource)
 	}
 	if input.ThumbnailURL != nil {
 		widget.ThumbnailURL = *input.ThumbnailURL
-	}
-	if input.UserConfig != nil {
-		widget.UserConfig = parseJSONString(*input.UserConfig)
 	}
 
 	result, err := r.WidgetRepo.CreateLibraryWidget(ctx, widget)
@@ -69,7 +64,7 @@ func (r *mutationResolver) UpdateLibraryWidget(ctx context.Context, input model1
 		update.TypeVersion = input.TypeVersion
 	}
 	if input.Schema != nil {
-		update.Schema = parseJSONString(*input.Schema)
+		update.Schema = input.Schema
 	}
 	if input.Datasource != nil {
 		datasources := convertDatasourceInputsToModel(input.Datasource)
@@ -82,7 +77,7 @@ func (r *mutationResolver) UpdateLibraryWidget(ctx context.Context, input model1
 		update.ThumbnailURL = input.ThumbnailURL
 	}
 	if input.UserConfig != nil {
-		update.UserConfig = parseJSONString(*input.UserConfig)
+		update.UserConfig = input.UserConfig
 	}
 
 	result, err := r.WidgetRepo.UpdateLibraryWidget(ctx, input.ID, update)
@@ -211,32 +206,6 @@ func (r *dashboardWidgetResolver) UpdatedAt(ctx context.Context, obj *model.Dash
 	return obj.UpdatedAt.Format(time.RFC3339), nil
 }
 
-// Config resolves the config field for Datasource (map to JSON string)
-func (r *datasourceResolver) Config(ctx context.Context, obj *model.Datasource) (*string, error) {
-	if obj.Config == nil {
-		return nil, nil
-	}
-	jsonBytes, err := json.Marshal(obj.Config)
-	if err != nil {
-		return nil, err
-	}
-	result := string(jsonBytes)
-	return &result, nil
-}
-
-// Schema resolves the schema field for LibraryWidget (map to JSON string)
-func (r *libraryWidgetResolver) Schema(ctx context.Context, obj *model.LibraryWidget) (*string, error) {
-	if obj.Schema == nil {
-		return nil, nil
-	}
-	jsonBytes, err := json.Marshal(obj.Schema)
-	if err != nil {
-		return nil, err
-	}
-	result := string(jsonBytes)
-	return &result, nil
-}
-
 // CreatedAt resolves the createdAt field for LibraryWidget
 func (r *libraryWidgetResolver) CreatedAt(ctx context.Context, obj *model.LibraryWidget) (string, error) {
 	return obj.CreatedAt.Format(time.RFC3339), nil
@@ -256,34 +225,9 @@ func (r *libraryWidgetResolver) PublishedAt(ctx context.Context, obj *model.Libr
 	return &result, nil
 }
 
-// UserConfig resolves the userConfig field for LibraryWidget (map to JSON string)
-func (r *libraryWidgetResolver) UserConfig(ctx context.Context, obj *model.LibraryWidget) (*string, error) {
-	if obj.UserConfig == nil {
-		return nil, nil
-	}
-	jsonBytes, err := json.Marshal(obj.UserConfig)
-	if err != nil {
-		return nil, err
-	}
-	result := string(jsonBytes)
-	return &result, nil
-}
-
 // ============================================
 // Conversion Helpers
 // ============================================
-
-// parseJSONString parses a JSON string into a map
-func parseJSONString(jsonStr string) map[string]interface{} {
-	if jsonStr == "" {
-		return nil
-	}
-	var result map[string]interface{}
-	if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
-		return nil
-	}
-	return result
-}
 
 func convertDatasourceInputsToModel(inputs []*model1.DatasourceInput) []model.Datasource {
 	if inputs == nil {
@@ -292,15 +236,13 @@ func convertDatasourceInputsToModel(inputs []*model1.DatasourceInput) []model.Da
 	result := make([]model.Datasource, len(inputs))
 	for i, input := range inputs {
 		result[i] = model.Datasource{
-			ID:   input.ID,
-			Name: input.Name,
-			Type: input.Type,
+			ID:     input.ID,
+			Name:   input.Name,
+			Type:   input.Type,
+			Config: input.Config,
 		}
 		if input.Description != nil {
 			result[i].Description = *input.Description
-		}
-		if input.Config != nil {
-			result[i].Config = parseJSONString(*input.Config)
 		}
 	}
 	return result
