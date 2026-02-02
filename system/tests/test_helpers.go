@@ -65,20 +65,29 @@ func SetupGraphQLWithMockRepo(repo repository.SystemRepository, rbacClient *clie
 	return SetupGraphQLWithMocks(repo, nil, rbacClient)
 }
 
-// SetupGraphQLWithMocks sets up GraphQL with mock repos (SystemRepository and WidgetRepository)
+// SetupGraphQLWithMocks sets up GraphQL with mock repos (SystemRepository, WidgetRepository, DashboardRepository)
 func SetupGraphQLWithMocks(repo repository.SystemRepository, widgetRepo repository.WidgetRepository, rbacClient *client.RBACClient) *echo.Echo {
+	return SetupGraphQLWithAllMocks(repo, widgetRepo, nil, rbacClient)
+}
+
+// SetupGraphQLWithAllMocks sets up GraphQL with all mock repos
+func SetupGraphQLWithAllMocks(repo repository.SystemRepository, widgetRepo repository.WidgetRepository, dashboardRepo repository.DashboardRepository, rbacClient *client.RBACClient) *echo.Echo {
 	e := echo.New()
 
-	// Use a default mock widget repo if not provided
+	// Use default mock repos if not provided
 	if widgetRepo == nil {
 		widgetRepo = &MockWidgetRepository{}
+	}
+	if dashboardRepo == nil {
+		dashboardRepo = &MockDashboardRepository{}
 	}
 
 	cfg := graph.Config{
 		Resolvers: &graph.Resolver{
-			Repo:       repo,
-			WidgetRepo: widgetRepo,
-			RBACClient: rbacClient,
+			Repo:          repo,
+			WidgetRepo:    widgetRepo,
+			DashboardRepo: dashboardRepo,
+			RBACClient:    rbacClient,
 		},
 		Directives: graph.DirectiveRoot{
 			Auth: graph.AuthDirective(rbacClient),

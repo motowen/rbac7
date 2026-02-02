@@ -12,7 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// WidgetRepository defines the interface for widget data access
+// WidgetRepository defines the interface for widget data access (Library Widgets only)
 type WidgetRepository interface {
 	// Library Widget operations
 	CreateLibraryWidget(ctx context.Context, widget *model.LibraryWidget) (*model.LibraryWidget, error)
@@ -20,13 +20,6 @@ type WidgetRepository interface {
 	DeleteLibraryWidget(ctx context.Context, id string) error
 	GetLibraryWidget(ctx context.Context, id string) (*model.LibraryWidget, error)
 	GetLibraryWidgets(ctx context.Context) ([]*model.LibraryWidget, error)
-
-	// Dashboard Widget operations
-	CreateDashboardWidget(ctx context.Context, widget *model.DashboardWidget) (*model.DashboardWidget, error)
-	UpdateDashboardWidget(ctx context.Context, id string, layout *model.DashboardWidgetLayout) (*model.DashboardWidget, error)
-	DeleteDashboardWidget(ctx context.Context, id string) error
-	GetDashboardWidget(ctx context.Context, id string) (*model.DashboardWidget, error)
-	GetDashboardWidgets(ctx context.Context, dashboardID string) ([]*model.DashboardWidget, error)
 }
 
 // LibraryWidgetUpdate represents fields that can be updated
@@ -44,15 +37,13 @@ type LibraryWidgetUpdate struct {
 
 // MongoWidgetRepository implements WidgetRepository using MongoDB
 type MongoWidgetRepository struct {
-	libraryWidgetCollection   *mongo.Collection
-	dashboardWidgetCollection *mongo.Collection
+	libraryWidgetCollection *mongo.Collection
 }
 
 // NewMongoWidgetRepository creates a new MongoWidgetRepository
 func NewMongoWidgetRepository(db *mongo.Database) *MongoWidgetRepository {
 	return &MongoWidgetRepository{
-		libraryWidgetCollection:   db.Collection("library_widgets"),
-		dashboardWidgetCollection: db.Collection("dashboard_widgets"),
+		libraryWidgetCollection: db.Collection("library_widgets"),
 	}
 }
 
@@ -141,73 +132,6 @@ func (r *MongoWidgetRepository) GetLibraryWidgets(ctx context.Context) ([]*model
 	defer cursor.Close(ctx)
 
 	var results []*model.LibraryWidget
-	if err := cursor.All(ctx, &results); err != nil {
-		return nil, err
-	}
-	return results, nil
-}
-
-// ============================================
-// Dashboard Widget Operations
-// ============================================
-
-func (r *MongoWidgetRepository) CreateDashboardWidget(ctx context.Context, widget *model.DashboardWidget) (*model.DashboardWidget, error) {
-	widget.ID = primitive.NewObjectID().Hex()
-	widget.CreatedAt = time.Now()
-	widget.UpdatedAt = time.Now()
-
-	_, err := r.dashboardWidgetCollection.InsertOne(ctx, widget)
-	if err != nil {
-		return nil, err
-	}
-	return widget, nil
-}
-
-func (r *MongoWidgetRepository) UpdateDashboardWidget(ctx context.Context, id string, layout *model.DashboardWidgetLayout) (*model.DashboardWidget, error) {
-	updateDoc := bson.M{
-		"$set": bson.M{
-			"layout":     layout,
-			"updated_at": time.Now(),
-		},
-	}
-
-	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
-	var result model.DashboardWidget
-	err := r.dashboardWidgetCollection.FindOneAndUpdate(ctx, bson.M{"_id": id}, updateDoc, opts).Decode(&result)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &result, nil
-}
-
-func (r *MongoWidgetRepository) DeleteDashboardWidget(ctx context.Context, id string) error {
-	_, err := r.dashboardWidgetCollection.DeleteOne(ctx, bson.M{"_id": id})
-	return err
-}
-
-func (r *MongoWidgetRepository) GetDashboardWidget(ctx context.Context, id string) (*model.DashboardWidget, error) {
-	var result model.DashboardWidget
-	err := r.dashboardWidgetCollection.FindOne(ctx, bson.M{"_id": id}).Decode(&result)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &result, nil
-}
-
-func (r *MongoWidgetRepository) GetDashboardWidgets(ctx context.Context, dashboardID string) ([]*model.DashboardWidget, error) {
-	cursor, err := r.dashboardWidgetCollection.Find(ctx, bson.M{"dashboard_id": dashboardID})
-	if err != nil {
-		return nil, err
-	}
-	defer cursor.Close(ctx)
-
-	var results []*model.DashboardWidget
 	if err := cursor.All(ctx, &results); err != nil {
 		return nil, err
 	}

@@ -10,16 +10,8 @@ import (
 // It serves as dependency injection for your app, add any dependencies you require here.
 
 type Resolver struct {
-	Repo       repository.SystemRepository
-	WidgetRepo repository.WidgetRepository
-	RBACClient *client.RBACClient
+	Repo          repository.SystemRepository
+	WidgetRepo    repository.WidgetRepository
+	DashboardRepo repository.DashboardRepository
+	RBACClient    *client.RBACClient
 }
-
-// DashboardWidget returns DashboardWidgetResolver implementation.
-func (r *Resolver) DashboardWidget() DashboardWidgetResolver { return &dashboardWidgetResolver{r} }
-
-// LibraryWidget returns LibraryWidgetResolver implementation.
-func (r *Resolver) LibraryWidget() LibraryWidgetResolver { return &libraryWidgetResolver{r} }
-
-type dashboardWidgetResolver struct{ *Resolver }
-type libraryWidgetResolver struct{ *Resolver }

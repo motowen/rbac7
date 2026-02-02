@@ -5,6 +5,7 @@ import (
 	"system/internal/system/client"
 	"system/internal/system/model"
 	"system/internal/system/repository"
+	"time"
 )
 
 // MockSystemRepository is a mock implementation of SystemRepository
@@ -78,21 +79,13 @@ func (m *MockRBACClient) GetUserRolesMe(ctx context.Context, callerID string) ([
 	return []client.UserRole{}, nil
 }
 
-// MockWidgetRepository is a mock implementation of WidgetRepository
+// MockWidgetRepository is a mock implementation of WidgetRepository (Library Widgets only)
 type MockWidgetRepository struct {
-	// Library Widget mocks
 	CreateLibraryWidgetFunc func(ctx context.Context, widget *model.LibraryWidget) (*model.LibraryWidget, error)
 	UpdateLibraryWidgetFunc func(ctx context.Context, id string, update *repository.LibraryWidgetUpdate) (*model.LibraryWidget, error)
 	DeleteLibraryWidgetFunc func(ctx context.Context, id string) error
 	GetLibraryWidgetFunc    func(ctx context.Context, id string) (*model.LibraryWidget, error)
 	GetLibraryWidgetsFunc   func(ctx context.Context) ([]*model.LibraryWidget, error)
-
-	// Dashboard Widget mocks
-	CreateDashboardWidgetFunc func(ctx context.Context, widget *model.DashboardWidget) (*model.DashboardWidget, error)
-	UpdateDashboardWidgetFunc func(ctx context.Context, id string, layout *model.DashboardWidgetLayout) (*model.DashboardWidget, error)
-	DeleteDashboardWidgetFunc func(ctx context.Context, id string) error
-	GetDashboardWidgetFunc    func(ctx context.Context, id string) (*model.DashboardWidget, error)
-	GetDashboardWidgetsFunc   func(ctx context.Context, dashboardID string) ([]*model.DashboardWidget, error)
 }
 
 func (m *MockWidgetRepository) CreateLibraryWidget(ctx context.Context, widget *model.LibraryWidget) (*model.LibraryWidget, error) {
@@ -131,38 +124,164 @@ func (m *MockWidgetRepository) GetLibraryWidgets(ctx context.Context) ([]*model.
 	return []*model.LibraryWidget{}, nil
 }
 
-func (m *MockWidgetRepository) CreateDashboardWidget(ctx context.Context, widget *model.DashboardWidget) (*model.DashboardWidget, error) {
-	if m.CreateDashboardWidgetFunc != nil {
-		return m.CreateDashboardWidgetFunc(ctx, widget)
+// MockDashboardRepository is a mock implementation of DashboardRepository
+type MockDashboardRepository struct {
+	CreateDashboardFunc       func(ctx context.Context, dashboard *model.Dashboard) (*model.Dashboard, error)
+	GetDashboardFunc          func(ctx context.Context, id string) (*model.Dashboard, error)
+	GetDashboardsFunc         func(ctx context.Context) ([]*model.Dashboard, error)
+	UpdateDashboardFunc       func(ctx context.Context, id string, update *repository.DashboardUpdate) (*model.Dashboard, error)
+	UpdateDashboardStatusFunc func(ctx context.Context, id string, status string, previousStatus string) (*model.Dashboard, error)
+
+	AddWidgetToDashboardFunc    func(ctx context.Context, widget *model.DashboardWidget) (*model.DashboardWidget, error)
+	UpdateDashboardWidgetFunc   func(ctx context.Context, id string, update *repository.DashboardWidgetUpdate) (*model.DashboardWidget, error)
+	RemoveDashboardWidgetFunc   func(ctx context.Context, id string) error
+	GetDashboardWidgetFunc      func(ctx context.Context, id string) (*model.DashboardWidget, error)
+	GetDashboardWidgetsFunc     func(ctx context.Context, dashboardID string, version string) ([]*model.DashboardWidget, error)
+	CopyWidgetsToDraftFunc      func(ctx context.Context, dashboardID string) error
+	PromoteDraftToPublishedFunc func(ctx context.Context, dashboardID string) error
+	DeleteWidgetsByVersionFunc  func(ctx context.Context, dashboardID string, version string) error
+
+	LockDashboardFunc   func(ctx context.Context, dashboardID, userID string, duration time.Duration) (*model.DashboardLock, error)
+	UnlockDashboardFunc func(ctx context.Context, dashboardID, userID string) error
+	GetLockFunc         func(ctx context.Context, dashboardID string) (*model.DashboardLock, error)
+	IsLockedByOtherFunc func(ctx context.Context, dashboardID, userID string) (bool, error)
+
+	SaveToHistoryFunc func(ctx context.Context, dashboardID string, publishedBy string) error
+	GetHistoryFunc    func(ctx context.Context, dashboardID string) ([]*model.DashboardHistory, error)
+}
+
+func (m *MockDashboardRepository) CreateDashboard(ctx context.Context, dashboard *model.Dashboard) (*model.Dashboard, error) {
+	if m.CreateDashboardFunc != nil {
+		return m.CreateDashboardFunc(ctx, dashboard)
 	}
-	widget.ID = "mock-id"
+	dashboard.ID = "mock-dashboard-id"
+	dashboard.Status = model.DashboardStatusDraft
+	return dashboard, nil
+}
+
+func (m *MockDashboardRepository) GetDashboard(ctx context.Context, id string) (*model.Dashboard, error) {
+	if m.GetDashboardFunc != nil {
+		return m.GetDashboardFunc(ctx, id)
+	}
+	return nil, nil
+}
+
+func (m *MockDashboardRepository) GetDashboards(ctx context.Context) ([]*model.Dashboard, error) {
+	if m.GetDashboardsFunc != nil {
+		return m.GetDashboardsFunc(ctx)
+	}
+	return []*model.Dashboard{}, nil
+}
+
+func (m *MockDashboardRepository) UpdateDashboard(ctx context.Context, id string, update *repository.DashboardUpdate) (*model.Dashboard, error) {
+	if m.UpdateDashboardFunc != nil {
+		return m.UpdateDashboardFunc(ctx, id, update)
+	}
+	return &model.Dashboard{ID: id}, nil
+}
+
+func (m *MockDashboardRepository) UpdateDashboardStatus(ctx context.Context, id string, status string, previousStatus string) (*model.Dashboard, error) {
+	if m.UpdateDashboardStatusFunc != nil {
+		return m.UpdateDashboardStatusFunc(ctx, id, status, previousStatus)
+	}
+	return &model.Dashboard{ID: id, Status: status}, nil
+}
+
+func (m *MockDashboardRepository) AddWidgetToDashboard(ctx context.Context, widget *model.DashboardWidget) (*model.DashboardWidget, error) {
+	if m.AddWidgetToDashboardFunc != nil {
+		return m.AddWidgetToDashboardFunc(ctx, widget)
+	}
+	widget.ID = "mock-widget-id"
 	return widget, nil
 }
 
-func (m *MockWidgetRepository) UpdateDashboardWidget(ctx context.Context, id string, layout *model.DashboardWidgetLayout) (*model.DashboardWidget, error) {
+func (m *MockDashboardRepository) UpdateDashboardWidget(ctx context.Context, id string, update *repository.DashboardWidgetUpdate) (*model.DashboardWidget, error) {
 	if m.UpdateDashboardWidgetFunc != nil {
-		return m.UpdateDashboardWidgetFunc(ctx, id, layout)
+		return m.UpdateDashboardWidgetFunc(ctx, id, update)
 	}
 	return &model.DashboardWidget{ID: id}, nil
 }
 
-func (m *MockWidgetRepository) DeleteDashboardWidget(ctx context.Context, id string) error {
-	if m.DeleteDashboardWidgetFunc != nil {
-		return m.DeleteDashboardWidgetFunc(ctx, id)
+func (m *MockDashboardRepository) RemoveDashboardWidget(ctx context.Context, id string) error {
+	if m.RemoveDashboardWidgetFunc != nil {
+		return m.RemoveDashboardWidgetFunc(ctx, id)
 	}
 	return nil
 }
 
-func (m *MockWidgetRepository) GetDashboardWidget(ctx context.Context, id string) (*model.DashboardWidget, error) {
+func (m *MockDashboardRepository) GetDashboardWidget(ctx context.Context, id string) (*model.DashboardWidget, error) {
 	if m.GetDashboardWidgetFunc != nil {
 		return m.GetDashboardWidgetFunc(ctx, id)
 	}
 	return nil, nil
 }
 
-func (m *MockWidgetRepository) GetDashboardWidgets(ctx context.Context, dashboardID string) ([]*model.DashboardWidget, error) {
+func (m *MockDashboardRepository) GetDashboardWidgets(ctx context.Context, dashboardID string, version string) ([]*model.DashboardWidget, error) {
 	if m.GetDashboardWidgetsFunc != nil {
-		return m.GetDashboardWidgetsFunc(ctx, dashboardID)
+		return m.GetDashboardWidgetsFunc(ctx, dashboardID, version)
 	}
 	return []*model.DashboardWidget{}, nil
+}
+
+func (m *MockDashboardRepository) CopyWidgetsToDraft(ctx context.Context, dashboardID string) error {
+	if m.CopyWidgetsToDraftFunc != nil {
+		return m.CopyWidgetsToDraftFunc(ctx, dashboardID)
+	}
+	return nil
+}
+
+func (m *MockDashboardRepository) PromoteDraftToPublished(ctx context.Context, dashboardID string) error {
+	if m.PromoteDraftToPublishedFunc != nil {
+		return m.PromoteDraftToPublishedFunc(ctx, dashboardID)
+	}
+	return nil
+}
+
+func (m *MockDashboardRepository) DeleteWidgetsByVersion(ctx context.Context, dashboardID string, version string) error {
+	if m.DeleteWidgetsByVersionFunc != nil {
+		return m.DeleteWidgetsByVersionFunc(ctx, dashboardID, version)
+	}
+	return nil
+}
+
+func (m *MockDashboardRepository) LockDashboard(ctx context.Context, dashboardID, userID string, duration time.Duration) (*model.DashboardLock, error) {
+	if m.LockDashboardFunc != nil {
+		return m.LockDashboardFunc(ctx, dashboardID, userID, duration)
+	}
+	return &model.DashboardLock{DashboardID: dashboardID, LockedBy: userID}, nil
+}
+
+func (m *MockDashboardRepository) UnlockDashboard(ctx context.Context, dashboardID, userID string) error {
+	if m.UnlockDashboardFunc != nil {
+		return m.UnlockDashboardFunc(ctx, dashboardID, userID)
+	}
+	return nil
+}
+
+func (m *MockDashboardRepository) GetLock(ctx context.Context, dashboardID string) (*model.DashboardLock, error) {
+	if m.GetLockFunc != nil {
+		return m.GetLockFunc(ctx, dashboardID)
+	}
+	return nil, nil
+}
+
+func (m *MockDashboardRepository) IsLockedByOther(ctx context.Context, dashboardID, userID string) (bool, error) {
+	if m.IsLockedByOtherFunc != nil {
+		return m.IsLockedByOtherFunc(ctx, dashboardID, userID)
+	}
+	return false, nil
+}
+
+func (m *MockDashboardRepository) SaveToHistory(ctx context.Context, dashboardID string, publishedBy string) error {
+	if m.SaveToHistoryFunc != nil {
+		return m.SaveToHistoryFunc(ctx, dashboardID, publishedBy)
+	}
+	return nil
+}
+
+func (m *MockDashboardRepository) GetHistory(ctx context.Context, dashboardID string) ([]*model.DashboardHistory, error) {
+	if m.GetHistoryFunc != nil {
+		return m.GetHistoryFunc(ctx, dashboardID)
+	}
+	return []*model.DashboardHistory{}, nil
 }

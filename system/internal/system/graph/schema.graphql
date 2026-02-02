@@ -44,16 +44,56 @@ input UpdateSystemInput {
 }
 
 # ============================================
-# Widget Enums
+# Dashboard Types
 # ============================================
 
-"""Widget 狀態"""
-enum WidgetStatus {
+"""Dashboard 狀態"""
+enum DashboardStatus {
   DRAFT
   PUBLISHED
-  ARCHIVED
+  CHANGED
+  TRASHED
 }
 
+"""Dashboard"""
+type Dashboard {
+  id: ID!
+  name: String!
+  description: String
+  status: DashboardStatus!
+  """草稿版本的名稱 (changed 狀態時)"""
+  draftName: String
+  """草稿版本的描述 (changed 狀態時)"""
+  draftDescription: String
+  createdAt: String!
+  updatedAt: String!
+  createdBy: String!
+  """是否被鎖定"""
+  isLocked: Boolean!
+  """鎖定者 (如有)"""
+  lockedBy: String
+}
+
+"""Dashboard 鎖定資訊"""
+type DashboardLock {
+  dashboardId: String!
+  lockedBy: String!
+  lockedAt: String!
+  expiresAt: String!
+}
+
+"""Dashboard 歷史版本"""
+type DashboardHistory {
+  id: ID!
+  dashboardId: String!
+  version: Int!
+  publishedAt: String!
+  publishedBy: String!
+}
+
+# ============================================
+# Datasource Types
+# ============================================
 
 """Datasource 資料來源配置"""
 type Datasource {
@@ -71,21 +111,6 @@ input DatasourceInput {
   description: String
   type: String!
   config: JSON
-}
-
-"""Dashboard Widget 佈局配置 (僅位置和大小)"""
-type DashboardWidgetLayout {
-  x: Int!
-  y: Int!
-  w: Int!
-  h: Int!
-}
-
-input DashboardWidgetLayoutInput {
-  x: Int!
-  y: Int!
-  w: Int!
-  h: Int!
 }
 
 # ============================================
@@ -112,19 +137,39 @@ type LibraryWidget {
   userConfig: JSON
 }
 
-"""Dashboard Widget - Dashboard 中的 Widget 實例"""
+"""Dashboard Widget - Dashboard 中的 Widget 實例 (合併 LibraryWidget 欄位 + 自訂欄位)"""
 type DashboardWidget {
   id: ID!
   dashboardId: String!
+  """版本標識: published | draft"""
+  version: String!
+  
+  # 從 LibraryWidget 複製的欄位
   libraryWidgetId: String!
-  """在 Dashboard 中的佈局位置"""
-  layout: DashboardWidgetLayout!
+  libraryWidgetVersion: String!
+  type: String!
+  typeVersion: String!
+  name: String!
+  datasource: [Datasource!]
+  schema: JSON
+  
+  # Dashboard Widget 專屬欄位
+  displayMode: String
+  """配置覆蓋 (JSON 格式)"""
+  configOverrides: JSON!
+  """佈局 (JSON 格式)"""
+  layout: JSON!
+  """查詢覆蓋 (JSON 格式)"""
+  queryOverrides: JSON
+  """排序順序"""
+  sortOrder: Int!
+  
   createdAt: String!
   updatedAt: String!
 }
 
 # ============================================
-# Widget Input Types
+# Library Widget Input Types
 # ============================================
 
 input CreateLibraryWidgetInput {
@@ -152,15 +197,43 @@ input UpdateLibraryWidgetInput {
   userConfig: JSON
 }
 
-input CreateDashboardWidgetInput {
+# ============================================
+# Dashboard Input Types
+# ============================================
+
+input CreateDashboardInput {
+  name: String!
+  description: String
+}
+
+input UpdateDashboardInput {
+  dashboardId: String!
+  name: String
+  description: String
+}
+
+input AddWidgetToDashboardInput {
   dashboardId: String!
   libraryWidgetId: String!
-  layout: DashboardWidgetLayoutInput!
+  libraryWidgetVersion: String!
+  configOverrides: JSON!
+  layout: JSON!
+  displayMode: String
+  queryOverrides: JSON
+  sortOrder: Int
 }
 
 input UpdateDashboardWidgetInput {
-  id: ID!
-  layout: DashboardWidgetLayoutInput
+  dashboardWidgetId: String!
+  configOverrides: JSON
+  layout: JSON
+  displayMode: String
+  queryOverrides: JSON
+  sortOrder: Int
+}
+
+input RemoveDashboardWidgetInput {
+  dashboardWidgetId: String!
 }
 
 # ============================================
@@ -188,13 +261,24 @@ type Query {
   """Get a library widget by ID"""
   libraryWidget(id: ID!): LibraryWidget
 
+  # ----- Dashboard Queries -----
+  
+  """Get all dashboards (excludes trashed)"""
+  dashboards: [Dashboard!]!
+  
+  """Get a dashboard by ID"""
+  dashboard(id: ID!): Dashboard
+  
+  """Get dashboard history (published versions)"""
+  dashboardHistory(dashboardId: String!): [DashboardHistory!]!
+
   # ----- Dashboard Widget Queries -----
   
-  """Get all dashboard widgets for a specific dashboard"""
-  dashboardWidgets(dashboardId: String!): [DashboardWidget!]!
+  """Get dashboard widgets. Use viewDraft=true to see draft version (for editors)."""
+  queryDashboardWidgets(dashboardId: String!, viewDraft: Boolean = false): [DashboardWidget!]!
   
   """Get a dashboard widget by ID"""
-  dashboardWidget(id: ID!): DashboardWidget
+  queryDashboardWidget(dashboardWidgetId: String!): DashboardWidget
 }
 
 # ============================================
@@ -225,15 +309,42 @@ type Mutation {
   """Delete a library widget by ID"""
   deleteLibraryWidget(id: ID!): Boolean!
 
-  # ----- Dashboard Widget Mutations -----
+  # ----- Dashboard CRUD + State Machine -----
   
-  """Create a new dashboard widget (add a library widget to a dashboard)"""
-  createDashboardWidget(input: CreateDashboardWidgetInput!): DashboardWidget!
+  """Create a new dashboard (status: draft)"""
+  createDashboard(input: CreateDashboardInput!): Dashboard!
   
-  """Update a dashboard widget's layout"""
+  """Update dashboard info (requires draft or changed status)"""
+  updateDashboard(input: UpdateDashboardInput!): Dashboard!
+  
+  """Publish dashboard (draft/changed → published). Saves to history if previously published."""
+  publishDashboard(dashboardId: String!): Dashboard!
+  
+  """Start editing dashboard (published → changed). Creates draft copies of widgets."""
+  changeDashboard(dashboardId: String!): Dashboard!
+  
+  """Delete dashboard (draft/published/changed → trashed)"""
+  deleteDashboard(dashboardId: String!): Dashboard!
+  
+  """Restore dashboard (trashed → previous status)"""
+  restoreDashboard(dashboardId: String!): Dashboard!
+
+  # ----- Dashboard Widget Mutations (requires draft or changed status) -----
+  
+  """Add a widget to dashboard (copies from LibraryWidget)"""
+  addWidgetToDashboard(input: AddWidgetToDashboardInput!): DashboardWidget!
+  
+  """Update a dashboard widget"""
   updateDashboardWidget(input: UpdateDashboardWidgetInput!): DashboardWidget!
   
-  """Delete a dashboard widget by ID"""
-  deleteDashboardWidget(id: ID!): Boolean!
-}
+  """Remove a dashboard widget"""
+  removeDashboardWidget(input: RemoveDashboardWidgetInput!): Boolean!
 
+  # ----- Dashboard Lock -----
+  
+  """Lock dashboard for editing (5 min duration). Call periodically to extend."""
+  lockDashboard(dashboardId: String!): DashboardLock!
+  
+  """Unlock dashboard"""
+  unlockDashboard(dashboardId: String!): Boolean!
+}

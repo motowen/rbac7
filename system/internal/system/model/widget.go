@@ -20,13 +20,30 @@ type LibraryWidget struct {
 }
 
 // DashboardWidget represents a widget instance placed on a dashboard
+// Contains fields copied from LibraryWidget + dashboard-specific fields
 type DashboardWidget struct {
-	ID              string                `bson:"_id,omitempty"`
-	DashboardID     string                `bson:"dashboard_id"`
-	LibraryWidgetID string                `bson:"library_widget_id"`
-	Layout          DashboardWidgetLayout `bson:"layout"`
-	CreatedAt       time.Time             `bson:"created_at"`
-	UpdatedAt       time.Time             `bson:"updated_at"`
+	ID          string `bson:"_id,omitempty"`
+	DashboardID string `bson:"dashboard_id"`
+	Version     string `bson:"version"` // "published" | "draft"
+
+	// Fields copied from LibraryWidget
+	LibraryWidgetID      string                 `bson:"library_widget_id"`
+	LibraryWidgetVersion string                 `bson:"library_widget_version"`
+	Type                 string                 `bson:"type"`
+	TypeVersion          string                 `bson:"type_version"`
+	Name                 string                 `bson:"name"`
+	Datasource           []Datasource           `bson:"datasource,omitempty"`
+	Schema               map[string]interface{} `bson:"schema,omitempty"`
+
+	// Dashboard Widget specific fields
+	DisplayMode     string                 `bson:"display_mode,omitempty"`
+	ConfigOverrides map[string]interface{} `bson:"config_overrides"`
+	Layout          map[string]interface{} `bson:"layout"`
+	QueryOverrides  map[string]interface{} `bson:"query_overrides,omitempty"`
+	SortOrder       int                    `bson:"sort_order"`
+
+	CreatedAt time.Time `bson:"created_at"`
+	UpdatedAt time.Time `bson:"updated_at"`
 }
 
 // Datasource represents widget data source configuration
@@ -36,12 +53,4 @@ type Datasource struct {
 	Description string                 `bson:"description,omitempty"`
 	Type        string                 `bson:"type"`
 	Config      map[string]interface{} `bson:"config,omitempty"`
-}
-
-// DashboardWidgetLayout represents layout for dashboard widget
-type DashboardWidgetLayout struct {
-	X int `bson:"x"`
-	Y int `bson:"y"`
-	W int `bson:"w"`
-	H int `bson:"h"`
 }

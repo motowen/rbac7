@@ -8,10 +8,20 @@ import (
 	"strconv"
 )
 
-type CreateDashboardWidgetInput struct {
-	DashboardID     string                      `json:"dashboardId"`
-	LibraryWidgetID string                      `json:"libraryWidgetId"`
-	Layout          *DashboardWidgetLayoutInput `json:"layout"`
+type AddWidgetToDashboardInput struct {
+	DashboardID          string                 `json:"dashboardId"`
+	LibraryWidgetID      string                 `json:"libraryWidgetId"`
+	LibraryWidgetVersion string                 `json:"libraryWidgetVersion"`
+	ConfigOverrides      map[string]interface{} `json:"configOverrides"`
+	Layout               map[string]interface{} `json:"layout"`
+	DisplayMode          *string                `json:"displayMode,omitempty"`
+	QueryOverrides       map[string]interface{} `json:"queryOverrides,omitempty"`
+	SortOrder            *int                   `json:"sortOrder,omitempty"`
+}
+
+type CreateDashboardInput struct {
+	Name        string  `json:"name"`
+	Description *string `json:"description,omitempty"`
 }
 
 type CreateLibraryWidgetInput struct {
@@ -24,13 +34,6 @@ type CreateLibraryWidgetInput struct {
 	Status       *string                `json:"status,omitempty"`
 	ThumbnailURL *string                `json:"thumbnailUrl,omitempty"`
 	UserConfig   map[string]interface{} `json:"userConfig,omitempty"`
-}
-
-type DashboardWidgetLayoutInput struct {
-	X int `json:"x"`
-	Y int `json:"y"`
-	W int `json:"w"`
-	H int `json:"h"`
 }
 
 type DatasourceInput struct {
@@ -47,6 +50,10 @@ type Mutation struct {
 type Query struct {
 }
 
+type RemoveDashboardWidgetInput struct {
+	DashboardWidgetID string `json:"dashboardWidgetId"`
+}
+
 type SystemWithRole struct {
 	Namespace   string  `json:"namespace"`
 	Name        string  `json:"name"`
@@ -54,9 +61,19 @@ type SystemWithRole struct {
 	Role        string  `json:"role"`
 }
 
+type UpdateDashboardInput struct {
+	DashboardID string  `json:"dashboardId"`
+	Name        *string `json:"name,omitempty"`
+	Description *string `json:"description,omitempty"`
+}
+
 type UpdateDashboardWidgetInput struct {
-	ID     string                      `json:"id"`
-	Layout *DashboardWidgetLayoutInput `json:"layout,omitempty"`
+	DashboardWidgetID string                 `json:"dashboardWidgetId"`
+	ConfigOverrides   map[string]interface{} `json:"configOverrides,omitempty"`
+	Layout            map[string]interface{} `json:"layout,omitempty"`
+	DisplayMode       *string                `json:"displayMode,omitempty"`
+	QueryOverrides    map[string]interface{} `json:"queryOverrides,omitempty"`
+	SortOrder         *int                   `json:"sortOrder,omitempty"`
 }
 
 type UpdateLibraryWidgetInput struct {
@@ -78,46 +95,48 @@ type UpdateSystemInput struct {
 	Description *string `json:"description,omitempty"`
 }
 
-// Widget 狀態
-type WidgetStatus string
+// Dashboard 狀態
+type DashboardStatus string
 
 const (
-	WidgetStatusDraft     WidgetStatus = "DRAFT"
-	WidgetStatusPublished WidgetStatus = "PUBLISHED"
-	WidgetStatusArchived  WidgetStatus = "ARCHIVED"
+	DashboardStatusDraft     DashboardStatus = "DRAFT"
+	DashboardStatusPublished DashboardStatus = "PUBLISHED"
+	DashboardStatusChanged   DashboardStatus = "CHANGED"
+	DashboardStatusTrashed   DashboardStatus = "TRASHED"
 )
 
-var AllWidgetStatus = []WidgetStatus{
-	WidgetStatusDraft,
-	WidgetStatusPublished,
-	WidgetStatusArchived,
+var AllDashboardStatus = []DashboardStatus{
+	DashboardStatusDraft,
+	DashboardStatusPublished,
+	DashboardStatusChanged,
+	DashboardStatusTrashed,
 }
 
-func (e WidgetStatus) IsValid() bool {
+func (e DashboardStatus) IsValid() bool {
 	switch e {
-	case WidgetStatusDraft, WidgetStatusPublished, WidgetStatusArchived:
+	case DashboardStatusDraft, DashboardStatusPublished, DashboardStatusChanged, DashboardStatusTrashed:
 		return true
 	}
 	return false
 }
 
-func (e WidgetStatus) String() string {
+func (e DashboardStatus) String() string {
 	return string(e)
 }
 
-func (e *WidgetStatus) UnmarshalGQL(v interface{}) error {
+func (e *DashboardStatus) UnmarshalGQL(v interface{}) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
 	}
 
-	*e = WidgetStatus(str)
+	*e = DashboardStatus(str)
 	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid WidgetStatus", str)
+		return fmt.Errorf("%s is not a valid DashboardStatus", str)
 	}
 	return nil
 }
 
-func (e WidgetStatus) MarshalGQL(w io.Writer) {
+func (e DashboardStatus) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
