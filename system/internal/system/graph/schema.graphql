@@ -130,6 +130,8 @@ type LibraryWidget {
   datasource: [Datasource!]
   status: String!
   thumbnailUrl: String
+  displayMode: String
+  tags: [String!]
   createdAt: String!
   updatedAt: String!
   publishedAt: String
@@ -181,6 +183,8 @@ input CreateLibraryWidgetInput {
   datasource: [DatasourceInput!]
   status: String = "draft"
   thumbnailUrl: String
+  displayMode: String
+  tags: [String!]
   userConfig: JSON
 }
 
@@ -194,6 +198,8 @@ input UpdateLibraryWidgetInput {
   datasource: [DatasourceInput!]
   status: String
   thumbnailUrl: String
+  displayMode: String
+  tags: [String!]
   userConfig: JSON
 }
 

@@ -292,20 +292,24 @@ func (r *MongoDashboardRepository) CopyWidgetsToDraft(ctx context.Context, dashb
 		return err
 	}
 
-	// Create draft copies
-	for _, widget := range widgets {
+	if len(widgets) == 0 {
+		return nil
+	}
+
+	// Create draft copies using batch insert
+	now := time.Now()
+	docs := make([]interface{}, len(widgets))
+	for i, widget := range widgets {
 		draftWidget := *widget
 		draftWidget.ID = primitive.NewObjectID().Hex()
 		draftWidget.Version = "draft"
-		draftWidget.CreatedAt = time.Now()
-		draftWidget.UpdatedAt = time.Now()
-
-		_, err := r.dashboardWidgetCollection.InsertOne(ctx, draftWidget)
-		if err != nil {
-			return err
-		}
+		draftWidget.CreatedAt = now
+		draftWidget.UpdatedAt = now
+		docs[i] = draftWidget
 	}
-	return nil
+
+	_, err = r.dashboardWidgetCollection.InsertMany(ctx, docs)
+	return err
 }
 
 func (r *MongoDashboardRepository) PromoteDraftToPublished(ctx context.Context, dashboardID string) error {

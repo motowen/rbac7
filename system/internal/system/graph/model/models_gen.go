@@ -33,6 +33,8 @@ type CreateLibraryWidgetInput struct {
 	Datasource   []*DatasourceInput     `json:"datasource,omitempty"`
 	Status       *string                `json:"status,omitempty"`
 	ThumbnailURL *string                `json:"thumbnailUrl,omitempty"`
+	DisplayMode  *string                `json:"displayMode,omitempty"`
+	Tags         []string               `json:"tags,omitempty"`
 	UserConfig   map[string]interface{} `json:"userConfig,omitempty"`
 }
 
@@ -86,6 +88,8 @@ type UpdateLibraryWidgetInput struct {
 	Datasource   []*DatasourceInput     `json:"datasource,omitempty"`
 	Status       *string                `json:"status,omitempty"`
 	ThumbnailURL *string                `json:"thumbnailUrl,omitempty"`
+	DisplayMode  *string                `json:"displayMode,omitempty"`
+	Tags         []string               `json:"tags,omitempty"`
 	UserConfig   map[string]interface{} `json:"userConfig,omitempty"`
 }
 

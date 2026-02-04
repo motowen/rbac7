@@ -13,6 +13,8 @@ type LibraryWidget struct {
 	Datasource   []Datasource           `bson:"datasource,omitempty"`
 	Status       string                 `bson:"status"`
 	ThumbnailURL string                 `bson:"thumbnail_url,omitempty"`
+	DisplayMode  string                 `bson:"display_mode,omitempty"`
+	Tags         []string               `bson:"tags,omitempty"`
 	CreatedAt    time.Time              `bson:"created_at"`
 	UpdatedAt    time.Time              `bson:"updated_at"`
 	PublishedAt  *time.Time             `bson:"published_at,omitempty"`

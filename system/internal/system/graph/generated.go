@@ -114,11 +114,13 @@ type ComplexityRoot struct {
 	LibraryWidget struct {
 		CreatedAt    func(childComplexity int) int
 		Datasource   func(childComplexity int) int
+		DisplayMode  func(childComplexity int) int
 		ID           func(childComplexity int) int
 		Name         func(childComplexity int) int
 		PublishedAt  func(childComplexity int) int
 		Schema       func(childComplexity int) int
 		Status       func(childComplexity int) int
+		Tags         func(childComplexity int) int
 		ThumbnailURL func(childComplexity int) int
 		Type         func(childComplexity int) int
 		TypeVersion  func(childComplexity int) int
@@ -555,6 +557,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.LibraryWidget.Datasource(childComplexity), true
 
+	case "LibraryWidget.displayMode":
+		if e.complexity.LibraryWidget.DisplayMode == nil {
+			break
+		}
+
+		return e.complexity.LibraryWidget.DisplayMode(childComplexity), true
+
 	case "LibraryWidget.id":
 		if e.complexity.LibraryWidget.ID == nil {
 			break
@@ -589,6 +598,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.LibraryWidget.Status(childComplexity), true
+
+	case "LibraryWidget.tags":
+		if e.complexity.LibraryWidget.Tags == nil {
+			break
+		}
+
+		return e.complexity.LibraryWidget.Tags(childComplexity), true
 
 	case "LibraryWidget.thumbnailUrl":
 		if e.complexity.LibraryWidget.ThumbnailURL == nil {
@@ -3780,6 +3796,88 @@ func (ec *executionContext) fieldContext_LibraryWidget_thumbnailUrl(ctx context.
 	return fc, nil
 }
 
+func (ec *executionContext) _LibraryWidget_displayMode(ctx context.Context, field graphql.CollectedField, obj *model1.LibraryWidget) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LibraryWidget_displayMode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DisplayMode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LibraryWidget_displayMode(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LibraryWidget",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LibraryWidget_tags(ctx context.Context, field graphql.CollectedField, obj *model1.LibraryWidget) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LibraryWidget_tags(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Tags, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LibraryWidget_tags(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LibraryWidget",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _LibraryWidget_createdAt(ctx context.Context, field graphql.CollectedField, obj *model1.LibraryWidget) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_LibraryWidget_createdAt(ctx, field)
 	if err != nil {
@@ -4197,6 +4295,10 @@ func (ec *executionContext) fieldContext_Mutation_createLibraryWidget(ctx contex
 				return ec.fieldContext_LibraryWidget_status(ctx, field)
 			case "thumbnailUrl":
 				return ec.fieldContext_LibraryWidget_thumbnailUrl(ctx, field)
+			case "displayMode":
+				return ec.fieldContext_LibraryWidget_displayMode(ctx, field)
+			case "tags":
+				return ec.fieldContext_LibraryWidget_tags(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_LibraryWidget_createdAt(ctx, field)
 			case "updatedAt":
@@ -4280,6 +4382,10 @@ func (ec *executionContext) fieldContext_Mutation_updateLibraryWidget(ctx contex
 				return ec.fieldContext_LibraryWidget_status(ctx, field)
 			case "thumbnailUrl":
 				return ec.fieldContext_LibraryWidget_thumbnailUrl(ctx, field)
+			case "displayMode":
+				return ec.fieldContext_LibraryWidget_displayMode(ctx, field)
+			case "tags":
+				return ec.fieldContext_LibraryWidget_tags(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_LibraryWidget_createdAt(ctx, field)
 			case "updatedAt":
@@ -5395,6 +5501,10 @@ func (ec *executionContext) fieldContext_Query_libraryWidgets(ctx context.Contex
 				return ec.fieldContext_LibraryWidget_status(ctx, field)
 			case "thumbnailUrl":
 				return ec.fieldContext_LibraryWidget_thumbnailUrl(ctx, field)
+			case "displayMode":
+				return ec.fieldContext_LibraryWidget_displayMode(ctx, field)
+			case "tags":
+				return ec.fieldContext_LibraryWidget_tags(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_LibraryWidget_createdAt(ctx, field)
 			case "updatedAt":
@@ -5464,6 +5574,10 @@ func (ec *executionContext) fieldContext_Query_libraryWidget(ctx context.Context
 				return ec.fieldContext_LibraryWidget_status(ctx, field)
 			case "thumbnailUrl":
 				return ec.fieldContext_LibraryWidget_thumbnailUrl(ctx, field)
+			case "displayMode":
+				return ec.fieldContext_LibraryWidget_displayMode(ctx, field)
+			case "tags":
+				return ec.fieldContext_LibraryWidget_tags(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_LibraryWidget_createdAt(ctx, field)
 			case "updatedAt":
@@ -8205,7 +8319,7 @@ func (ec *executionContext) unmarshalInputCreateLibraryWidgetInput(ctx context.C
 		asMap["status"] = "draft"
 	}
 
-	fieldsInOrder := [...]string{"name", "version", "type", "typeVersion", "schema", "datasource", "status", "thumbnailUrl", "userConfig"}
+	fieldsInOrder := [...]string{"name", "version", "type", "typeVersion", "schema", "datasource", "status", "thumbnailUrl", "displayMode", "tags", "userConfig"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -8268,6 +8382,20 @@ func (ec *executionContext) unmarshalInputCreateLibraryWidgetInput(ctx context.C
 				return it, err
 			}
 			it.ThumbnailURL = data
+		case "displayMode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("displayMode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DisplayMode = data
+		case "tags":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tags"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Tags = data
 		case "userConfig":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userConfig"))
 			data, err := ec.unmarshalOJSON2map(ctx, v)
@@ -8473,7 +8601,7 @@ func (ec *executionContext) unmarshalInputUpdateLibraryWidgetInput(ctx context.C
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "name", "version", "type", "typeVersion", "schema", "datasource", "status", "thumbnailUrl", "userConfig"}
+	fieldsInOrder := [...]string{"id", "name", "version", "type", "typeVersion", "schema", "datasource", "status", "thumbnailUrl", "displayMode", "tags", "userConfig"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -8543,6 +8671,20 @@ func (ec *executionContext) unmarshalInputUpdateLibraryWidgetInput(ctx context.C
 				return it, err
 			}
 			it.ThumbnailURL = data
+		case "displayMode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("displayMode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DisplayMode = data
+		case "tags":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tags"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Tags = data
 		case "userConfig":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userConfig"))
 			data, err := ec.unmarshalOJSON2map(ctx, v)
@@ -9374,6 +9516,10 @@ func (ec *executionContext) _LibraryWidget(ctx context.Context, sel ast.Selectio
 			}
 		case "thumbnailUrl":
 			out.Values[i] = ec._LibraryWidget_thumbnailUrl(ctx, field, obj)
+		case "displayMode":
+			out.Values[i] = ec._LibraryWidget_displayMode(ctx, field, obj)
+		case "tags":
+			out.Values[i] = ec._LibraryWidget_tags(ctx, field, obj)
 		case "createdAt":
 			field := field
 
@@ -11174,6 +11320,44 @@ func (ec *executionContext) unmarshalOString2string(ctx context.Context, v inter
 func (ec *executionContext) marshalOString2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
 	res := graphql.MarshalString(v)
 	return res
+}
+
+func (ec *executionContext) unmarshalOString2ᚕstringᚄ(ctx context.Context, v interface{}) ([]string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]string, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNString2string(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOString2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNString2string(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalOString2ᚖstring(ctx context.Context, v interface{}) (*string, error) {

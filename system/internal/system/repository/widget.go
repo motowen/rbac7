@@ -32,6 +32,8 @@ type LibraryWidgetUpdate struct {
 	Datasource   []model.Datasource
 	Status       *string
 	ThumbnailURL *string
+	DisplayMode  *string
+	Tags         []string
 	UserConfig   map[string]interface{}
 }
 
@@ -90,6 +92,12 @@ func (r *MongoWidgetRepository) UpdateLibraryWidget(ctx context.Context, id stri
 	}
 	if update.ThumbnailURL != nil {
 		setFields["thumbnail_url"] = *update.ThumbnailURL
+	}
+	if update.DisplayMode != nil {
+		setFields["display_mode"] = *update.DisplayMode
+	}
+	if update.Tags != nil {
+		setFields["tags"] = update.Tags
 	}
 	if update.UserConfig != nil {
 		setFields["user_config"] = update.UserConfig

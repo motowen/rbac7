@@ -8,16 +8,11 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
-
 	model1 "system/internal/system/graph/model"
 	"system/internal/system/model"
 	"system/internal/system/repository"
+	"time"
 )
-
-// ============================================
-// Dashboard Field Resolvers
-// ============================================
 
 // Status is the resolver for the status field.
 func (r *dashboardResolver) Status(ctx context.Context, obj *model.Dashboard) (model1.DashboardStatus, error) {
@@ -82,18 +77,10 @@ func (r *dashboardResolver) LockedBy(ctx context.Context, obj *model.Dashboard) 
 	return nil, nil
 }
 
-// ============================================
-// DashboardHistory Field Resolvers
-// ============================================
-
 // PublishedAt is the resolver for the publishedAt field.
 func (r *dashboardHistoryResolver) PublishedAt(ctx context.Context, obj *model.DashboardHistory) (string, error) {
 	return obj.PublishedAt.Format(time.RFC3339), nil
 }
-
-// ============================================
-// DashboardLock Field Resolvers
-// ============================================
 
 // LockedAt is the resolver for the lockedAt field.
 func (r *dashboardLockResolver) LockedAt(ctx context.Context, obj *model.DashboardLock) (string, error) {
@@ -105,10 +92,6 @@ func (r *dashboardLockResolver) ExpiresAt(ctx context.Context, obj *model.Dashbo
 	return obj.ExpiresAt.Format(time.RFC3339), nil
 }
 
-// ============================================
-// DashboardWidget Field Resolvers
-// ============================================
-
 // CreatedAt resolves the createdAt field for DashboardWidget
 func (r *dashboardWidgetResolver) CreatedAt(ctx context.Context, obj *model.DashboardWidget) (string, error) {
 	return obj.CreatedAt.Format(time.RFC3339), nil
@@ -118,10 +101,6 @@ func (r *dashboardWidgetResolver) CreatedAt(ctx context.Context, obj *model.Dash
 func (r *dashboardWidgetResolver) UpdatedAt(ctx context.Context, obj *model.DashboardWidget) (string, error) {
 	return obj.UpdatedAt.Format(time.RFC3339), nil
 }
-
-// ============================================
-// LibraryWidget Field Resolvers
-// ============================================
 
 // CreatedAt resolves the createdAt field for LibraryWidget
 func (r *libraryWidgetResolver) CreatedAt(ctx context.Context, obj *model.LibraryWidget) (string, error) {
@@ -141,10 +120,6 @@ func (r *libraryWidgetResolver) PublishedAt(ctx context.Context, obj *model.Libr
 	result := obj.PublishedAt.Format(time.RFC3339)
 	return &result, nil
 }
-
-// ============================================
-// System Mutations
-// ============================================
 
 // CreateSystem is the resolver for the createSystem field.
 func (r *mutationResolver) CreateSystem(ctx context.Context, namespace string, name string, description *string, owner string) (*model.System, error) {
@@ -204,10 +179,6 @@ func (r *mutationResolver) UpdateSystem(ctx context.Context, input model1.Update
 	return system, nil
 }
 
-// ============================================
-// Library Widget Mutations
-// ============================================
-
 // CreateLibraryWidget is the resolver for the createLibraryWidget field.
 func (r *mutationResolver) CreateLibraryWidget(ctx context.Context, input model1.CreateLibraryWidgetInput) (*model.LibraryWidget, error) {
 	widget := &model.LibraryWidget{
@@ -228,6 +199,12 @@ func (r *mutationResolver) CreateLibraryWidget(ctx context.Context, input model1
 	}
 	if input.ThumbnailURL != nil {
 		widget.ThumbnailURL = *input.ThumbnailURL
+	}
+	if input.DisplayMode != nil {
+		widget.DisplayMode = *input.DisplayMode
+	}
+	if input.Tags != nil {
+		widget.Tags = input.Tags
 	}
 
 	result, err := r.WidgetRepo.CreateLibraryWidget(ctx, widget)
@@ -266,6 +243,12 @@ func (r *mutationResolver) UpdateLibraryWidget(ctx context.Context, input model1
 	if input.ThumbnailURL != nil {
 		update.ThumbnailURL = input.ThumbnailURL
 	}
+	if input.DisplayMode != nil {
+		update.DisplayMode = input.DisplayMode
+	}
+	if input.Tags != nil {
+		update.Tags = input.Tags
+	}
 	if input.UserConfig != nil {
 		update.UserConfig = input.UserConfig
 	}
@@ -289,10 +272,6 @@ func (r *mutationResolver) DeleteLibraryWidget(ctx context.Context, id string) (
 	}
 	return true, nil
 }
-
-// ============================================
-// Dashboard Mutations
-// ============================================
 
 // CreateDashboard is the resolver for the createDashboard field.
 func (r *mutationResolver) CreateDashboard(ctx context.Context, input model1.CreateDashboardInput) (*model.Dashboard, error) {
@@ -500,10 +479,6 @@ func (r *mutationResolver) RestoreDashboard(ctx context.Context, dashboardID str
 	return result, nil
 }
 
-// ============================================
-// Dashboard Widget Mutations
-// ============================================
-
 // AddWidgetToDashboard is the resolver for the addWidgetToDashboard field.
 func (r *mutationResolver) AddWidgetToDashboard(ctx context.Context, input model1.AddWidgetToDashboardInput) (*model.DashboardWidget, error) {
 	callerID, err := GetCallerID(ctx)
@@ -686,10 +661,6 @@ func (r *mutationResolver) RemoveDashboardWidget(ctx context.Context, input mode
 	return true, nil
 }
 
-// ============================================
-// Lock Mutations
-// ============================================
-
 // LockDashboard is the resolver for the lockDashboard field.
 func (r *mutationResolver) LockDashboard(ctx context.Context, dashboardID string) (*model.DashboardLock, error) {
 	callerID, err := GetCallerID(ctx)
@@ -718,10 +689,6 @@ func (r *mutationResolver) UnlockDashboard(ctx context.Context, dashboardID stri
 
 	return true, nil
 }
-
-// ============================================
-// System Queries
-// ============================================
 
 // SystemMe is the resolver for the systemMe field.
 func (r *queryResolver) SystemMe(ctx context.Context) ([]*model1.SystemWithRole, error) {
@@ -782,10 +749,6 @@ func (r *queryResolver) SystemDetail(ctx context.Context, namespace string) (*mo
 	return system, nil
 }
 
-// ============================================
-// Library Widget Queries
-// ============================================
-
 // LibraryWidgets is the resolver for the libraryWidgets field.
 func (r *queryResolver) LibraryWidgets(ctx context.Context) ([]*model.LibraryWidget, error) {
 	widgets, err := r.WidgetRepo.GetLibraryWidgets(ctx)
@@ -803,10 +766,6 @@ func (r *queryResolver) LibraryWidget(ctx context.Context, id string) (*model.Li
 	}
 	return widget, nil
 }
-
-// ============================================
-// Dashboard Queries
-// ============================================
 
 // Dashboards is the resolver for the dashboards field.
 func (r *queryResolver) Dashboards(ctx context.Context) ([]*model.Dashboard, error) {
@@ -834,10 +793,6 @@ func (r *queryResolver) DashboardHistory(ctx context.Context, dashboardID string
 	}
 	return history, nil
 }
-
-// ============================================
-// Dashboard Widget Queries
-// ============================================
 
 // QueryDashboardWidgets is the resolver for the queryDashboardWidgets field.
 func (r *queryResolver) QueryDashboardWidgets(ctx context.Context, dashboardID string, viewDraft *bool) ([]*model.DashboardWidget, error) {
@@ -871,33 +826,6 @@ func (r *queryResolver) QueryDashboardWidget(ctx context.Context, dashboardWidge
 	return widget, nil
 }
 
-// ============================================
-// Resolver Type Helpers
-// ============================================
-
-func convertDatasourceInputsToModel(inputs []*model1.DatasourceInput) []model.Datasource {
-	if inputs == nil {
-		return nil
-	}
-	result := make([]model.Datasource, len(inputs))
-	for i, input := range inputs {
-		result[i] = model.Datasource{
-			ID:     input.ID,
-			Name:   input.Name,
-			Type:   input.Type,
-			Config: input.Config,
-		}
-		if input.Description != nil {
-			result[i].Description = *input.Description
-		}
-	}
-	return result
-}
-
-// ============================================
-// Resolver Factories
-// ============================================
-
 // Dashboard returns DashboardResolver implementation.
 func (r *Resolver) Dashboard() DashboardResolver { return &dashboardResolver{r} }
 
@@ -926,3 +854,28 @@ type dashboardWidgetResolver struct{ *Resolver }
 type libraryWidgetResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//   - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//     it when you're done.
+//   - You have helper methods in this file. Move them out to keep these resolver files clean.
+func convertDatasourceInputsToModel(inputs []*model1.DatasourceInput) []model.Datasource {
+	if inputs == nil {
+		return nil
+	}
+	result := make([]model.Datasource, len(inputs))
+	for i, input := range inputs {
+		result[i] = model.Datasource{
+			ID:     input.ID,
+			Name:   input.Name,
+			Type:   input.Type,
+			Config: input.Config,
+		}
+		if input.Description != nil {
+			result[i].Description = *input.Description
+		}
+	}
+	return result
+}
