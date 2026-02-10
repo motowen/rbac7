@@ -31,7 +31,6 @@ type CreateLibraryWidgetInput struct {
 	TypeVersion  string                 `json:"typeVersion"`
 	Schema       map[string]interface{} `json:"schema,omitempty"`
 	Datasource   []*DatasourceInput     `json:"datasource,omitempty"`
-	Status       *string                `json:"status,omitempty"`
 	ThumbnailURL *string                `json:"thumbnailUrl,omitempty"`
 	DisplayMode  *string                `json:"displayMode,omitempty"`
 	Tags         []string               `json:"tags,omitempty"`
@@ -86,7 +85,6 @@ type UpdateLibraryWidgetInput struct {
 	TypeVersion  *string                `json:"typeVersion,omitempty"`
 	Schema       map[string]interface{} `json:"schema,omitempty"`
 	Datasource   []*DatasourceInput     `json:"datasource,omitempty"`
-	Status       *string                `json:"status,omitempty"`
 	ThumbnailURL *string                `json:"thumbnailUrl,omitempty"`
 	DisplayMode  *string                `json:"displayMode,omitempty"`
 	Tags         []string               `json:"tags,omitempty"`
@@ -99,48 +97,48 @@ type UpdateSystemInput struct {
 	Description *string `json:"description,omitempty"`
 }
 
-// Dashboard 狀態
-type DashboardStatus string
+// 共用狀態 (適用於 Dashboard 和 LibraryWidget)
+type EntityStatus string
 
 const (
-	DashboardStatusDraft     DashboardStatus = "DRAFT"
-	DashboardStatusPublished DashboardStatus = "PUBLISHED"
-	DashboardStatusChanged   DashboardStatus = "CHANGED"
-	DashboardStatusTrashed   DashboardStatus = "TRASHED"
+	EntityStatusDraft     EntityStatus = "DRAFT"
+	EntityStatusPublished EntityStatus = "PUBLISHED"
+	EntityStatusChanged   EntityStatus = "CHANGED"
+	EntityStatusTrashed   EntityStatus = "TRASHED"
 )
 
-var AllDashboardStatus = []DashboardStatus{
-	DashboardStatusDraft,
-	DashboardStatusPublished,
-	DashboardStatusChanged,
-	DashboardStatusTrashed,
+var AllEntityStatus = []EntityStatus{
+	EntityStatusDraft,
+	EntityStatusPublished,
+	EntityStatusChanged,
+	EntityStatusTrashed,
 }
 
-func (e DashboardStatus) IsValid() bool {
+func (e EntityStatus) IsValid() bool {
 	switch e {
-	case DashboardStatusDraft, DashboardStatusPublished, DashboardStatusChanged, DashboardStatusTrashed:
+	case EntityStatusDraft, EntityStatusPublished, EntityStatusChanged, EntityStatusTrashed:
 		return true
 	}
 	return false
 }
 
-func (e DashboardStatus) String() string {
+func (e EntityStatus) String() string {
 	return string(e)
 }
 
-func (e *DashboardStatus) UnmarshalGQL(v interface{}) error {
+func (e *EntityStatus) UnmarshalGQL(v interface{}) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
 	}
 
-	*e = DashboardStatus(str)
+	*e = EntityStatus(str)
 	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid DashboardStatus", str)
+		return fmt.Errorf("%s is not a valid EntityStatus", str)
 	}
 	return nil
 }
 
-func (e DashboardStatus) MarshalGQL(w io.Writer) {
+func (e EntityStatus) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }

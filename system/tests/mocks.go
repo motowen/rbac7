@@ -10,13 +10,9 @@ import (
 
 // MockSystemRepository is a mock implementation of SystemRepository
 type MockSystemRepository struct {
-	// CreateSystemFunc mocks the CreateSystem method
-	CreateSystemFunc func(ctx context.Context, system *model.System) error
-	// UpdateSystemFunc mocks the UpdateSystem method
-	UpdateSystemFunc func(ctx context.Context, namespace string, name, description *string) (*model.System, error)
-	// GetSystemByNamespaceFunc mocks the GetSystemByNamespace method
-	GetSystemByNamespaceFunc func(ctx context.Context, namespace string) (*model.System, error)
-	// GetSystemsByNamespacesFunc mocks the GetSystemsByNamespaces method
+	CreateSystemFunc           func(ctx context.Context, system *model.System) error
+	UpdateSystemFunc           func(ctx context.Context, namespace string, name, description *string) (*model.System, error)
+	GetSystemByNamespaceFunc   func(ctx context.Context, namespace string) (*model.System, error)
 	GetSystemsByNamespacesFunc func(ctx context.Context, namespaces []string) ([]*model.System, error)
 }
 
@@ -50,12 +46,9 @@ func (m *MockSystemRepository) GetSystemsByNamespaces(ctx context.Context, names
 
 // MockRBACClient is a mock implementation for RBAC client
 type MockRBACClient struct {
-	// CheckPermissionFunc mocks CheckPermission
-	CheckPermissionFunc func(ctx context.Context, callerID, permission, namespace string) (bool, error)
-	// AssignSystemOwnerFunc mocks AssignSystemOwner
+	CheckPermissionFunc   func(ctx context.Context, callerID, permission, namespace string) (bool, error)
 	AssignSystemOwnerFunc func(ctx context.Context, callerID, ownerID, namespace string) error
-	// GetUserRolesMeFunc mocks GetUserRolesMe
-	GetUserRolesMeFunc func(ctx context.Context, callerID string) ([]client.UserRole, error)
+	GetUserRolesMeFunc    func(ctx context.Context, callerID string) ([]client.UserRole, error)
 }
 
 func (m *MockRBACClient) CheckPermission(ctx context.Context, callerID, permission, namespace string) (bool, error) {
@@ -79,13 +72,14 @@ func (m *MockRBACClient) GetUserRolesMe(ctx context.Context, callerID string) ([
 	return []client.UserRole{}, nil
 }
 
-// MockWidgetRepository is a mock implementation of WidgetRepository (Library Widgets only)
+// MockWidgetRepository is a mock implementation of WidgetRepository
 type MockWidgetRepository struct {
-	CreateLibraryWidgetFunc func(ctx context.Context, widget *model.LibraryWidget) (*model.LibraryWidget, error)
-	UpdateLibraryWidgetFunc func(ctx context.Context, id string, update *repository.LibraryWidgetUpdate) (*model.LibraryWidget, error)
-	DeleteLibraryWidgetFunc func(ctx context.Context, id string) error
-	GetLibraryWidgetFunc    func(ctx context.Context, id string) (*model.LibraryWidget, error)
-	GetLibraryWidgetsFunc   func(ctx context.Context) ([]*model.LibraryWidget, error)
+	CreateLibraryWidgetFunc       func(ctx context.Context, widget *model.LibraryWidget) (*model.LibraryWidget, error)
+	UpdateLibraryWidgetFunc       func(ctx context.Context, id string, update *repository.LibraryWidgetUpdate) (*model.LibraryWidget, error)
+	DeleteLibraryWidgetFunc       func(ctx context.Context, id string) error
+	GetLibraryWidgetFunc          func(ctx context.Context, id string) (*model.LibraryWidget, error)
+	GetLibraryWidgetsFunc         func(ctx context.Context) ([]*model.LibraryWidget, error)
+	UpdateLibraryWidgetStatusFunc func(ctx context.Context, id string, status string, previousStatus string) (*model.LibraryWidget, error)
 }
 
 func (m *MockWidgetRepository) CreateLibraryWidget(ctx context.Context, widget *model.LibraryWidget) (*model.LibraryWidget, error) {
@@ -124,6 +118,13 @@ func (m *MockWidgetRepository) GetLibraryWidgets(ctx context.Context) ([]*model.
 	return []*model.LibraryWidget{}, nil
 }
 
+func (m *MockWidgetRepository) UpdateLibraryWidgetStatus(ctx context.Context, id string, status string, previousStatus string) (*model.LibraryWidget, error) {
+	if m.UpdateLibraryWidgetStatusFunc != nil {
+		return m.UpdateLibraryWidgetStatusFunc(ctx, id, status, previousStatus)
+	}
+	return &model.LibraryWidget{ID: id, Status: status}, nil
+}
+
 // MockDashboardRepository is a mock implementation of DashboardRepository
 type MockDashboardRepository struct {
 	CreateDashboardFunc       func(ctx context.Context, dashboard *model.Dashboard) (*model.Dashboard, error)
@@ -141,11 +142,6 @@ type MockDashboardRepository struct {
 	PromoteDraftToPublishedFunc func(ctx context.Context, dashboardID string) error
 	DeleteWidgetsByVersionFunc  func(ctx context.Context, dashboardID string, version string) error
 
-	LockDashboardFunc   func(ctx context.Context, dashboardID, userID string, duration time.Duration) (*model.DashboardLock, error)
-	UnlockDashboardFunc func(ctx context.Context, dashboardID, userID string) error
-	GetLockFunc         func(ctx context.Context, dashboardID string) (*model.DashboardLock, error)
-	IsLockedByOtherFunc func(ctx context.Context, dashboardID, userID string) (bool, error)
-
 	SaveToHistoryFunc func(ctx context.Context, dashboardID string, publishedBy string) error
 	GetHistoryFunc    func(ctx context.Context, dashboardID string) ([]*model.DashboardHistory, error)
 }
@@ -155,7 +151,7 @@ func (m *MockDashboardRepository) CreateDashboard(ctx context.Context, dashboard
 		return m.CreateDashboardFunc(ctx, dashboard)
 	}
 	dashboard.ID = "mock-dashboard-id"
-	dashboard.Status = model.DashboardStatusDraft
+	dashboard.Status = model.StatusDraft
 	return dashboard, nil
 }
 
@@ -244,34 +240,6 @@ func (m *MockDashboardRepository) DeleteWidgetsByVersion(ctx context.Context, da
 	return nil
 }
 
-func (m *MockDashboardRepository) LockDashboard(ctx context.Context, dashboardID, userID string, duration time.Duration) (*model.DashboardLock, error) {
-	if m.LockDashboardFunc != nil {
-		return m.LockDashboardFunc(ctx, dashboardID, userID, duration)
-	}
-	return &model.DashboardLock{DashboardID: dashboardID, LockedBy: userID}, nil
-}
-
-func (m *MockDashboardRepository) UnlockDashboard(ctx context.Context, dashboardID, userID string) error {
-	if m.UnlockDashboardFunc != nil {
-		return m.UnlockDashboardFunc(ctx, dashboardID, userID)
-	}
-	return nil
-}
-
-func (m *MockDashboardRepository) GetLock(ctx context.Context, dashboardID string) (*model.DashboardLock, error) {
-	if m.GetLockFunc != nil {
-		return m.GetLockFunc(ctx, dashboardID)
-	}
-	return nil, nil
-}
-
-func (m *MockDashboardRepository) IsLockedByOther(ctx context.Context, dashboardID, userID string) (bool, error) {
-	if m.IsLockedByOtherFunc != nil {
-		return m.IsLockedByOtherFunc(ctx, dashboardID, userID)
-	}
-	return false, nil
-}
-
 func (m *MockDashboardRepository) SaveToHistory(ctx context.Context, dashboardID string, publishedBy string) error {
 	if m.SaveToHistoryFunc != nil {
 		return m.SaveToHistoryFunc(ctx, dashboardID, publishedBy)
@@ -284,4 +252,48 @@ func (m *MockDashboardRepository) GetHistory(ctx context.Context, dashboardID st
 		return m.GetHistoryFunc(ctx, dashboardID)
 	}
 	return []*model.DashboardHistory{}, nil
+}
+
+// MockLockRepository is a mock implementation of LockRepository
+type MockLockRepository struct {
+	LockFunc            func(ctx context.Context, entityType, entityID, userID string, duration time.Duration) (*model.EntityLock, error)
+	UnlockFunc          func(ctx context.Context, entityType, entityID, userID string) error
+	GetLockFunc         func(ctx context.Context, entityType, entityID string) (*model.EntityLock, error)
+	IsLockedByOtherFunc func(ctx context.Context, entityType, entityID, userID string) (bool, error)
+	EnsureIndexesFunc   func(ctx context.Context) error
+}
+
+func (m *MockLockRepository) Lock(ctx context.Context, entityType, entityID, userID string, duration time.Duration) (*model.EntityLock, error) {
+	if m.LockFunc != nil {
+		return m.LockFunc(ctx, entityType, entityID, userID, duration)
+	}
+	return &model.EntityLock{EntityType: entityType, EntityID: entityID, LockedBy: userID}, nil
+}
+
+func (m *MockLockRepository) Unlock(ctx context.Context, entityType, entityID, userID string) error {
+	if m.UnlockFunc != nil {
+		return m.UnlockFunc(ctx, entityType, entityID, userID)
+	}
+	return nil
+}
+
+func (m *MockLockRepository) GetLock(ctx context.Context, entityType, entityID string) (*model.EntityLock, error) {
+	if m.GetLockFunc != nil {
+		return m.GetLockFunc(ctx, entityType, entityID)
+	}
+	return nil, nil
+}
+
+func (m *MockLockRepository) IsLockedByOther(ctx context.Context, entityType, entityID, userID string) (bool, error) {
+	if m.IsLockedByOtherFunc != nil {
+		return m.IsLockedByOtherFunc(ctx, entityType, entityID, userID)
+	}
+	return false, nil
+}
+
+func (m *MockLockRepository) EnsureIndexes(ctx context.Context) error {
+	if m.EnsureIndexesFunc != nil {
+		return m.EnsureIndexesFunc(ctx)
+	}
+	return nil
 }

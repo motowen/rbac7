@@ -10,6 +10,7 @@ import (
 	"system/internal/system/client"
 	"system/internal/system/graph"
 	"system/internal/system/repository"
+	"system/internal/system/service"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/labstack/echo/v4"
@@ -72,6 +73,11 @@ func SetupGraphQLWithMocks(repo repository.SystemRepository, widgetRepo reposito
 
 // SetupGraphQLWithAllMocks sets up GraphQL with all mock repos
 func SetupGraphQLWithAllMocks(repo repository.SystemRepository, widgetRepo repository.WidgetRepository, dashboardRepo repository.DashboardRepository, rbacClient *client.RBACClient) *echo.Echo {
+	return SetupGraphQLWithServices(repo, widgetRepo, dashboardRepo, nil, rbacClient)
+}
+
+// SetupGraphQLWithServices sets up GraphQL with all mock repos and services
+func SetupGraphQLWithServices(repo repository.SystemRepository, widgetRepo repository.WidgetRepository, dashboardRepo repository.DashboardRepository, lockRepo repository.LockRepository, rbacClient *client.RBACClient) *echo.Echo {
 	e := echo.New()
 
 	// Use default mock repos if not provided
@@ -81,13 +87,25 @@ func SetupGraphQLWithAllMocks(repo repository.SystemRepository, widgetRepo repos
 	if dashboardRepo == nil {
 		dashboardRepo = &MockDashboardRepository{}
 	}
+	if lockRepo == nil {
+		lockRepo = &MockLockRepository{}
+	}
+
+	// Create services
+	entityService := service.NewEntityService(lockRepo)
+	dashboardService := service.NewDashboardService(entityService, dashboardRepo, widgetRepo)
+	widgetService := service.NewWidgetService(entityService, widgetRepo)
 
 	cfg := graph.Config{
 		Resolvers: &graph.Resolver{
-			Repo:          repo,
-			WidgetRepo:    widgetRepo,
-			DashboardRepo: dashboardRepo,
-			RBACClient:    rbacClient,
+			Repo:             repo,
+			WidgetRepo:       widgetRepo,
+			DashboardRepo:    dashboardRepo,
+			LockRepo:         lockRepo,
+			RBACClient:       rbacClient,
+			EntityService:    entityService,
+			DashboardService: dashboardService,
+			WidgetService:    widgetService,
 		},
 		Directives: graph.DirectiveRoot{
 			Auth: graph.AuthDirective(rbacClient),
@@ -164,7 +182,10 @@ func CreateMockRBACServer(checkPermission func(permission, namespace string) boo
 				Namespace  string `json:"namespace"`
 			}
 			json.NewDecoder(r.Body).Decode(&req)
-			allowed := checkPermission(req.Permission, req.Namespace)
+			allowed := false
+			if checkPermission != nil {
+				allowed = checkPermission(req.Permission, req.Namespace)
+			}
 			json.NewEncoder(w).Encode(map[string]bool{"allowed": allowed})
 
 		case r.URL.Path == "/api/v1/user_roles/owner" && r.Method == http.MethodPost:
@@ -173,14 +194,19 @@ func CreateMockRBACServer(checkPermission func(permission, namespace string) boo
 				Namespace string `json:"namespace"`
 			}
 			json.NewDecoder(r.Body).Decode(&req)
-			if err := assignOwner(req.UserID, req.Namespace); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
+			if assignOwner != nil {
+				if err := assignOwner(req.UserID, req.Namespace); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 			}
 			json.NewEncoder(w).Encode(map[string]string{"status": "success"})
 
 		case r.URL.Path == "/api/v1/user_roles/me" && r.Method == http.MethodGet:
-			roles := getUserRoles(callerID)
+			var roles []client.UserRole
+			if getUserRoles != nil {
+				roles = getUserRoles(callerID)
+			}
 			json.NewEncoder(w).Encode(roles)
 
 		default:

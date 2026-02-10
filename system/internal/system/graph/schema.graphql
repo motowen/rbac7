@@ -44,23 +44,36 @@ input UpdateSystemInput {
 }
 
 # ============================================
-# Dashboard Types
+# Shared Types
 # ============================================
 
-"""Dashboard 狀態"""
-enum DashboardStatus {
+"""共用狀態 (適用於 Dashboard 和 LibraryWidget)"""
+enum EntityStatus {
   DRAFT
   PUBLISHED
   CHANGED
   TRASHED
 }
 
+"""共用鎖定資訊"""
+type EntityLock {
+  entityType: String!
+  entityId: String!
+  lockedBy: String!
+  lockedAt: String!
+  expiresAt: String!
+}
+
+# ============================================
+# Dashboard Types
+# ============================================
+
 """Dashboard"""
 type Dashboard {
   id: ID!
   name: String!
   description: String
-  status: DashboardStatus!
+  status: EntityStatus!
   """草稿版本的名稱 (changed 狀態時)"""
   draftName: String
   """草稿版本的描述 (changed 狀態時)"""
@@ -72,14 +85,6 @@ type Dashboard {
   isLocked: Boolean!
   """鎖定者 (如有)"""
   lockedBy: String
-}
-
-"""Dashboard 鎖定資訊"""
-type DashboardLock {
-  dashboardId: String!
-  lockedBy: String!
-  lockedAt: String!
-  expiresAt: String!
 }
 
 """Dashboard 歷史版本"""
@@ -128,7 +133,7 @@ type LibraryWidget {
   schema: JSON
   """Datasource 配置列表"""
   datasource: [Datasource!]
-  status: String!
+  status: EntityStatus!
   thumbnailUrl: String
   displayMode: String
   tags: [String!]
@@ -137,6 +142,10 @@ type LibraryWidget {
   publishedAt: String
   """User Config (JSON 格式，對應 MongoDB BSON Object)"""
   userConfig: JSON
+  """是否被鎖定"""
+  isLocked: Boolean!
+  """鎖定者 (如有)"""
+  lockedBy: String
 }
 
 """Dashboard Widget - Dashboard 中的 Widget 實例 (合併 LibraryWidget 欄位 + 自訂欄位)"""
@@ -181,7 +190,6 @@ input CreateLibraryWidgetInput {
   typeVersion: String!
   schema: JSON
   datasource: [DatasourceInput!]
-  status: String = "draft"
   thumbnailUrl: String
   displayMode: String
   tags: [String!]
@@ -196,7 +204,6 @@ input UpdateLibraryWidgetInput {
   typeVersion: String
   schema: JSON
   datasource: [DatasourceInput!]
-  status: String
   thumbnailUrl: String
   displayMode: String
   tags: [String!]
@@ -261,7 +268,7 @@ type Query {
 
   # ----- Library Widget Queries -----
   
-  """Get all library widgets"""
+  """Get all library widgets (excludes trashed)"""
   libraryWidgets: [LibraryWidget!]!
   
   """Get a library widget by ID"""
@@ -304,16 +311,25 @@ type Mutation {
   """
   updateSystem(input: UpdateSystemInput!): System! @auth(permission: "platform.system.update", namespaceRequired: true, namespaceField: "input.namespace")
 
-  # ----- Library Widget Mutations -----
+  # ----- Library Widget CRUD + State Machine -----
   
-  """Create a new library widget"""
+  """Create a new library widget (status: draft)"""
   createLibraryWidget(input: CreateLibraryWidgetInput!): LibraryWidget!
   
-  """Update an existing library widget"""
+  """Update an existing library widget (requires draft or changed status)"""
   updateLibraryWidget(input: UpdateLibraryWidgetInput!): LibraryWidget!
   
-  """Delete a library widget by ID"""
-  deleteLibraryWidget(id: ID!): Boolean!
+  """Publish library widget (draft/changed → published)"""
+  publishLibraryWidget(id: ID!): LibraryWidget!
+  
+  """Start editing library widget (published → changed)"""
+  changeLibraryWidget(id: ID!): LibraryWidget!
+  
+  """Trash library widget (soft delete, any → trashed)"""
+  trashLibraryWidget(id: ID!): LibraryWidget!
+  
+  """Restore library widget (trashed → previous status)"""
+  restoreLibraryWidget(id: ID!): LibraryWidget!
 
   # ----- Dashboard CRUD + State Machine -----
   
@@ -346,11 +362,17 @@ type Mutation {
   """Remove a dashboard widget"""
   removeDashboardWidget(input: RemoveDashboardWidgetInput!): Boolean!
 
-  # ----- Dashboard Lock -----
+  # ----- Entity Lock (shared for Dashboard and LibraryWidget) -----
   
   """Lock dashboard for editing (5 min duration). Call periodically to extend."""
-  lockDashboard(dashboardId: String!): DashboardLock!
+  lockDashboard(dashboardId: String!): EntityLock!
   
   """Unlock dashboard"""
   unlockDashboard(dashboardId: String!): Boolean!
+  
+  """Lock library widget for editing (5 min duration). Call periodically to extend."""
+  lockLibraryWidget(id: ID!): EntityLock!
+  
+  """Unlock library widget"""
+  unlockLibraryWidget(id: ID!): Boolean!
 }

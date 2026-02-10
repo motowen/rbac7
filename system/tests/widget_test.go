@@ -71,7 +71,7 @@ func TestCreateLibraryWidget(t *testing.T) {
 		assert.Equal(t, "widget-123", data.CreateLibraryWidget.ID)
 		assert.Equal(t, "My Widget", data.CreateLibraryWidget.Name)
 		assert.Equal(t, "table", data.CreateLibraryWidget.Type)
-		assert.Equal(t, "draft", data.CreateLibraryWidget.Status)
+		assert.Equal(t, "DRAFT", data.CreateLibraryWidget.Status)
 	})
 }
 
@@ -82,6 +82,13 @@ func TestUpdateLibraryWidget(t *testing.T) {
 
 		mockRepo := &MockSystemRepository{}
 		mockWidgetRepo := &MockWidgetRepository{
+			GetLibraryWidgetFunc: func(ctx context.Context, id string) (*model.LibraryWidget, error) {
+				return &model.LibraryWidget{
+					ID:     id,
+					Name:   "Old Widget",
+					Status: model.StatusDraft,
+				}, nil
+			},
 			UpdateLibraryWidgetFunc: func(ctx context.Context, id string, update *repository.LibraryWidgetUpdate) (*model.LibraryWidget, error) {
 				return &model.LibraryWidget{
 					ID:          id,
@@ -98,7 +105,7 @@ func TestUpdateLibraryWidget(t *testing.T) {
 		e := SetupGraphQLWithMocks(mockRepo, mockWidgetRepo, rbacClient)
 
 		query := `mutation {
-			updateLibraryWidget(input: {id: "widget-123", status: "published"}) {
+			updateLibraryWidget(input: {id: "widget-123", name: "Updated Widget"}) {
 				id
 				status
 			}
@@ -117,7 +124,7 @@ func TestUpdateLibraryWidget(t *testing.T) {
 		}
 		json.Unmarshal(resp.Data, &data)
 		assert.Equal(t, "widget-123", data.UpdateLibraryWidget.ID)
-		assert.Equal(t, "published", data.UpdateLibraryWidget.Status)
+		assert.Equal(t, "PUBLISHED", data.UpdateLibraryWidget.Status)
 	})
 
 	t.Run("error - widget not found", func(t *testing.T) {
@@ -144,27 +151,48 @@ func TestUpdateLibraryWidget(t *testing.T) {
 	})
 }
 
-func TestDeleteLibraryWidget(t *testing.T) {
-	t.Run("success - deletes library widget", func(t *testing.T) {
+func TestTrashLibraryWidget(t *testing.T) {
+	t.Run("success - trashes library widget", func(t *testing.T) {
 		rbacServer := CreateMockRBACServer(nil, nil, nil)
 		defer rbacServer.Close()
 
 		mockRepo := &MockSystemRepository{}
 		mockWidgetRepo := &MockWidgetRepository{
-			DeleteLibraryWidgetFunc: func(ctx context.Context, id string) error {
-				return nil
+			GetLibraryWidgetFunc: func(ctx context.Context, id string) (*model.LibraryWidget, error) {
+				return &model.LibraryWidget{
+					ID:     id,
+					Name:   "Widget To Trash",
+					Status: model.StatusDraft,
+				}, nil
+			},
+			UpdateLibraryWidgetStatusFunc: func(ctx context.Context, id string, status string, previousStatus string) (*model.LibraryWidget, error) {
+				return &model.LibraryWidget{
+					ID:     id,
+					Name:   "Widget To Trash",
+					Status: status,
+				}, nil
 			},
 		}
 
 		rbacClient := client.NewRBACClient(rbacServer.URL)
 		e := SetupGraphQLWithMocks(mockRepo, mockWidgetRepo, rbacClient)
 
-		query := `mutation { deleteLibraryWidget(id: "widget-123") }`
+		query := `mutation { trashLibraryWidget(id: "widget-123") { id status } }`
 		rec := PerformGraphQL(e, query, nil, map[string]string{"x-user-id": "user1"})
 
 		resp, err := ParseGraphQLResponse(rec)
 		require.NoError(t, err)
 		assert.Empty(t, resp.Errors)
+
+		var data struct {
+			TrashLibraryWidget struct {
+				ID     string `json:"id"`
+				Status string `json:"status"`
+			} `json:"trashLibraryWidget"`
+		}
+		json.Unmarshal(resp.Data, &data)
+		assert.Equal(t, "widget-123", data.TrashLibraryWidget.ID)
+		assert.Equal(t, "TRASHED", data.TrashLibraryWidget.Status)
 	})
 }
 

@@ -210,11 +210,15 @@ func TestSystemMe(t *testing.T) {
 		defer rbacServer.Close()
 
 		mockRepo := &MockSystemRepository{
-			GetSystemsByNamespacesFunc: func(ctx context.Context, namespaces []string) ([]*model.System, error) {
-				return []*model.System{
-					{Namespace: "NS1", Name: "System 1", Description: "Desc 1"},
-					{Namespace: "NS2", Name: "System 2", Description: "Desc 2"},
-				}, nil
+			GetSystemByNamespaceFunc: func(ctx context.Context, namespace string) (*model.System, error) {
+				systems := map[string]*model.System{
+					"NS1": {Namespace: "NS1", Name: "System 1", Description: "Desc 1"},
+					"NS2": {Namespace: "NS2", Name: "System 2", Description: "Desc 2"},
+				}
+				if s, ok := systems[namespace]; ok {
+					return s, nil
+				}
+				return nil, nil
 			},
 		}
 

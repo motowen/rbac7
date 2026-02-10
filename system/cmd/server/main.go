@@ -9,6 +9,7 @@ import (
 	"system/internal/system/client"
 	"system/internal/system/graph"
 	"system/internal/system/repository"
+	"system/internal/system/service"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
@@ -45,7 +46,30 @@ func main() {
 	db := mongoClient.Database(dbName)
 	repo := repository.NewMongoSystemRepository(db)
 	widgetRepo := repository.NewMongoWidgetRepository(db)
+	dashboardRepo := repository.NewMongoDashboardRepository(db)
+	lockRepo := repository.NewMongoLockRepository(db)
 	rbacClient := client.NewRBACClient(rbacBaseURL)
+
+	// Initialize services
+	entityService := service.NewEntityService(lockRepo)
+	dashboardService := service.NewDashboardService(entityService, dashboardRepo, widgetRepo)
+	widgetService := service.NewWidgetService(entityService, widgetRepo)
+
+	// Ensure indexes
+	ensureCtx, ensureCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer ensureCancel()
+	if err := repo.EnsureIndexes(ensureCtx); err != nil {
+		log.Println("Warning: failed to ensure system indexes:", err)
+	}
+	if err := widgetRepo.EnsureIndexes(ensureCtx); err != nil {
+		log.Println("Warning: failed to ensure widget indexes:", err)
+	}
+	if err := dashboardRepo.EnsureIndexes(ensureCtx); err != nil {
+		log.Println("Warning: failed to ensure dashboard indexes:", err)
+	}
+	if err := lockRepo.EnsureIndexes(ensureCtx); err != nil {
+		log.Println("Warning: failed to ensure lock indexes:", err)
+	}
 
 	// Echo server
 	e := echo.New()
@@ -56,9 +80,14 @@ func main() {
 	// GraphQL config with directive
 	cfg := graph.Config{
 		Resolvers: &graph.Resolver{
-			Repo:       repo,
-			WidgetRepo: widgetRepo,
-			RBACClient: rbacClient,
+			Repo:             repo,
+			WidgetRepo:       widgetRepo,
+			DashboardRepo:    dashboardRepo,
+			LockRepo:         lockRepo,
+			RBACClient:       rbacClient,
+			EntityService:    entityService,
+			DashboardService: dashboardService,
+			WidgetService:    widgetService,
 		},
 		Directives: graph.DirectiveRoot{
 			Auth: graph.AuthDirective(rbacClient),

@@ -7,27 +7,58 @@ package graph
 import (
 	"context"
 	"fmt"
-	"strings"
 	model1 "system/internal/system/graph/model"
 	"system/internal/system/model"
 	"system/internal/system/repository"
 	"time"
 )
 
-// Status is the resolver for the status field.
-func (r *dashboardResolver) Status(ctx context.Context, obj *model.Dashboard) (model1.DashboardStatus, error) {
-	switch obj.Status {
-	case model.DashboardStatusDraft:
-		return model1.DashboardStatusDraft, nil
-	case model.DashboardStatusPublished:
-		return model1.DashboardStatusPublished, nil
-	case model.DashboardStatusChanged:
-		return model1.DashboardStatusChanged, nil
-	case model.DashboardStatusTrashed:
-		return model1.DashboardStatusTrashed, nil
+// ============================================
+// Helper functions
+// ============================================
+
+// mapStatusToGQL maps internal status string to GraphQL EntityStatus enum
+func mapStatusToGQL(status string) model1.EntityStatus {
+	switch status {
+	case model.StatusDraft:
+		return model1.EntityStatusDraft
+	case model.StatusPublished:
+		return model1.EntityStatusPublished
+	case model.StatusChanged:
+		return model1.EntityStatusChanged
+	case model.StatusTrashed:
+		return model1.EntityStatusTrashed
 	default:
-		return model1.DashboardStatusDraft, nil
+		return model1.EntityStatusDraft
 	}
+}
+
+func convertDatasourceInputsToModel(inputs []*model1.DatasourceInput) []model.Datasource {
+	if inputs == nil {
+		return nil
+	}
+	result := make([]model.Datasource, len(inputs))
+	for i, input := range inputs {
+		result[i] = model.Datasource{
+			ID:     input.ID,
+			Name:   input.Name,
+			Type:   input.Type,
+			Config: input.Config,
+		}
+		if input.Description != nil {
+			result[i].Description = *input.Description
+		}
+	}
+	return result
+}
+
+// ============================================
+// Dashboard Field Resolvers
+// ============================================
+
+// Status is the resolver for the status field.
+func (r *dashboardResolver) Status(ctx context.Context, obj *model.Dashboard) (model1.EntityStatus, error) {
+	return mapStatusToGQL(obj.Status), nil
 }
 
 // DraftName is the resolver for the draftName field.
@@ -58,7 +89,7 @@ func (r *dashboardResolver) UpdatedAt(ctx context.Context, obj *model.Dashboard)
 
 // IsLocked is the resolver for the isLocked field.
 func (r *dashboardResolver) IsLocked(ctx context.Context, obj *model.Dashboard) (bool, error) {
-	lock, err := r.DashboardRepo.GetLock(ctx, obj.ID)
+	lock, err := r.EntityService.GetLock(ctx, model.EntityTypeDashboard, obj.ID)
 	if err != nil {
 		return false, err
 	}
@@ -67,7 +98,7 @@ func (r *dashboardResolver) IsLocked(ctx context.Context, obj *model.Dashboard) 
 
 // LockedBy is the resolver for the lockedBy field.
 func (r *dashboardResolver) LockedBy(ctx context.Context, obj *model.Dashboard) (*string, error) {
-	lock, err := r.DashboardRepo.GetLock(ctx, obj.ID)
+	lock, err := r.EntityService.GetLock(ctx, model.EntityTypeDashboard, obj.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -77,49 +108,95 @@ func (r *dashboardResolver) LockedBy(ctx context.Context, obj *model.Dashboard) 
 	return nil, nil
 }
 
+// ============================================
+// Dashboard History Field Resolvers
+// ============================================
+
 // PublishedAt is the resolver for the publishedAt field.
 func (r *dashboardHistoryResolver) PublishedAt(ctx context.Context, obj *model.DashboardHistory) (string, error) {
 	return obj.PublishedAt.Format(time.RFC3339), nil
 }
 
-// LockedAt is the resolver for the lockedAt field.
-func (r *dashboardLockResolver) LockedAt(ctx context.Context, obj *model.DashboardLock) (string, error) {
-	return obj.LockedAt.Format(time.RFC3339), nil
-}
+// ============================================
+// Dashboard Widget Field Resolvers
+// ============================================
 
-// ExpiresAt is the resolver for the expiresAt field.
-func (r *dashboardLockResolver) ExpiresAt(ctx context.Context, obj *model.DashboardLock) (string, error) {
-	return obj.ExpiresAt.Format(time.RFC3339), nil
-}
-
-// CreatedAt resolves the createdAt field for DashboardWidget
+// CreatedAt is the resolver for the createdAt field.
 func (r *dashboardWidgetResolver) CreatedAt(ctx context.Context, obj *model.DashboardWidget) (string, error) {
 	return obj.CreatedAt.Format(time.RFC3339), nil
 }
 
-// UpdatedAt resolves the updatedAt field for DashboardWidget
+// UpdatedAt is the resolver for the updatedAt field.
 func (r *dashboardWidgetResolver) UpdatedAt(ctx context.Context, obj *model.DashboardWidget) (string, error) {
 	return obj.UpdatedAt.Format(time.RFC3339), nil
 }
 
-// CreatedAt resolves the createdAt field for LibraryWidget
+// ============================================
+// Entity Lock Field Resolvers
+// ============================================
+
+// LockedAt is the resolver for the lockedAt field.
+func (r *entityLockResolver) LockedAt(ctx context.Context, obj *model.EntityLock) (string, error) {
+	return obj.LockedAt.Format(time.RFC3339), nil
+}
+
+// ExpiresAt is the resolver for the expiresAt field.
+func (r *entityLockResolver) ExpiresAt(ctx context.Context, obj *model.EntityLock) (string, error) {
+	return obj.ExpiresAt.Format(time.RFC3339), nil
+}
+
+// ============================================
+// Library Widget Field Resolvers
+// ============================================
+
+// Status is the resolver for the status field.
+func (r *libraryWidgetResolver) Status(ctx context.Context, obj *model.LibraryWidget) (model1.EntityStatus, error) {
+	return mapStatusToGQL(obj.Status), nil
+}
+
+// CreatedAt is the resolver for the createdAt field.
 func (r *libraryWidgetResolver) CreatedAt(ctx context.Context, obj *model.LibraryWidget) (string, error) {
 	return obj.CreatedAt.Format(time.RFC3339), nil
 }
 
-// UpdatedAt resolves the updatedAt field for LibraryWidget
+// UpdatedAt is the resolver for the updatedAt field.
 func (r *libraryWidgetResolver) UpdatedAt(ctx context.Context, obj *model.LibraryWidget) (string, error) {
 	return obj.UpdatedAt.Format(time.RFC3339), nil
 }
 
-// PublishedAt resolves the publishedAt field for LibraryWidget
+// PublishedAt is the resolver for the publishedAt field.
 func (r *libraryWidgetResolver) PublishedAt(ctx context.Context, obj *model.LibraryWidget) (*string, error) {
-	if obj.PublishedAt == nil {
-		return nil, nil
+	if obj.PublishedAt != nil {
+		s := obj.PublishedAt.Format(time.RFC3339)
+		return &s, nil
 	}
-	result := obj.PublishedAt.Format(time.RFC3339)
-	return &result, nil
+	return nil, nil
 }
+
+// IsLocked is the resolver for the isLocked field.
+func (r *libraryWidgetResolver) IsLocked(ctx context.Context, obj *model.LibraryWidget) (bool, error) {
+	lock, err := r.EntityService.GetLock(ctx, model.EntityTypeLibraryWidget, obj.ID)
+	if err != nil {
+		return false, err
+	}
+	return lock != nil, nil
+}
+
+// LockedBy is the resolver for the lockedBy field.
+func (r *libraryWidgetResolver) LockedBy(ctx context.Context, obj *model.LibraryWidget) (*string, error) {
+	lock, err := r.EntityService.GetLock(ctx, model.EntityTypeLibraryWidget, obj.ID)
+	if err != nil {
+		return nil, err
+	}
+	if lock != nil {
+		return &lock.LockedBy, nil
+	}
+	return nil, nil
+}
+
+// ============================================
+// Mutation Resolvers — System
+// ============================================
 
 // CreateSystem is the resolver for the createSystem field.
 func (r *mutationResolver) CreateSystem(ctx context.Context, namespace string, name string, description *string, owner string) (*model.System, error) {
@@ -128,33 +205,33 @@ func (r *mutationResolver) CreateSystem(ctx context.Context, namespace string, n
 		return nil, err
 	}
 
-	namespace = strings.ToUpper(strings.TrimSpace(namespace))
-
+	// Check if namespace already exists
 	existing, err := r.Repo.GetSystemByNamespace(ctx, namespace)
 	if err != nil {
-		return nil, fmt.Errorf("db error: %w", err)
+		return nil, fmt.Errorf("failed to check namespace: %w", err)
 	}
 	if existing != nil {
-		return nil, fmt.Errorf("namespace already exists")
+		return nil, fmt.Errorf("namespace already exists: %s", namespace)
 	}
 
-	err = r.RBACClient.AssignSystemOwner(ctx, callerID, owner, namespace)
-	if err != nil {
-		return nil, fmt.Errorf("failed to assign owner: %w", err)
-	}
-
-	desc := ""
-	if description != nil {
-		desc = *description
-	}
 	system := &model.System{
-		Namespace:   namespace,
-		Name:        name,
-		Description: desc,
+		Namespace: namespace,
+		Name:      name,
+	}
+	if description != nil {
+		system.Description = *description
 	}
 
 	if err := r.Repo.CreateSystem(ctx, system); err != nil {
 		return nil, fmt.Errorf("failed to create system: %w", err)
+	}
+
+	// Assign owner role via RBAC
+	if r.RBACClient != nil {
+		err = r.RBACClient.AssignSystemOwner(ctx, callerID, owner, namespace)
+		if err != nil {
+			return nil, fmt.Errorf("failed to assign owner role: %w", err)
+		}
 	}
 
 	return system, nil
@@ -162,22 +239,16 @@ func (r *mutationResolver) CreateSystem(ctx context.Context, namespace string, n
 
 // UpdateSystem is the resolver for the updateSystem field.
 func (r *mutationResolver) UpdateSystem(ctx context.Context, input model1.UpdateSystemInput) (*model.System, error) {
-	namespace := GetNamespace(ctx)
-	if namespace == "" {
-		namespace = strings.ToUpper(strings.TrimSpace(input.Namespace))
-	}
-
-	if input.Name == nil && input.Description == nil {
-		return nil, fmt.Errorf("at least one of name or description must be provided")
-	}
-
-	system, err := r.Repo.UpdateSystem(ctx, namespace, input.Name, input.Description)
+	result, err := r.Repo.UpdateSystem(ctx, input.Namespace, input.Name, input.Description)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update system: %w", err)
 	}
-
-	return system, nil
+	return result, nil
 }
+
+// ============================================
+// Mutation Resolvers — Library Widget (delegated to WidgetService)
+// ============================================
 
 // CreateLibraryWidget is the resolver for the createLibraryWidget field.
 func (r *mutationResolver) CreateLibraryWidget(ctx context.Context, input model1.CreateLibraryWidgetInput) (*model.LibraryWidget, error) {
@@ -186,16 +257,9 @@ func (r *mutationResolver) CreateLibraryWidget(ctx context.Context, input model1
 		Version:     input.Version,
 		Type:        input.Type,
 		TypeVersion: input.TypeVersion,
-		Status:      "draft",
 		Schema:      input.Schema,
-		UserConfig:  input.UserConfig,
-	}
-
-	if input.Status != nil {
-		widget.Status = *input.Status
-	}
-	if input.Datasource != nil {
-		widget.Datasource = convertDatasourceInputsToModel(input.Datasource)
+		Status:      model.StatusDraft,
+		Datasource:  convertDatasourceInputsToModel(input.Datasource),
 	}
 	if input.ThumbnailURL != nil {
 		widget.ThumbnailURL = *input.ThumbnailURL
@@ -206,72 +270,79 @@ func (r *mutationResolver) CreateLibraryWidget(ctx context.Context, input model1
 	if input.Tags != nil {
 		widget.Tags = input.Tags
 	}
+	if input.UserConfig != nil {
+		widget.UserConfig = input.UserConfig
+	}
 
 	result, err := r.WidgetRepo.CreateLibraryWidget(ctx, widget)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create library widget: %w", err)
 	}
-
 	return result, nil
 }
 
 // UpdateLibraryWidget is the resolver for the updateLibraryWidget field.
 func (r *mutationResolver) UpdateLibraryWidget(ctx context.Context, input model1.UpdateLibraryWidgetInput) (*model.LibraryWidget, error) {
-	update := &repository.LibraryWidgetUpdate{}
-
-	if input.Name != nil {
-		update.Name = input.Name
-	}
-	if input.Version != nil {
-		update.Version = input.Version
-	}
-	if input.Type != nil {
-		update.Type = input.Type
-	}
-	if input.TypeVersion != nil {
-		update.TypeVersion = input.TypeVersion
-	}
-	if input.Schema != nil {
-		update.Schema = input.Schema
-	}
-	if input.Datasource != nil {
-		update.Datasource = convertDatasourceInputsToModel(input.Datasource)
-	}
-	if input.Status != nil {
-		update.Status = input.Status
-	}
-	if input.ThumbnailURL != nil {
-		update.ThumbnailURL = input.ThumbnailURL
-	}
-	if input.DisplayMode != nil {
-		update.DisplayMode = input.DisplayMode
-	}
-	if input.Tags != nil {
-		update.Tags = input.Tags
-	}
-	if input.UserConfig != nil {
-		update.UserConfig = input.UserConfig
-	}
-
-	result, err := r.WidgetRepo.UpdateLibraryWidget(ctx, input.ID, update)
+	callerID, err := GetCallerID(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to update library widget: %w", err)
-	}
-	if result == nil {
-		return nil, fmt.Errorf("library widget not found")
+		return nil, err
 	}
 
-	return result, nil
+	update := &repository.LibraryWidgetUpdate{
+		Name:         input.Name,
+		Version:      input.Version,
+		Type:         input.Type,
+		TypeVersion:  input.TypeVersion,
+		Schema:       input.Schema,
+		Datasource:   convertDatasourceInputsToModel(input.Datasource),
+		ThumbnailURL: input.ThumbnailURL,
+		DisplayMode:  input.DisplayMode,
+		Tags:         input.Tags,
+		UserConfig:   input.UserConfig,
+	}
+
+	return r.WidgetService.Update(ctx, callerID, input.ID, update)
 }
 
-// DeleteLibraryWidget is the resolver for the deleteLibraryWidget field.
-func (r *mutationResolver) DeleteLibraryWidget(ctx context.Context, id string) (bool, error) {
-	err := r.WidgetRepo.DeleteLibraryWidget(ctx, id)
+// PublishLibraryWidget is the resolver for the publishLibraryWidget field.
+func (r *mutationResolver) PublishLibraryWidget(ctx context.Context, id string) (*model.LibraryWidget, error) {
+	callerID, err := GetCallerID(ctx)
 	if err != nil {
-		return false, fmt.Errorf("failed to delete library widget: %w", err)
+		return nil, err
 	}
-	return true, nil
+	return r.WidgetService.Publish(ctx, callerID, id)
 }
+
+// ChangeLibraryWidget is the resolver for the changeLibraryWidget field.
+func (r *mutationResolver) ChangeLibraryWidget(ctx context.Context, id string) (*model.LibraryWidget, error) {
+	callerID, err := GetCallerID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return r.WidgetService.Change(ctx, callerID, id)
+}
+
+// TrashLibraryWidget is the resolver for the trashLibraryWidget field.
+func (r *mutationResolver) TrashLibraryWidget(ctx context.Context, id string) (*model.LibraryWidget, error) {
+	callerID, err := GetCallerID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return r.WidgetService.Trash(ctx, callerID, id)
+}
+
+// RestoreLibraryWidget is the resolver for the restoreLibraryWidget field.
+func (r *mutationResolver) RestoreLibraryWidget(ctx context.Context, id string) (*model.LibraryWidget, error) {
+	callerID, err := GetCallerID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return r.WidgetService.Restore(ctx, callerID, id)
+}
+
+// ============================================
+// Mutation Resolvers — Dashboard (delegated to DashboardService)
+// ============================================
 
 // CreateDashboard is the resolver for the createDashboard field.
 func (r *mutationResolver) CreateDashboard(ctx context.Context, input model1.CreateDashboardInput) (*model.Dashboard, error) {
@@ -280,22 +351,18 @@ func (r *mutationResolver) CreateDashboard(ctx context.Context, input model1.Cre
 		return nil, err
 	}
 
-	desc := ""
-	if input.Description != nil {
-		desc = *input.Description
-	}
-
 	dashboard := &model.Dashboard{
-		Name:        input.Name,
-		Description: desc,
-		CreatedBy:   callerID,
+		Name:      input.Name,
+		CreatedBy: callerID,
+	}
+	if input.Description != nil {
+		dashboard.Description = *input.Description
 	}
 
 	result, err := r.DashboardRepo.CreateDashboard(ctx, dashboard)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create dashboard: %w", err)
 	}
-
 	return result, nil
 }
 
@@ -306,38 +373,12 @@ func (r *mutationResolver) UpdateDashboard(ctx context.Context, input model1.Upd
 		return nil, err
 	}
 
-	// Check lock
-	locked, err := r.DashboardRepo.IsLockedByOther(ctx, input.DashboardID, callerID)
-	if err != nil {
-		return nil, err
-	}
-	if locked {
-		return nil, repository.ErrDashboardLocked
-	}
-
-	// Check status
-	dashboard, err := r.DashboardRepo.GetDashboard(ctx, input.DashboardID)
-	if err != nil {
-		return nil, err
-	}
-	if dashboard == nil {
-		return nil, repository.ErrDashboardNotFound
-	}
-	if dashboard.Status != model.DashboardStatusDraft && dashboard.Status != model.DashboardStatusChanged {
-		return nil, fmt.Errorf("can only update dashboard in draft or changed status")
-	}
-
 	update := &repository.DashboardUpdate{
 		Name:        input.Name,
 		Description: input.Description,
 	}
 
-	result, err := r.DashboardRepo.UpdateDashboard(ctx, input.DashboardID, update)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update dashboard: %w", err)
-	}
-
-	return result, nil
+	return r.DashboardService.Update(ctx, callerID, input.DashboardID, update)
 }
 
 // PublishDashboard is the resolver for the publishDashboard field.
@@ -346,138 +387,39 @@ func (r *mutationResolver) PublishDashboard(ctx context.Context, dashboardID str
 	if err != nil {
 		return nil, err
 	}
-
-	dashboard, err := r.DashboardRepo.GetDashboard(ctx, dashboardID)
-	if err != nil {
-		return nil, err
-	}
-	if dashboard == nil {
-		return nil, repository.ErrDashboardNotFound
-	}
-
-	// Validate status transition
-	if dashboard.Status != model.DashboardStatusDraft && dashboard.Status != model.DashboardStatusChanged {
-		return nil, fmt.Errorf("can only publish dashboard in draft or changed status")
-	}
-
-	// If publishing from changed, save to history first
-	if dashboard.Status == model.DashboardStatusChanged {
-		if err := r.DashboardRepo.SaveToHistory(ctx, dashboardID, callerID); err != nil {
-			return nil, fmt.Errorf("failed to save history: %w", err)
-		}
-		// Delete old published widgets
-		if err := r.DashboardRepo.DeleteWidgetsByVersion(ctx, dashboardID, "published"); err != nil {
-			return nil, fmt.Errorf("failed to delete old widgets: %w", err)
-		}
-		// Promote draft widgets to published
-		if err := r.DashboardRepo.PromoteDraftToPublished(ctx, dashboardID); err != nil {
-			return nil, fmt.Errorf("failed to promote widgets: %w", err)
-		}
-		// Merge draft_data to main fields
-		if dashboard.DraftData != nil {
-			update := &repository.DashboardUpdate{}
-			if dashboard.DraftData.Name != "" {
-				update.Name = &dashboard.DraftData.Name
-			}
-			if dashboard.DraftData.Description != "" {
-				update.Description = &dashboard.DraftData.Description
-			}
-			if _, err := r.DashboardRepo.UpdateDashboard(ctx, dashboardID, update); err != nil {
-				return nil, err
-			}
-		}
-	} else {
-		// Publishing from draft - promote draft widgets to published
-		if err := r.DashboardRepo.PromoteDraftToPublished(ctx, dashboardID); err != nil {
-			return nil, fmt.Errorf("failed to promote widgets: %w", err)
-		}
-	}
-
-	// Update status
-	result, err := r.DashboardRepo.UpdateDashboardStatus(ctx, dashboardID, model.DashboardStatusPublished, "")
-	if err != nil {
-		return nil, fmt.Errorf("failed to update status: %w", err)
-	}
-
-	return result, nil
+	return r.DashboardService.Publish(ctx, callerID, dashboardID)
 }
 
 // ChangeDashboard is the resolver for the changeDashboard field.
 func (r *mutationResolver) ChangeDashboard(ctx context.Context, dashboardID string) (*model.Dashboard, error) {
-	dashboard, err := r.DashboardRepo.GetDashboard(ctx, dashboardID)
+	callerID, err := GetCallerID(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if dashboard == nil {
-		return nil, repository.ErrDashboardNotFound
-	}
-
-	if dashboard.Status != model.DashboardStatusPublished {
-		return nil, fmt.Errorf("can only change dashboard in published status")
-	}
-
-	// Copy published widgets to draft
-	if err := r.DashboardRepo.CopyWidgetsToDraft(ctx, dashboardID); err != nil {
-		return nil, fmt.Errorf("failed to copy widgets: %w", err)
-	}
-
-	// Update status
-	result, err := r.DashboardRepo.UpdateDashboardStatus(ctx, dashboardID, model.DashboardStatusChanged, model.DashboardStatusPublished)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update status: %w", err)
-	}
-
-	return result, nil
+	return r.DashboardService.Change(ctx, callerID, dashboardID)
 }
 
 // DeleteDashboard is the resolver for the deleteDashboard field.
 func (r *mutationResolver) DeleteDashboard(ctx context.Context, dashboardID string) (*model.Dashboard, error) {
-	dashboard, err := r.DashboardRepo.GetDashboard(ctx, dashboardID)
+	callerID, err := GetCallerID(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if dashboard == nil {
-		return nil, repository.ErrDashboardNotFound
-	}
-
-	if dashboard.Status == model.DashboardStatusTrashed {
-		return nil, fmt.Errorf("dashboard is already trashed")
-	}
-
-	result, err := r.DashboardRepo.UpdateDashboardStatus(ctx, dashboardID, model.DashboardStatusTrashed, dashboard.Status)
-	if err != nil {
-		return nil, fmt.Errorf("failed to trash dashboard: %w", err)
-	}
-
-	return result, nil
+	return r.DashboardService.Delete(ctx, callerID, dashboardID)
 }
 
 // RestoreDashboard is the resolver for the restoreDashboard field.
 func (r *mutationResolver) RestoreDashboard(ctx context.Context, dashboardID string) (*model.Dashboard, error) {
-	dashboard, err := r.DashboardRepo.GetDashboard(ctx, dashboardID)
+	callerID, err := GetCallerID(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if dashboard == nil {
-		return nil, repository.ErrDashboardNotFound
-	}
-
-	if dashboard.Status != model.DashboardStatusTrashed {
-		return nil, fmt.Errorf("can only restore trashed dashboard")
-	}
-
-	previousStatus := dashboard.PreviousStatus
-	if previousStatus == "" {
-		previousStatus = model.DashboardStatusDraft
-	}
-
-	result, err := r.DashboardRepo.UpdateDashboardStatus(ctx, dashboardID, previousStatus, "")
-	if err != nil {
-		return nil, fmt.Errorf("failed to restore dashboard: %w", err)
-	}
-
-	return result, nil
+	return r.DashboardService.Restore(ctx, callerID, dashboardID)
 }
+
+// ============================================
+// Mutation Resolvers — Dashboard Widgets (delegated to DashboardService)
+// ============================================
 
 // AddWidgetToDashboard is the resolver for the addWidgetToDashboard field.
 func (r *mutationResolver) AddWidgetToDashboard(ctx context.Context, input model1.AddWidgetToDashboardInput) (*model.DashboardWidget, error) {
@@ -486,16 +428,7 @@ func (r *mutationResolver) AddWidgetToDashboard(ctx context.Context, input model
 		return nil, err
 	}
 
-	// Check lock
-	locked, err := r.DashboardRepo.IsLockedByOther(ctx, input.DashboardID, callerID)
-	if err != nil {
-		return nil, err
-	}
-	if locked {
-		return nil, repository.ErrDashboardLocked
-	}
-
-	// Check dashboard status
+	// Check dashboard exists and get it
 	dashboard, err := r.DashboardRepo.GetDashboard(ctx, input.DashboardID)
 	if err != nil {
 		return nil, err
@@ -503,11 +436,8 @@ func (r *mutationResolver) AddWidgetToDashboard(ctx context.Context, input model
 	if dashboard == nil {
 		return nil, repository.ErrDashboardNotFound
 	}
-	if dashboard.Status != model.DashboardStatusDraft && dashboard.Status != model.DashboardStatusChanged {
-		return nil, fmt.Errorf("can only add widget in draft or changed status")
-	}
 
-	// Get library widget
+	// Get library widget to copy fields
 	libraryWidget, err := r.WidgetRepo.GetLibraryWidget(ctx, input.LibraryWidgetID)
 	if err != nil {
 		return nil, err
@@ -516,18 +446,8 @@ func (r *mutationResolver) AddWidgetToDashboard(ctx context.Context, input model
 		return nil, repository.ErrLibraryWidgetNotFound
 	}
 
-	// Determine widget version based on dashboard status
+	// Determine widget version
 	widgetVersion := "draft"
-
-	sortOrder := 0
-	if input.SortOrder != nil {
-		sortOrder = *input.SortOrder
-	}
-
-	displayMode := ""
-	if input.DisplayMode != nil {
-		displayMode = *input.DisplayMode
-	}
 
 	widget := &model.DashboardWidget{
 		DashboardID:          input.DashboardID,
@@ -539,19 +459,20 @@ func (r *mutationResolver) AddWidgetToDashboard(ctx context.Context, input model
 		Name:                 libraryWidget.Name,
 		Datasource:           libraryWidget.Datasource,
 		Schema:               libraryWidget.Schema,
-		DisplayMode:          displayMode,
 		ConfigOverrides:      input.ConfigOverrides,
 		Layout:               input.Layout,
-		QueryOverrides:       input.QueryOverrides,
-		SortOrder:            sortOrder,
+	}
+	if input.DisplayMode != nil {
+		widget.DisplayMode = *input.DisplayMode
+	}
+	if input.QueryOverrides != nil {
+		widget.QueryOverrides = input.QueryOverrides
+	}
+	if input.SortOrder != nil {
+		widget.SortOrder = *input.SortOrder
 	}
 
-	result, err := r.DashboardRepo.AddWidgetToDashboard(ctx, widget)
-	if err != nil {
-		return nil, fmt.Errorf("failed to add widget: %w", err)
-	}
-
-	return result, nil
+	return r.DashboardService.AddWidget(ctx, callerID, dashboard, widget)
 }
 
 // UpdateDashboardWidget is the resolver for the updateDashboardWidget field.
@@ -559,41 +480,6 @@ func (r *mutationResolver) UpdateDashboardWidget(ctx context.Context, input mode
 	callerID, err := GetCallerID(ctx)
 	if err != nil {
 		return nil, err
-	}
-
-	// Get widget to find dashboard
-	widget, err := r.DashboardRepo.GetDashboardWidget(ctx, input.DashboardWidgetID)
-	if err != nil {
-		return nil, err
-	}
-	if widget == nil {
-		return nil, repository.ErrWidgetNotFound
-	}
-
-	// Check lock
-	locked, err := r.DashboardRepo.IsLockedByOther(ctx, widget.DashboardID, callerID)
-	if err != nil {
-		return nil, err
-	}
-	if locked {
-		return nil, repository.ErrDashboardLocked
-	}
-
-	// Check dashboard status
-	dashboard, err := r.DashboardRepo.GetDashboard(ctx, widget.DashboardID)
-	if err != nil {
-		return nil, err
-	}
-	if dashboard == nil {
-		return nil, repository.ErrDashboardNotFound
-	}
-	if dashboard.Status != model.DashboardStatusDraft && dashboard.Status != model.DashboardStatusChanged {
-		return nil, fmt.Errorf("can only update widget in draft or changed status")
-	}
-
-	// Only update draft version widgets
-	if widget.Version != "draft" {
-		return nil, fmt.Errorf("can only update draft version widget")
 	}
 
 	update := &repository.DashboardWidgetUpdate{
@@ -604,12 +490,7 @@ func (r *mutationResolver) UpdateDashboardWidget(ctx context.Context, input mode
 		SortOrder:       input.SortOrder,
 	}
 
-	result, err := r.DashboardRepo.UpdateDashboardWidget(ctx, input.DashboardWidgetID, update)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update widget: %w", err)
-	}
-
-	return result, nil
+	return r.DashboardService.UpdateWidget(ctx, callerID, input.DashboardWidgetID, update)
 }
 
 // RemoveDashboardWidget is the resolver for the removeDashboardWidget field.
@@ -619,61 +500,24 @@ func (r *mutationResolver) RemoveDashboardWidget(ctx context.Context, input mode
 		return false, err
 	}
 
-	// Get widget to find dashboard
-	widget, err := r.DashboardRepo.GetDashboardWidget(ctx, input.DashboardWidgetID)
+	err = r.DashboardService.RemoveWidget(ctx, callerID, input.DashboardWidgetID)
 	if err != nil {
 		return false, err
 	}
-	if widget == nil {
-		return false, repository.ErrWidgetNotFound
-	}
-
-	// Check lock
-	locked, err := r.DashboardRepo.IsLockedByOther(ctx, widget.DashboardID, callerID)
-	if err != nil {
-		return false, err
-	}
-	if locked {
-		return false, repository.ErrDashboardLocked
-	}
-
-	// Check dashboard status
-	dashboard, err := r.DashboardRepo.GetDashboard(ctx, widget.DashboardID)
-	if err != nil {
-		return false, err
-	}
-	if dashboard == nil {
-		return false, repository.ErrDashboardNotFound
-	}
-	if dashboard.Status != model.DashboardStatusDraft && dashboard.Status != model.DashboardStatusChanged {
-		return false, fmt.Errorf("can only remove widget in draft or changed status")
-	}
-
-	// Only remove draft version widgets
-	if widget.Version != "draft" {
-		return false, fmt.Errorf("can only remove draft version widget")
-	}
-
-	if err := r.DashboardRepo.RemoveDashboardWidget(ctx, input.DashboardWidgetID); err != nil {
-		return false, fmt.Errorf("failed to remove widget: %w", err)
-	}
-
 	return true, nil
 }
 
+// ============================================
+// Mutation Resolvers — Lock (delegated to EntityService)
+// ============================================
+
 // LockDashboard is the resolver for the lockDashboard field.
-func (r *mutationResolver) LockDashboard(ctx context.Context, dashboardID string) (*model.DashboardLock, error) {
+func (r *mutationResolver) LockDashboard(ctx context.Context, dashboardID string) (*model.EntityLock, error) {
 	callerID, err := GetCallerID(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	lock, err := r.DashboardRepo.LockDashboard(ctx, dashboardID, callerID, 5*time.Minute)
-	if err != nil {
-		return nil, err
-	}
-
-	return lock, nil
+	return r.EntityService.Lock(ctx, model.EntityTypeDashboard, dashboardID, callerID)
 }
 
 // UnlockDashboard is the resolver for the unlockDashboard field.
@@ -682,13 +526,36 @@ func (r *mutationResolver) UnlockDashboard(ctx context.Context, dashboardID stri
 	if err != nil {
 		return false, err
 	}
-
-	if err := r.DashboardRepo.UnlockDashboard(ctx, dashboardID, callerID); err != nil {
+	if err := r.EntityService.Unlock(ctx, model.EntityTypeDashboard, dashboardID, callerID); err != nil {
 		return false, err
 	}
-
 	return true, nil
 }
+
+// LockLibraryWidget is the resolver for the lockLibraryWidget field.
+func (r *mutationResolver) LockLibraryWidget(ctx context.Context, id string) (*model.EntityLock, error) {
+	callerID, err := GetCallerID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return r.EntityService.Lock(ctx, model.EntityTypeLibraryWidget, id, callerID)
+}
+
+// UnlockLibraryWidget is the resolver for the unlockLibraryWidget field.
+func (r *mutationResolver) UnlockLibraryWidget(ctx context.Context, id string) (bool, error) {
+	callerID, err := GetCallerID(ctx)
+	if err != nil {
+		return false, err
+	}
+	if err := r.EntityService.Unlock(ctx, model.EntityTypeLibraryWidget, id, callerID); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// ============================================
+// Query Resolvers
+// ============================================
 
 // SystemMe is the resolver for the systemMe field.
 func (r *queryResolver) SystemMe(ctx context.Context) ([]*model1.SystemWithRole, error) {
@@ -702,50 +569,43 @@ func (r *queryResolver) SystemMe(ctx context.Context) ([]*model1.SystemWithRole,
 		return nil, fmt.Errorf("failed to get user roles: %w", err)
 	}
 
-	namespaceRoleMap := make(map[string]string)
-	var namespaces []string
+	// Collect unique namespaces and their roles
+	nsMap := make(map[string]string)
 	for _, role := range roles {
 		if role.Namespace != "" {
-			namespaceRoleMap[role.Namespace] = role.Role
-			namespaces = append(namespaces, role.Namespace)
+			nsMap[role.Namespace] = role.Role
 		}
 	}
 
-	if len(namespaces) == 0 {
-		return []*model1.SystemWithRole{}, nil
+	var results []*model1.SystemWithRole
+	for ns, role := range nsMap {
+		system, err := r.Repo.GetSystemByNamespace(ctx, ns)
+		if err != nil {
+			continue
+		}
+		if system != nil {
+			desc := &system.Description
+			if system.Description == "" {
+				desc = nil
+			}
+			results = append(results, &model1.SystemWithRole{
+				Namespace:   system.Namespace,
+				Name:        system.Name,
+				Description: desc,
+				Role:        role,
+			})
+		}
 	}
 
-	systems, err := r.Repo.GetSystemsByNamespaces(ctx, namespaces)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get systems: %w", err)
-	}
-
-	var result []*model1.SystemWithRole
-	for _, sys := range systems {
-		role := namespaceRoleMap[sys.Namespace]
-		result = append(result, &model1.SystemWithRole{
-			Namespace:   sys.Namespace,
-			Name:        sys.Name,
-			Description: &sys.Description,
-			Role:        role,
-		})
-	}
-
-	return result, nil
+	return results, nil
 }
 
 // SystemDetail is the resolver for the systemDetail field.
 func (r *queryResolver) SystemDetail(ctx context.Context, namespace string) (*model.System, error) {
-	ns := GetNamespace(ctx)
-	if ns == "" {
-		ns = strings.ToUpper(strings.TrimSpace(namespace))
-	}
-
-	system, err := r.Repo.GetSystemByNamespace(ctx, ns)
+	system, err := r.Repo.GetSystemByNamespace(ctx, namespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get system: %w", err)
 	}
-
 	return system, nil
 }
 
@@ -798,14 +658,11 @@ func (r *queryResolver) DashboardHistory(ctx context.Context, dashboardID string
 func (r *queryResolver) QueryDashboardWidgets(ctx context.Context, dashboardID string, viewDraft *bool) ([]*model.DashboardWidget, error) {
 	version := "published"
 	if viewDraft != nil && *viewDraft {
-		// Check if dashboard is in changed status, if so return draft version
 		dashboard, err := r.DashboardRepo.GetDashboard(ctx, dashboardID)
 		if err != nil {
 			return nil, err
 		}
-		if dashboard != nil && dashboard.Status == model.DashboardStatusChanged {
-			version = "draft"
-		} else if dashboard != nil && dashboard.Status == model.DashboardStatusDraft {
+		if dashboard != nil && (dashboard.Status == model.StatusChanged || dashboard.Status == model.StatusDraft) {
 			version = "draft"
 		}
 	}
@@ -826,17 +683,21 @@ func (r *queryResolver) QueryDashboardWidget(ctx context.Context, dashboardWidge
 	return widget, nil
 }
 
+// ============================================
+// Type resolver registrations
+// ============================================
+
 // Dashboard returns DashboardResolver implementation.
 func (r *Resolver) Dashboard() DashboardResolver { return &dashboardResolver{r} }
 
 // DashboardHistory returns DashboardHistoryResolver implementation.
 func (r *Resolver) DashboardHistory() DashboardHistoryResolver { return &dashboardHistoryResolver{r} }
 
-// DashboardLock returns DashboardLockResolver implementation.
-func (r *Resolver) DashboardLock() DashboardLockResolver { return &dashboardLockResolver{r} }
-
 // DashboardWidget returns DashboardWidgetResolver implementation.
 func (r *Resolver) DashboardWidget() DashboardWidgetResolver { return &dashboardWidgetResolver{r} }
+
+// EntityLock returns EntityLockResolver implementation.
+func (r *Resolver) EntityLock() EntityLockResolver { return &entityLockResolver{r} }
 
 // LibraryWidget returns LibraryWidgetResolver implementation.
 func (r *Resolver) LibraryWidget() LibraryWidgetResolver { return &libraryWidgetResolver{r} }
@@ -849,33 +710,8 @@ func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
 type dashboardResolver struct{ *Resolver }
 type dashboardHistoryResolver struct{ *Resolver }
-type dashboardLockResolver struct{ *Resolver }
 type dashboardWidgetResolver struct{ *Resolver }
+type entityLockResolver struct{ *Resolver }
 type libraryWidgetResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//   - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//     it when you're done.
-//   - You have helper methods in this file. Move them out to keep these resolver files clean.
-func convertDatasourceInputsToModel(inputs []*model1.DatasourceInput) []model.Datasource {
-	if inputs == nil {
-		return nil
-	}
-	result := make([]model.Datasource, len(inputs))
-	for i, input := range inputs {
-		result[i] = model.Datasource{
-			ID:     input.ID,
-			Name:   input.Name,
-			Type:   input.Type,
-			Config: input.Config,
-		}
-		if input.Description != nil {
-			result[i].Description = *input.Description
-		}
-	}
-	return result
-}

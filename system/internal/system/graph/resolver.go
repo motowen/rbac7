@@ -1,17 +1,20 @@
 package graph
 
 import (
-	"system/internal/system/client"
 	"system/internal/system/repository"
+	"system/internal/system/service"
+
+	"system/internal/system/client"
 )
 
-// This file will not be regenerated automatically.
-//
-// It serves as dependency injection for your app, add any dependencies you require here.
-
+// Resolver serves as dependency injection container for GraphQL resolvers
 type Resolver struct {
-	Repo          repository.SystemRepository
-	WidgetRepo    repository.WidgetRepository
-	DashboardRepo repository.DashboardRepository
-	RBACClient    *client.RBACClient
+	Repo             repository.SystemRepository
+	WidgetRepo       repository.WidgetRepository
+	DashboardRepo    repository.DashboardRepository
+	LockRepo         repository.LockRepository
+	RBACClient       *client.RBACClient
+	EntityService    *service.EntityService
+	DashboardService *service.DashboardService
+	WidgetService    *service.WidgetService
 }

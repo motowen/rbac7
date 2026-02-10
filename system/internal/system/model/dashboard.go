@@ -2,14 +2,6 @@ package model
 
 import "time"
 
-// Dashboard status constants
-const (
-	DashboardStatusDraft     = "draft"
-	DashboardStatusPublished = "published"
-	DashboardStatusChanged   = "changed"
-	DashboardStatusTrashed   = "trashed"
-)
-
 // Dashboard represents a dashboard stored in MongoDB
 type Dashboard struct {
 	ID             string              `bson:"_id,omitempty"`
@@ -27,14 +19,6 @@ type Dashboard struct {
 type DashboardDraftData struct {
 	Name        string `bson:"name,omitempty"`
 	Description string `bson:"description,omitempty"`
-}
-
-// DashboardLock represents a lock on a dashboard for concurrent editing protection
-type DashboardLock struct {
-	DashboardID string    `bson:"dashboard_id"`
-	LockedBy    string    `bson:"locked_by"`
-	LockedAt    time.Time `bson:"locked_at"`
-	ExpiresAt   time.Time `bson:"expires_at"`
 }
 
 // DashboardHistory stores published snapshots for rollback

@@ -14,12 +14,15 @@ import (
 
 // WidgetRepository defines the interface for widget data access (Library Widgets only)
 type WidgetRepository interface {
-	// Library Widget operations
+	// Library Widget CRUD
 	CreateLibraryWidget(ctx context.Context, widget *model.LibraryWidget) (*model.LibraryWidget, error)
 	UpdateLibraryWidget(ctx context.Context, id string, update *LibraryWidgetUpdate) (*model.LibraryWidget, error)
 	DeleteLibraryWidget(ctx context.Context, id string) error
 	GetLibraryWidget(ctx context.Context, id string) (*model.LibraryWidget, error)
 	GetLibraryWidgets(ctx context.Context) ([]*model.LibraryWidget, error)
+
+	// Status operations
+	UpdateLibraryWidgetStatus(ctx context.Context, id string, status string, previousStatus string) (*model.LibraryWidget, error)
 }
 
 // LibraryWidgetUpdate represents fields that can be updated
@@ -133,7 +136,8 @@ func (r *MongoWidgetRepository) GetLibraryWidget(ctx context.Context, id string)
 }
 
 func (r *MongoWidgetRepository) GetLibraryWidgets(ctx context.Context) ([]*model.LibraryWidget, error) {
-	cursor, err := r.libraryWidgetCollection.Find(ctx, bson.M{})
+	// Exclude trashed widgets by default
+	cursor, err := r.libraryWidgetCollection.Find(ctx, bson.M{"status": bson.M{"$ne": model.StatusTrashed}})
 	if err != nil {
 		return nil, err
 	}
@@ -144,4 +148,32 @@ func (r *MongoWidgetRepository) GetLibraryWidgets(ctx context.Context) ([]*model
 		return nil, err
 	}
 	return results, nil
+}
+
+func (r *MongoWidgetRepository) UpdateLibraryWidgetStatus(ctx context.Context, id string, status string, previousStatus string) (*model.LibraryWidget, error) {
+	updateDoc := bson.M{
+		"$set": bson.M{
+			"status":     status,
+			"updated_at": time.Now(),
+		},
+	}
+	if previousStatus != "" {
+		updateDoc["$set"].(bson.M)["previous_status"] = previousStatus
+	}
+	// Set published_at when publishing
+	if status == model.StatusPublished {
+		now := time.Now()
+		updateDoc["$set"].(bson.M)["published_at"] = now
+	}
+
+	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
+	var result model.LibraryWidget
+	err := r.libraryWidgetCollection.FindOneAndUpdate(ctx, bson.M{"_id": id}, updateDoc, opts).Decode(&result)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &result, nil
 }

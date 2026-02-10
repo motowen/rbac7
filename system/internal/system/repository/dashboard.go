@@ -15,7 +15,6 @@ import (
 
 var (
 	ErrDashboardNotFound     = errors.New("dashboard not found")
-	ErrDashboardLocked       = errors.New("dashboard is locked by another user")
 	ErrInvalidStatusChange   = errors.New("invalid status change")
 	ErrWidgetNotFound        = errors.New("dashboard widget not found")
 	ErrLibraryWidgetNotFound = errors.New("library widget not found")
@@ -39,12 +38,6 @@ type DashboardRepository interface {
 	CopyWidgetsToDraft(ctx context.Context, dashboardID string) error
 	PromoteDraftToPublished(ctx context.Context, dashboardID string) error
 	DeleteWidgetsByVersion(ctx context.Context, dashboardID string, version string) error
-
-	// Lock operations
-	LockDashboard(ctx context.Context, dashboardID, userID string, duration time.Duration) (*model.DashboardLock, error)
-	UnlockDashboard(ctx context.Context, dashboardID, userID string) error
-	GetLock(ctx context.Context, dashboardID string) (*model.DashboardLock, error)
-	IsLockedByOther(ctx context.Context, dashboardID, userID string) (bool, error)
 
 	// History operations
 	SaveToHistory(ctx context.Context, dashboardID string, publishedBy string) error
@@ -70,7 +63,6 @@ type DashboardWidgetUpdate struct {
 type MongoDashboardRepository struct {
 	dashboardCollection        *mongo.Collection
 	dashboardWidgetCollection  *mongo.Collection
-	dashboardLockCollection    *mongo.Collection
 	dashboardHistoryCollection *mongo.Collection
 	libraryWidgetCollection    *mongo.Collection
 }
@@ -80,7 +72,6 @@ func NewMongoDashboardRepository(db *mongo.Database) *MongoDashboardRepository {
 	return &MongoDashboardRepository{
 		dashboardCollection:        db.Collection("dashboards"),
 		dashboardWidgetCollection:  db.Collection("dashboard_widgets"),
-		dashboardLockCollection:    db.Collection("dashboard_locks"),
 		dashboardHistoryCollection: db.Collection("dashboard_history"),
 		libraryWidgetCollection:    db.Collection("library_widgets"),
 	}
@@ -92,7 +83,7 @@ func NewMongoDashboardRepository(db *mongo.Database) *MongoDashboardRepository {
 
 func (r *MongoDashboardRepository) CreateDashboard(ctx context.Context, dashboard *model.Dashboard) (*model.Dashboard, error) {
 	dashboard.ID = primitive.NewObjectID().Hex()
-	dashboard.Status = model.DashboardStatusDraft
+	dashboard.Status = model.StatusDraft
 	dashboard.CreatedAt = time.Now()
 	dashboard.UpdatedAt = time.Now()
 
@@ -117,7 +108,7 @@ func (r *MongoDashboardRepository) GetDashboard(ctx context.Context, id string) 
 
 func (r *MongoDashboardRepository) GetDashboards(ctx context.Context) ([]*model.Dashboard, error) {
 	// Exclude trashed dashboards by default
-	cursor, err := r.dashboardCollection.Find(ctx, bson.M{"status": bson.M{"$ne": model.DashboardStatusTrashed}})
+	cursor, err := r.dashboardCollection.Find(ctx, bson.M{"status": bson.M{"$ne": model.StatusTrashed}})
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +135,7 @@ func (r *MongoDashboardRepository) UpdateDashboard(ctx context.Context, id strin
 	setFields := updateDoc["$set"].(bson.M)
 
 	// If in changed status, update draft_data; otherwise update main fields
-	if dashboard.Status == model.DashboardStatusChanged {
+	if dashboard.Status == model.StatusChanged {
 		if update.Name != nil {
 			setFields["draft_data.name"] = *update.Name
 		}
@@ -324,91 +315,6 @@ func (r *MongoDashboardRepository) PromoteDraftToPublished(ctx context.Context, 
 func (r *MongoDashboardRepository) DeleteWidgetsByVersion(ctx context.Context, dashboardID string, version string) error {
 	_, err := r.dashboardWidgetCollection.DeleteMany(ctx, bson.M{"dashboard_id": dashboardID, "version": version})
 	return err
-}
-
-// ============================================
-// Lock Operations
-// ============================================
-
-func (r *MongoDashboardRepository) LockDashboard(ctx context.Context, dashboardID, userID string, duration time.Duration) (*model.DashboardLock, error) {
-	now := time.Now()
-	expiresAt := now.Add(duration)
-
-	// Try to acquire lock - either no lock exists, lock expired, or already owned by this user
-	filter := bson.M{
-		"dashboard_id": dashboardID,
-		"$or": []bson.M{
-			{"expires_at": bson.M{"$lt": now}},
-			{"locked_by": userID},
-		},
-	}
-
-	lock := &model.DashboardLock{
-		DashboardID: dashboardID,
-		LockedBy:    userID,
-		LockedAt:    now,
-		ExpiresAt:   expiresAt,
-	}
-
-	opts := options.FindOneAndUpdate().SetUpsert(true).SetReturnDocument(options.After)
-	var result model.DashboardLock
-	err := r.dashboardLockCollection.FindOneAndUpdate(
-		ctx,
-		filter,
-		bson.M{"$set": lock},
-		opts,
-	).Decode(&result)
-
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			// Lock exists and owned by another user
-			return nil, ErrDashboardLocked
-		}
-		return nil, err
-	}
-
-	return &result, nil
-}
-
-func (r *MongoDashboardRepository) UnlockDashboard(ctx context.Context, dashboardID, userID string) error {
-	result, err := r.dashboardLockCollection.DeleteOne(ctx, bson.M{
-		"dashboard_id": dashboardID,
-		"locked_by":    userID,
-	})
-	if err != nil {
-		return err
-	}
-	if result.DeletedCount == 0 {
-		return ErrDashboardLocked // Not locked by this user
-	}
-	return nil
-}
-
-func (r *MongoDashboardRepository) GetLock(ctx context.Context, dashboardID string) (*model.DashboardLock, error) {
-	var result model.DashboardLock
-	err := r.dashboardLockCollection.FindOne(ctx, bson.M{
-		"dashboard_id": dashboardID,
-		"expires_at":   bson.M{"$gt": time.Now()},
-	}).Decode(&result)
-
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &result, nil
-}
-
-func (r *MongoDashboardRepository) IsLockedByOther(ctx context.Context, dashboardID, userID string) (bool, error) {
-	lock, err := r.GetLock(ctx, dashboardID)
-	if err != nil {
-		return false, err
-	}
-	if lock == nil {
-		return false, nil
-	}
-	return lock.LockedBy != userID, nil
 }
 
 // ============================================
