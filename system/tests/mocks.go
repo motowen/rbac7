@@ -80,6 +80,8 @@ type MockWidgetRepository struct {
 	GetLibraryWidgetFunc          func(ctx context.Context, id string) (*model.LibraryWidget, error)
 	GetLibraryWidgetsFunc         func(ctx context.Context) ([]*model.LibraryWidget, error)
 	UpdateLibraryWidgetStatusFunc func(ctx context.Context, id string, status string, previousStatus string) (*model.LibraryWidget, error)
+	SaveToHistoryFunc             func(ctx context.Context, widgetID string, publishedBy string) error
+	GetHistoryFunc                func(ctx context.Context, widgetID string) ([]*model.LibraryWidgetHistory, error)
 }
 
 func (m *MockWidgetRepository) CreateLibraryWidget(ctx context.Context, widget *model.LibraryWidget) (*model.LibraryWidget, error) {
@@ -123,6 +125,20 @@ func (m *MockWidgetRepository) UpdateLibraryWidgetStatus(ctx context.Context, id
 		return m.UpdateLibraryWidgetStatusFunc(ctx, id, status, previousStatus)
 	}
 	return &model.LibraryWidget{ID: id, Status: status}, nil
+}
+
+func (m *MockWidgetRepository) SaveToHistory(ctx context.Context, widgetID string, publishedBy string) error {
+	if m.SaveToHistoryFunc != nil {
+		return m.SaveToHistoryFunc(ctx, widgetID, publishedBy)
+	}
+	return nil
+}
+
+func (m *MockWidgetRepository) GetHistory(ctx context.Context, widgetID string) ([]*model.LibraryWidgetHistory, error) {
+	if m.GetHistoryFunc != nil {
+		return m.GetHistoryFunc(ctx, widgetID)
+	}
+	return []*model.LibraryWidgetHistory{}, nil
 }
 
 // MockDashboardRepository is a mock implementation of DashboardRepository

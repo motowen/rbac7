@@ -96,6 +96,15 @@ type DashboardHistory {
   publishedBy: String!
 }
 
+"""Library Widget 歷史版本"""
+type LibraryWidgetHistory {
+  id: ID!
+  widgetId: String!
+  version: Int!
+  publishedAt: String!
+  publishedBy: String!
+}
+
 # ============================================
 # Datasource Types
 # ============================================
@@ -284,6 +293,9 @@ type Query {
   
   """Get dashboard history (published versions)"""
   dashboardHistory(dashboardId: String!): [DashboardHistory!]!
+
+  """Get library widget history (published versions)"""
+  libraryWidgetHistory(widgetId: ID!): [LibraryWidgetHistory!]!
 
   # ----- Dashboard Widget Queries -----
   

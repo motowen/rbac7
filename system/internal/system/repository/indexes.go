@@ -97,7 +97,22 @@ func (r *MongoWidgetRepository) EnsureIndexes(ctx context.Context) error {
 		},
 	}
 
-	_, err := r.libraryWidgetCollection.Indexes().CreateMany(ctx, indexes)
+	if _, err := r.libraryWidgetCollection.Indexes().CreateMany(ctx, indexes); err != nil {
+		return err
+	}
+
+	// Widget history indexes
+	historyIndexes := []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "widget_id", Value: 1},
+				{Key: "version", Value: -1},
+			},
+			Options: options.Index().SetName("idx_widget_history"),
+		},
+	}
+
+	_, err := r.widgetHistoryCollection.Indexes().CreateMany(ctx, historyIndexes)
 	return err
 }
 

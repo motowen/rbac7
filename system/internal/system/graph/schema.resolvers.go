@@ -135,6 +135,11 @@ func (r *libraryWidgetResolver) LockedBy(ctx context.Context, obj *model.Library
 	return nil, nil
 }
 
+// PublishedAt is the resolver for the publishedAt field.
+func (r *libraryWidgetHistoryResolver) PublishedAt(ctx context.Context, obj *model.LibraryWidgetHistory) (string, error) {
+	return obj.PublishedAt.Format(time.RFC3339), nil
+}
+
 // CreateSystem is the resolver for the createSystem field.
 func (r *mutationResolver) CreateSystem(ctx context.Context, namespace string, name string, description *string, owner string) (*model.System, error) {
 	callerID, err := GetCallerID(ctx)
@@ -571,6 +576,15 @@ func (r *queryResolver) DashboardHistory(ctx context.Context, dashboardID string
 	return history, nil
 }
 
+// LibraryWidgetHistory is the resolver for the libraryWidgetHistory field.
+func (r *queryResolver) LibraryWidgetHistory(ctx context.Context, widgetID string) ([]*model.LibraryWidgetHistory, error) {
+	history, err := r.WidgetRepo.GetHistory(ctx, widgetID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get library widget history: %w", err)
+	}
+	return history, nil
+}
+
 // QueryDashboardWidgets is the resolver for the queryDashboardWidgets field.
 func (r *queryResolver) QueryDashboardWidgets(ctx context.Context, dashboardID string, viewDraft *bool) ([]*model.DashboardWidget, error) {
 	version := "published"
@@ -615,6 +629,11 @@ func (r *Resolver) EntityLock() EntityLockResolver { return &entityLockResolver{
 // LibraryWidget returns LibraryWidgetResolver implementation.
 func (r *Resolver) LibraryWidget() LibraryWidgetResolver { return &libraryWidgetResolver{r} }
 
+// LibraryWidgetHistory returns LibraryWidgetHistoryResolver implementation.
+func (r *Resolver) LibraryWidgetHistory() LibraryWidgetHistoryResolver {
+	return &libraryWidgetHistoryResolver{r}
+}
+
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
@@ -626,5 +645,6 @@ type dashboardHistoryResolver struct{ *Resolver }
 type dashboardWidgetResolver struct{ *Resolver }
 type entityLockResolver struct{ *Resolver }
 type libraryWidgetResolver struct{ *Resolver }
+type libraryWidgetHistoryResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }

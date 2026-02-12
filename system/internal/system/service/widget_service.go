@@ -60,6 +60,45 @@ func (s *WidgetService) Publish(ctx context.Context, callerID, widgetID string) 
 		return nil, err
 	}
 
+	// If publishing from changed, save current version to history first
+	if widget.Status == model.StatusChanged {
+		if err := s.WidgetRepo.SaveToHistory(ctx, widgetID, callerID); err != nil {
+			return nil, fmt.Errorf("failed to save history: %w", err)
+		}
+
+		// Merge draft_data to main fields
+		if widget.DraftData != nil {
+			mergeUpdate := &repository.LibraryWidgetUpdate{}
+			if widget.DraftData.Name != "" {
+				mergeUpdate.Name = &widget.DraftData.Name
+			}
+			if widget.DraftData.Version != "" {
+				mergeUpdate.Version = &widget.DraftData.Version
+			}
+			if widget.DraftData.Schema != nil {
+				mergeUpdate.Schema = widget.DraftData.Schema
+			}
+			if widget.DraftData.Datasource != nil {
+				mergeUpdate.Datasource = widget.DraftData.Datasource
+			}
+			if widget.DraftData.ThumbnailURL != "" {
+				mergeUpdate.ThumbnailURL = &widget.DraftData.ThumbnailURL
+			}
+			if widget.DraftData.DisplayMode != "" {
+				mergeUpdate.DisplayMode = &widget.DraftData.DisplayMode
+			}
+			if widget.DraftData.Tags != nil {
+				mergeUpdate.Tags = widget.DraftData.Tags
+			}
+			if widget.DraftData.UserConfig != nil {
+				mergeUpdate.UserConfig = widget.DraftData.UserConfig
+			}
+			if _, err := s.WidgetRepo.UpdateLibraryWidget(ctx, widgetID, mergeUpdate); err != nil {
+				return nil, fmt.Errorf("failed to merge draft data: %w", err)
+			}
+		}
+	}
+
 	return s.WidgetRepo.UpdateLibraryWidgetStatus(ctx, widgetID, model.StatusPublished, "")
 }
 

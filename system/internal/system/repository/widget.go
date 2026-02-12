@@ -23,6 +23,10 @@ type WidgetRepository interface {
 
 	// Status operations
 	UpdateLibraryWidgetStatus(ctx context.Context, id string, status string, previousStatus string) (*model.LibraryWidget, error)
+
+	// History operations
+	SaveToHistory(ctx context.Context, widgetID string, publishedBy string) error
+	GetHistory(ctx context.Context, widgetID string) ([]*model.LibraryWidgetHistory, error)
 }
 
 // LibraryWidgetUpdate represents fields that can be updated
@@ -43,12 +47,14 @@ type LibraryWidgetUpdate struct {
 // MongoWidgetRepository implements WidgetRepository using MongoDB
 type MongoWidgetRepository struct {
 	libraryWidgetCollection *mongo.Collection
+	widgetHistoryCollection *mongo.Collection
 }
 
 // NewMongoWidgetRepository creates a new MongoWidgetRepository
 func NewMongoWidgetRepository(db *mongo.Database) *MongoWidgetRepository {
 	return &MongoWidgetRepository{
 		libraryWidgetCollection: db.Collection("library_widgets"),
+		widgetHistoryCollection: db.Collection("widget_history"),
 	}
 }
 
@@ -176,4 +182,54 @@ func (r *MongoWidgetRepository) UpdateLibraryWidgetStatus(ctx context.Context, i
 		return nil, err
 	}
 	return &result, nil
+}
+
+func (r *MongoWidgetRepository) SaveToHistory(ctx context.Context, widgetID string, publishedBy string) error {
+	// Get current widget
+	widget, err := r.GetLibraryWidget(ctx, widgetID)
+	if err != nil || widget == nil {
+		return ErrLibraryWidgetNotFound
+	}
+
+	// Get next version number
+	var lastHistory model.LibraryWidgetHistory
+	opts := options.FindOne().SetSort(bson.M{"version": -1})
+	err = r.widgetHistoryCollection.FindOne(ctx, bson.M{"widget_id": widgetID}, opts).Decode(&lastHistory)
+	nextVersion := 1
+	if err == nil {
+		nextVersion = lastHistory.Version + 1
+	}
+
+	// Create history entry
+	history := &model.LibraryWidgetHistory{
+		ID:       primitive.NewObjectID().Hex(),
+		WidgetID: widgetID,
+		Version:  nextVersion,
+		Snapshot: model.LibraryWidgetSnapshot{
+			Widget: *widget,
+		},
+		PublishedAt: time.Now(),
+		PublishedBy: publishedBy,
+	}
+
+	_, err = r.widgetHistoryCollection.InsertOne(ctx, history)
+	return err
+}
+
+func (r *MongoWidgetRepository) GetHistory(ctx context.Context, widgetID string) ([]*model.LibraryWidgetHistory, error) {
+	cursor, err := r.widgetHistoryCollection.Find(
+		ctx,
+		bson.M{"widget_id": widgetID},
+		options.Find().SetSort(bson.M{"version": -1}),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var results []*model.LibraryWidgetHistory
+	if err := cursor.All(ctx, &results); err != nil {
+		return nil, err
+	}
+	return results, nil
 }
