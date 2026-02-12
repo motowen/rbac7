@@ -13,10 +13,6 @@ import (
 	"time"
 )
 
-// ============================================
-// Dashboard Field Resolvers
-// ============================================
-
 // Status is the resolver for the status field.
 func (r *dashboardResolver) Status(ctx context.Context, obj *model.Dashboard) (model1.EntityStatus, error) {
 	return mapStatusToGQL(obj.Status), nil
@@ -69,18 +65,10 @@ func (r *dashboardResolver) LockedBy(ctx context.Context, obj *model.Dashboard) 
 	return nil, nil
 }
 
-// ============================================
-// Dashboard History Field Resolvers
-// ============================================
-
 // PublishedAt is the resolver for the publishedAt field.
 func (r *dashboardHistoryResolver) PublishedAt(ctx context.Context, obj *model.DashboardHistory) (string, error) {
 	return obj.PublishedAt.Format(time.RFC3339), nil
 }
-
-// ============================================
-// Dashboard Widget Field Resolvers
-// ============================================
 
 // CreatedAt is the resolver for the createdAt field.
 func (r *dashboardWidgetResolver) CreatedAt(ctx context.Context, obj *model.DashboardWidget) (string, error) {
@@ -92,10 +80,6 @@ func (r *dashboardWidgetResolver) UpdatedAt(ctx context.Context, obj *model.Dash
 	return obj.UpdatedAt.Format(time.RFC3339), nil
 }
 
-// ============================================
-// Entity Lock Field Resolvers
-// ============================================
-
 // LockedAt is the resolver for the lockedAt field.
 func (r *entityLockResolver) LockedAt(ctx context.Context, obj *model.EntityLock) (string, error) {
 	return obj.LockedAt.Format(time.RFC3339), nil
@@ -105,10 +89,6 @@ func (r *entityLockResolver) LockedAt(ctx context.Context, obj *model.EntityLock
 func (r *entityLockResolver) ExpiresAt(ctx context.Context, obj *model.EntityLock) (string, error) {
 	return obj.ExpiresAt.Format(time.RFC3339), nil
 }
-
-// ============================================
-// Library Widget Field Resolvers
-// ============================================
 
 // Status is the resolver for the status field.
 func (r *libraryWidgetResolver) Status(ctx context.Context, obj *model.LibraryWidget) (model1.EntityStatus, error) {
@@ -154,10 +134,6 @@ func (r *libraryWidgetResolver) LockedBy(ctx context.Context, obj *model.Library
 	}
 	return nil, nil
 }
-
-// ============================================
-// Mutation Resolvers — System
-// ============================================
 
 // CreateSystem is the resolver for the createSystem field.
 func (r *mutationResolver) CreateSystem(ctx context.Context, namespace string, name string, description *string, owner string) (*model.System, error) {
@@ -206,10 +182,6 @@ func (r *mutationResolver) UpdateSystem(ctx context.Context, input model1.Update
 	}
 	return result, nil
 }
-
-// ============================================
-// Mutation Resolvers — Library Widget (delegated to WidgetService)
-// ============================================
 
 // CreateLibraryWidget is the resolver for the createLibraryWidget field.
 func (r *mutationResolver) CreateLibraryWidget(ctx context.Context, input model1.CreateLibraryWidgetInput) (*model.LibraryWidget, error) {
@@ -301,10 +273,6 @@ func (r *mutationResolver) RestoreLibraryWidget(ctx context.Context, id string) 
 	return r.WidgetService.Restore(ctx, callerID, id)
 }
 
-// ============================================
-// Mutation Resolvers — Dashboard (delegated to DashboardService)
-// ============================================
-
 // CreateDashboard is the resolver for the createDashboard field.
 func (r *mutationResolver) CreateDashboard(ctx context.Context, input model1.CreateDashboardInput) (*model.Dashboard, error) {
 	callerID, err := GetCallerID(ctx)
@@ -377,10 +345,6 @@ func (r *mutationResolver) RestoreDashboard(ctx context.Context, dashboardID str
 	}
 	return r.DashboardService.Restore(ctx, callerID, dashboardID)
 }
-
-// ============================================
-// Mutation Resolvers — Dashboard Widgets (delegated to DashboardService)
-// ============================================
 
 // AddWidgetToDashboard is the resolver for the addWidgetToDashboard field.
 func (r *mutationResolver) AddWidgetToDashboard(ctx context.Context, input model1.AddWidgetToDashboardInput) (*model.DashboardWidget, error) {
@@ -468,10 +432,6 @@ func (r *mutationResolver) RemoveDashboardWidget(ctx context.Context, input mode
 	return true, nil
 }
 
-// ============================================
-// Mutation Resolvers — Lock (delegated to EntityService)
-// ============================================
-
 // LockDashboard is the resolver for the lockDashboard field.
 func (r *mutationResolver) LockDashboard(ctx context.Context, dashboardID string) (*model.EntityLock, error) {
 	callerID, err := GetCallerID(ctx)
@@ -513,10 +473,6 @@ func (r *mutationResolver) UnlockLibraryWidget(ctx context.Context, id string) (
 	}
 	return true, nil
 }
-
-// ============================================
-// Query Resolvers
-// ============================================
 
 // SystemMe is the resolver for the systemMe field.
 func (r *queryResolver) SystemMe(ctx context.Context) ([]*model1.SystemWithRole, error) {
@@ -643,10 +599,6 @@ func (r *queryResolver) QueryDashboardWidget(ctx context.Context, dashboardWidge
 	}
 	return widget, nil
 }
-
-// ============================================
-// Type resolver registrations
-// ============================================
 
 // Dashboard returns DashboardResolver implementation.
 func (r *Resolver) Dashboard() DashboardResolver { return &dashboardResolver{r} }
