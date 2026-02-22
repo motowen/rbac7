@@ -340,6 +340,12 @@ type Mutation {
   
   """Restore library widget (trashed → previous status)"""
   restoreLibraryWidget(id: ID!): LibraryWidget!
+  
+  """Revert library widget to a specific history version (published only)"""
+  revertLibraryWidget(id: ID!, version: Int!): LibraryWidget!
+  
+  """Discard changed version and keep published version"""
+  discardLibraryWidget(id: ID!): LibraryWidget!
 
   # ----- Dashboard CRUD + State Machine -----
   

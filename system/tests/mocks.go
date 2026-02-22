@@ -85,6 +85,8 @@ type MockWidgetRepository struct {
 	DeleteByGroupAndStatusFunc    func(ctx context.Context, groupID string, status string) error
 	SaveToHistoryFunc             func(ctx context.Context, widgetID string, publishedBy string) error
 	GetHistoryFunc                func(ctx context.Context, widgetID string) ([]*model.LibraryWidgetHistory, error)
+	GetHistoryByVersionFunc       func(ctx context.Context, widgetID string, version int) (*model.LibraryWidgetHistory, error)
+	GetLatestHistoryFunc          func(ctx context.Context, widgetID string) (*model.LibraryWidgetHistory, error)
 }
 
 func (m *MockWidgetRepository) CreateLibraryWidget(ctx context.Context, widget *model.LibraryWidget) (*model.LibraryWidget, error) {
@@ -164,6 +166,20 @@ func (m *MockWidgetRepository) GetHistory(ctx context.Context, widgetID string) 
 		return m.GetHistoryFunc(ctx, widgetID)
 	}
 	return []*model.LibraryWidgetHistory{}, nil
+}
+
+func (m *MockWidgetRepository) GetHistoryByVersion(ctx context.Context, widgetID string, version int) (*model.LibraryWidgetHistory, error) {
+	if m.GetHistoryByVersionFunc != nil {
+		return m.GetHistoryByVersionFunc(ctx, widgetID, version)
+	}
+	return nil, nil
+}
+
+func (m *MockWidgetRepository) GetLatestHistory(ctx context.Context, widgetID string) (*model.LibraryWidgetHistory, error) {
+	if m.GetLatestHistoryFunc != nil {
+		return m.GetLatestHistoryFunc(ctx, widgetID)
+	}
+	return nil, nil
 }
 
 // MockDashboardRepository is a mock implementation of DashboardRepository

@@ -269,6 +269,24 @@ func (r *mutationResolver) RestoreLibraryWidget(ctx context.Context, id string) 
 	return r.WidgetService.Restore(ctx, callerID, id)
 }
 
+// RevertLibraryWidget is the resolver for the revertLibraryWidget field.
+func (r *mutationResolver) RevertLibraryWidget(ctx context.Context, id string, version int) (*model.LibraryWidget, error) {
+	callerID, err := GetCallerID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return r.WidgetService.Revert(ctx, callerID, id, version)
+}
+
+// DiscardLibraryWidget is the resolver for the discardLibraryWidget field.
+func (r *mutationResolver) DiscardLibraryWidget(ctx context.Context, id string) (*model.LibraryWidget, error) {
+	callerID, err := GetCallerID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return r.WidgetService.Discard(ctx, callerID, id)
+}
+
 // CreateDashboard is the resolver for the createDashboard field.
 func (r *mutationResolver) CreateDashboard(ctx context.Context, input model1.CreateDashboardInput) (*model.Dashboard, error) {
 	callerID, err := GetCallerID(ctx)

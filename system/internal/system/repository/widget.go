@@ -30,6 +30,8 @@ type WidgetRepository interface {
 	// History operations
 	SaveToHistory(ctx context.Context, widgetID string, publishedBy string) error
 	GetHistory(ctx context.Context, widgetID string) ([]*model.LibraryWidgetHistory, error)
+	GetHistoryByVersion(ctx context.Context, widgetID string, version int) (*model.LibraryWidgetHistory, error)
+	GetLatestHistory(ctx context.Context, widgetID string) (*model.LibraryWidgetHistory, error)
 }
 
 // LibraryWidgetUpdate represents fields that can be updated
@@ -288,4 +290,32 @@ func (r *MongoWidgetRepository) GetHistory(ctx context.Context, widgetID string)
 		return nil, err
 	}
 	return results, nil
+}
+
+func (r *MongoWidgetRepository) GetHistoryByVersion(ctx context.Context, widgetID string, version int) (*model.LibraryWidgetHistory, error) {
+	var result model.LibraryWidgetHistory
+	err := r.widgetHistoryCollection.FindOne(ctx, bson.M{
+		"widget_id": widgetID,
+		"version":   version,
+	}).Decode(&result)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (r *MongoWidgetRepository) GetLatestHistory(ctx context.Context, widgetID string) (*model.LibraryWidgetHistory, error) {
+	var result model.LibraryWidgetHistory
+	opts := options.FindOne().SetSort(bson.M{"version": -1})
+	err := r.widgetHistoryCollection.FindOne(ctx, bson.M{"widget_id": widgetID}, opts).Decode(&result)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &result, nil
 }
