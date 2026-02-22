@@ -251,15 +251,6 @@ func (r *mutationResolver) PublishLibraryWidget(ctx context.Context, id string) 
 	return r.WidgetService.Publish(ctx, callerID, id)
 }
 
-// ChangeLibraryWidget is the resolver for the changeLibraryWidget field.
-func (r *mutationResolver) ChangeLibraryWidget(ctx context.Context, id string) (*model.LibraryWidget, error) {
-	callerID, err := GetCallerID(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return r.WidgetService.Change(ctx, callerID, id)
-}
-
 // TrashLibraryWidget is the resolver for the trashLibraryWidget field.
 func (r *mutationResolver) TrashLibraryWidget(ctx context.Context, id string) (*model.LibraryWidget, error) {
 	callerID, err := GetCallerID(ctx)
@@ -541,7 +532,19 @@ func (r *queryResolver) LibraryWidgets(ctx context.Context) ([]*model.LibraryWid
 }
 
 // LibraryWidget is the resolver for the libraryWidget field.
-func (r *queryResolver) LibraryWidget(ctx context.Context, id string) (*model.LibraryWidget, error) {
+func (r *queryResolver) LibraryWidget(ctx context.Context, id string, viewDraft *bool) (*model.LibraryWidget, error) {
+	if viewDraft != nil && *viewDraft {
+		// Try to get changed version first
+		changed, err := r.WidgetRepo.GetByGroupAndStatus(ctx, id, model.StatusChanged)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get library widget: %w", err)
+		}
+		if changed != nil {
+			return changed, nil
+		}
+	}
+
+	// Default: get by ID (published or draft)
 	widget, err := r.WidgetRepo.GetLibraryWidget(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get library widget: %w", err)

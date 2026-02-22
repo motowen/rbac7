@@ -21,8 +21,11 @@ type WidgetRepository interface {
 	GetLibraryWidget(ctx context.Context, id string) (*model.LibraryWidget, error)
 	GetLibraryWidgets(ctx context.Context) ([]*model.LibraryWidget, error)
 
-	// Status operations
+	// Status-based operations
 	UpdateLibraryWidgetStatus(ctx context.Context, id string, status string, previousStatus string) (*model.LibraryWidget, error)
+	GetByGroupAndStatus(ctx context.Context, groupID string, status string) (*model.LibraryWidget, error)
+	CopyToChanged(ctx context.Context, groupID string) (*model.LibraryWidget, error)
+	DeleteByGroupAndStatus(ctx context.Context, groupID string, status string) error
 
 	// History operations
 	SaveToHistory(ctx context.Context, widgetID string, publishedBy string) error
@@ -64,6 +67,7 @@ func NewMongoWidgetRepository(db *mongo.Database) *MongoWidgetRepository {
 
 func (r *MongoWidgetRepository) CreateLibraryWidget(ctx context.Context, widget *model.LibraryWidget) (*model.LibraryWidget, error) {
 	widget.ID = primitive.NewObjectID().Hex()
+	widget.GroupID = widget.ID // GroupID = ID for new widgets
 	widget.CreatedAt = time.Now()
 	widget.UpdatedAt = time.Now()
 
@@ -184,9 +188,61 @@ func (r *MongoWidgetRepository) UpdateLibraryWidgetStatus(ctx context.Context, i
 	return &result, nil
 }
 
+// GetByGroupAndStatus finds a widget by group ID and status
+func (r *MongoWidgetRepository) GetByGroupAndStatus(ctx context.Context, groupID string, status string) (*model.LibraryWidget, error) {
+	var result model.LibraryWidget
+	err := r.libraryWidgetCollection.FindOne(ctx, bson.M{
+		"widget_group_id": groupID,
+		"status":          status,
+	}).Decode(&result)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &result, nil
+}
+
+// CopyToChanged creates a changed copy from the published version
+func (r *MongoWidgetRepository) CopyToChanged(ctx context.Context, groupID string) (*model.LibraryWidget, error) {
+	// Get published version
+	published, err := r.GetByGroupAndStatus(ctx, groupID, model.StatusPublished)
+	if err != nil {
+		return nil, err
+	}
+	if published == nil {
+		return nil, ErrLibraryWidgetNotFound
+	}
+
+	// Create changed copy
+	changed := *published
+	changed.ID = primitive.NewObjectID().Hex()
+	changed.GroupID = groupID
+	changed.Status = model.StatusChanged
+	changed.PreviousStatus = model.StatusPublished
+	changed.CreatedAt = time.Now()
+	changed.UpdatedAt = time.Now()
+
+	_, err = r.libraryWidgetCollection.InsertOne(ctx, &changed)
+	if err != nil {
+		return nil, err
+	}
+	return &changed, nil
+}
+
+// DeleteByGroupAndStatus deletes a widget by group ID and status
+func (r *MongoWidgetRepository) DeleteByGroupAndStatus(ctx context.Context, groupID string, status string) error {
+	_, err := r.libraryWidgetCollection.DeleteOne(ctx, bson.M{
+		"widget_group_id": groupID,
+		"status":          status,
+	})
+	return err
+}
+
 func (r *MongoWidgetRepository) SaveToHistory(ctx context.Context, widgetID string, publishedBy string) error {
-	// Get current widget
-	widget, err := r.GetLibraryWidget(ctx, widgetID)
+	// Get the published version by group ID
+	widget, err := r.GetByGroupAndStatus(ctx, widgetID, model.StatusPublished)
 	if err != nil || widget == nil {
 		return ErrLibraryWidgetNotFound
 	}

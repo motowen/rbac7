@@ -80,6 +80,9 @@ type MockWidgetRepository struct {
 	GetLibraryWidgetFunc          func(ctx context.Context, id string) (*model.LibraryWidget, error)
 	GetLibraryWidgetsFunc         func(ctx context.Context) ([]*model.LibraryWidget, error)
 	UpdateLibraryWidgetStatusFunc func(ctx context.Context, id string, status string, previousStatus string) (*model.LibraryWidget, error)
+	GetByGroupAndStatusFunc       func(ctx context.Context, groupID string, status string) (*model.LibraryWidget, error)
+	CopyToChangedFunc             func(ctx context.Context, groupID string) (*model.LibraryWidget, error)
+	DeleteByGroupAndStatusFunc    func(ctx context.Context, groupID string, status string) error
 	SaveToHistoryFunc             func(ctx context.Context, widgetID string, publishedBy string) error
 	GetHistoryFunc                func(ctx context.Context, widgetID string) ([]*model.LibraryWidgetHistory, error)
 }
@@ -89,6 +92,7 @@ func (m *MockWidgetRepository) CreateLibraryWidget(ctx context.Context, widget *
 		return m.CreateLibraryWidgetFunc(ctx, widget)
 	}
 	widget.ID = "mock-id"
+	widget.GroupID = widget.ID
 	return widget, nil
 }
 
@@ -125,6 +129,27 @@ func (m *MockWidgetRepository) UpdateLibraryWidgetStatus(ctx context.Context, id
 		return m.UpdateLibraryWidgetStatusFunc(ctx, id, status, previousStatus)
 	}
 	return &model.LibraryWidget{ID: id, Status: status}, nil
+}
+
+func (m *MockWidgetRepository) GetByGroupAndStatus(ctx context.Context, groupID string, status string) (*model.LibraryWidget, error) {
+	if m.GetByGroupAndStatusFunc != nil {
+		return m.GetByGroupAndStatusFunc(ctx, groupID, status)
+	}
+	return nil, nil
+}
+
+func (m *MockWidgetRepository) CopyToChanged(ctx context.Context, groupID string) (*model.LibraryWidget, error) {
+	if m.CopyToChangedFunc != nil {
+		return m.CopyToChangedFunc(ctx, groupID)
+	}
+	return &model.LibraryWidget{ID: "changed-" + groupID, GroupID: groupID, Status: model.StatusChanged}, nil
+}
+
+func (m *MockWidgetRepository) DeleteByGroupAndStatus(ctx context.Context, groupID string, status string) error {
+	if m.DeleteByGroupAndStatusFunc != nil {
+		return m.DeleteByGroupAndStatusFunc(ctx, groupID, status)
+	}
+	return nil
 }
 
 func (m *MockWidgetRepository) SaveToHistory(ctx context.Context, widgetID string, publishedBy string) error {

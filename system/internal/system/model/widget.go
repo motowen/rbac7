@@ -4,35 +4,23 @@ import "time"
 
 // LibraryWidget represents a library widget template stored in MongoDB
 type LibraryWidget struct {
-	ID             string                  `bson:"_id,omitempty"`
-	Name           string                  `bson:"name"`
-	Version        string                  `bson:"version"`
-	Type           string                  `bson:"type"`
-	TypeVersion    string                  `bson:"type_version"`
-	Schema         map[string]interface{}  `bson:"schema,omitempty"`
-	Datasource     []Datasource            `bson:"datasource,omitempty"`
-	Status         string                  `bson:"status"`
-	PreviousStatus string                  `bson:"previous_status,omitempty"`
-	DraftData      *LibraryWidgetDraftData `bson:"draft_data,omitempty"`
-	ThumbnailURL   string                  `bson:"thumbnail_url,omitempty"`
-	DisplayMode    string                  `bson:"display_mode,omitempty"`
-	Tags           []string                `bson:"tags,omitempty"`
-	CreatedAt      time.Time               `bson:"created_at"`
-	UpdatedAt      time.Time               `bson:"updated_at"`
-	PublishedAt    *time.Time              `bson:"published_at,omitempty"`
-	UserConfig     map[string]interface{}  `bson:"user_config,omitempty"`
-}
-
-// LibraryWidgetDraftData stores draft changes when widget is in "changed" status
-type LibraryWidgetDraftData struct {
-	Name         string                 `bson:"name,omitempty"`
-	Version      string                 `bson:"version,omitempty"`
-	Schema       map[string]interface{} `bson:"schema,omitempty"`
-	Datasource   []Datasource           `bson:"datasource,omitempty"`
-	ThumbnailURL string                 `bson:"thumbnail_url,omitempty"`
-	DisplayMode  string                 `bson:"display_mode,omitempty"`
-	Tags         []string               `bson:"tags,omitempty"`
-	UserConfig   map[string]interface{} `bson:"user_config,omitempty"`
+	ID             string                 `bson:"_id,omitempty"`
+	GroupID        string                 `bson:"widget_group_id"`
+	Name           string                 `bson:"name"`
+	Version        string                 `bson:"version"`
+	Type           string                 `bson:"type"`
+	TypeVersion    string                 `bson:"type_version"`
+	Schema         map[string]interface{} `bson:"schema,omitempty"`
+	Datasource     []Datasource           `bson:"datasource,omitempty"`
+	Status         string                 `bson:"status"`
+	PreviousStatus string                 `bson:"previous_status,omitempty"`
+	ThumbnailURL   string                 `bson:"thumbnail_url,omitempty"`
+	DisplayMode    string                 `bson:"display_mode,omitempty"`
+	Tags           []string               `bson:"tags,omitempty"`
+	CreatedAt      time.Time              `bson:"created_at"`
+	UpdatedAt      time.Time              `bson:"updated_at"`
+	PublishedAt    *time.Time             `bson:"published_at,omitempty"`
+	UserConfig     map[string]interface{} `bson:"user_config,omitempty"`
 }
 
 // DashboardWidget represents a widget instance placed on a dashboard

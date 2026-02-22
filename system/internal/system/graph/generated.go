@@ -144,7 +144,6 @@ type ComplexityRoot struct {
 	Mutation struct {
 		AddWidgetToDashboard  func(childComplexity int, input model.AddWidgetToDashboardInput) int
 		ChangeDashboard       func(childComplexity int, dashboardID string) int
-		ChangeLibraryWidget   func(childComplexity int, id string) int
 		CreateDashboard       func(childComplexity int, input model.CreateDashboardInput) int
 		CreateLibraryWidget   func(childComplexity int, input model.CreateLibraryWidgetInput) int
 		CreateSystem          func(childComplexity int, namespace string, name string, description *string, owner string) int
@@ -169,7 +168,7 @@ type ComplexityRoot struct {
 		Dashboard             func(childComplexity int, id string) int
 		DashboardHistory      func(childComplexity int, dashboardID string) int
 		Dashboards            func(childComplexity int) int
-		LibraryWidget         func(childComplexity int, id string) int
+		LibraryWidget         func(childComplexity int, id string, viewDraft *bool) int
 		LibraryWidgetHistory  func(childComplexity int, widgetID string) int
 		LibraryWidgets        func(childComplexity int) int
 		QueryDashboardWidget  func(childComplexity int, dashboardWidgetID string) int
@@ -232,7 +231,6 @@ type MutationResolver interface {
 	CreateLibraryWidget(ctx context.Context, input model.CreateLibraryWidgetInput) (*model1.LibraryWidget, error)
 	UpdateLibraryWidget(ctx context.Context, input model.UpdateLibraryWidgetInput) (*model1.LibraryWidget, error)
 	PublishLibraryWidget(ctx context.Context, id string) (*model1.LibraryWidget, error)
-	ChangeLibraryWidget(ctx context.Context, id string) (*model1.LibraryWidget, error)
 	TrashLibraryWidget(ctx context.Context, id string) (*model1.LibraryWidget, error)
 	RestoreLibraryWidget(ctx context.Context, id string) (*model1.LibraryWidget, error)
 	CreateDashboard(ctx context.Context, input model.CreateDashboardInput) (*model1.Dashboard, error)
@@ -253,7 +251,7 @@ type QueryResolver interface {
 	SystemMe(ctx context.Context) ([]*model.SystemWithRole, error)
 	SystemDetail(ctx context.Context, namespace string) (*model1.System, error)
 	LibraryWidgets(ctx context.Context) ([]*model1.LibraryWidget, error)
-	LibraryWidget(ctx context.Context, id string) (*model1.LibraryWidget, error)
+	LibraryWidget(ctx context.Context, id string, viewDraft *bool) (*model1.LibraryWidget, error)
 	Dashboards(ctx context.Context) ([]*model1.Dashboard, error)
 	Dashboard(ctx context.Context, id string) (*model1.Dashboard, error)
 	DashboardHistory(ctx context.Context, dashboardID string) ([]*model1.DashboardHistory, error)
@@ -760,18 +758,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.ChangeDashboard(childComplexity, args["dashboardId"].(string)), true
 
-	case "Mutation.changeLibraryWidget":
-		if e.complexity.Mutation.ChangeLibraryWidget == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_changeLibraryWidget_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.ChangeLibraryWidget(childComplexity, args["id"].(string)), true
-
 	case "Mutation.createDashboard":
 		if e.complexity.Mutation.CreateDashboard == nil {
 			break
@@ -1029,7 +1015,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.LibraryWidget(childComplexity, args["id"].(string)), true
+		return e.complexity.Query.LibraryWidget(childComplexity, args["id"].(string), args["viewDraft"].(*bool)), true
 
 	case "Query.libraryWidgetHistory":
 		if e.complexity.Query.LibraryWidgetHistory == nil {
@@ -1335,21 +1321,6 @@ func (ec *executionContext) field_Mutation_changeDashboard_args(ctx context.Cont
 		}
 	}
 	args["dashboardId"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_changeLibraryWidget_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["id"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalNID2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["id"] = arg0
 	return args, nil
 }
 
@@ -1722,6 +1693,15 @@ func (ec *executionContext) field_Query_libraryWidget_args(ctx context.Context, 
 		}
 	}
 	args["id"] = arg0
+	var arg1 *bool
+	if tmp, ok := rawArgs["viewDraft"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("viewDraft"))
+		arg1, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["viewDraft"] = arg1
 	return args, nil
 }
 
@@ -5110,97 +5090,6 @@ func (ec *executionContext) fieldContext_Mutation_publishLibraryWidget(ctx conte
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_changeLibraryWidget(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_changeLibraryWidget(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().ChangeLibraryWidget(rctx, fc.Args["id"].(string))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model1.LibraryWidget)
-	fc.Result = res
-	return ec.marshalNLibraryWidget2ᚖsystemᚋinternalᚋsystemᚋmodelᚐLibraryWidget(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_changeLibraryWidget(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_LibraryWidget_id(ctx, field)
-			case "name":
-				return ec.fieldContext_LibraryWidget_name(ctx, field)
-			case "version":
-				return ec.fieldContext_LibraryWidget_version(ctx, field)
-			case "type":
-				return ec.fieldContext_LibraryWidget_type(ctx, field)
-			case "typeVersion":
-				return ec.fieldContext_LibraryWidget_typeVersion(ctx, field)
-			case "schema":
-				return ec.fieldContext_LibraryWidget_schema(ctx, field)
-			case "datasource":
-				return ec.fieldContext_LibraryWidget_datasource(ctx, field)
-			case "status":
-				return ec.fieldContext_LibraryWidget_status(ctx, field)
-			case "thumbnailUrl":
-				return ec.fieldContext_LibraryWidget_thumbnailUrl(ctx, field)
-			case "displayMode":
-				return ec.fieldContext_LibraryWidget_displayMode(ctx, field)
-			case "tags":
-				return ec.fieldContext_LibraryWidget_tags(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_LibraryWidget_createdAt(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_LibraryWidget_updatedAt(ctx, field)
-			case "publishedAt":
-				return ec.fieldContext_LibraryWidget_publishedAt(ctx, field)
-			case "userConfig":
-				return ec.fieldContext_LibraryWidget_userConfig(ctx, field)
-			case "isLocked":
-				return ec.fieldContext_LibraryWidget_isLocked(ctx, field)
-			case "lockedBy":
-				return ec.fieldContext_LibraryWidget_lockedBy(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type LibraryWidget", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_changeLibraryWidget_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Mutation_trashLibraryWidget(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_trashLibraryWidget(ctx, field)
 	if err != nil {
@@ -6578,7 +6467,7 @@ func (ec *executionContext) _Query_libraryWidget(ctx context.Context, field grap
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().LibraryWidget(rctx, fc.Args["id"].(string))
+		return ec.resolvers.Query().LibraryWidget(rctx, fc.Args["id"].(string), fc.Args["viewDraft"].(*bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -10992,13 +10881,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "publishLibraryWidget":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_publishLibraryWidget(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "changeLibraryWidget":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_changeLibraryWidget(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

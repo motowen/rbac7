@@ -280,8 +280,8 @@ type Query {
   """Get all library widgets (excludes trashed)"""
   libraryWidgets: [LibraryWidget!]!
   
-  """Get a library widget by ID"""
-  libraryWidget(id: ID!): LibraryWidget
+  """Get a library widget by ID. Use viewDraft=true to see the changed version (for editors)."""
+  libraryWidget(id: ID!, viewDraft: Boolean = false): LibraryWidget
 
   # ----- Dashboard Queries -----
   
@@ -334,8 +334,6 @@ type Mutation {
   """Publish library widget (draft/changed → published)"""
   publishLibraryWidget(id: ID!): LibraryWidget!
   
-  """Start editing library widget (published → changed)"""
-  changeLibraryWidget(id: ID!): LibraryWidget!
   
   """Trash library widget (soft delete, any → trashed)"""
   trashLibraryWidget(id: ID!): LibraryWidget!
