@@ -22,6 +22,14 @@ func NewWidgetService(entity *EntityService, widgetRepo repository.WidgetReposit
 	}
 }
 
+// resolveGroupID returns the effective group ID for a widget
+func resolveGroupID(widget *model.LibraryWidget) string {
+	if widget.GroupID != "" {
+		return widget.GroupID
+	}
+	return widget.ID
+}
+
 // Update updates a library widget.
 // - draft: update directly
 // - published: copy to changed first, then update the changed copy
@@ -32,41 +40,33 @@ func (s *WidgetService) Update(ctx context.Context, callerID, widgetID string, u
 		return nil, err
 	}
 	if widget == nil {
-		return nil, fmt.Errorf("library widget not found")
+		return nil, ErrWidgetNotFound
 	}
 
-	groupID := widget.GroupID
-	if groupID == "" {
-		groupID = widget.ID
-	}
+	groupID := resolveGroupID(widget)
 
 	switch widget.Status {
 	case model.StatusDraft:
-		// Draft: update directly
 		if err := s.Entity.EnsureEditable(ctx, model.EntityTypeLibraryWidget, widgetID, callerID, widget.Status); err != nil {
 			return nil, err
 		}
 		return s.WidgetRepo.UpdateLibraryWidget(ctx, widgetID, update)
 
 	case model.StatusPublished:
-		// Published: check if changed version already exists
 		changed, err := s.WidgetRepo.GetByGroupAndStatus(ctx, groupID, model.StatusChanged)
 		if err != nil {
 			return nil, err
 		}
 		if changed != nil {
-			// Changed version exists, update it
 			if err := s.Entity.EnsureEditable(ctx, model.EntityTypeLibraryWidget, widgetID, callerID, model.StatusChanged); err != nil {
 				return nil, err
 			}
 			return s.WidgetRepo.UpdateLibraryWidget(ctx, changed.ID, update)
 		}
-		// No changed version, create one from published
 		changed, err = s.WidgetRepo.CopyToChanged(ctx, groupID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create changed copy: %w", err)
 		}
-		// Apply update to the changed copy
 		result, err := s.WidgetRepo.UpdateLibraryWidget(ctx, changed.ID, update)
 		if err != nil {
 			return nil, fmt.Errorf("failed to update changed copy: %w", err)
@@ -74,48 +74,37 @@ func (s *WidgetService) Update(ctx context.Context, callerID, widgetID string, u
 		return result, nil
 
 	case model.StatusChanged:
-		// Changed: update directly
 		if err := s.Entity.EnsureEditable(ctx, model.EntityTypeLibraryWidget, widgetID, callerID, widget.Status); err != nil {
 			return nil, err
 		}
 		return s.WidgetRepo.UpdateLibraryWidget(ctx, widgetID, update)
 
 	default:
-		return nil, fmt.Errorf("cannot update widget in %s status", widget.Status)
+		return nil, fmt.Errorf("%w: cannot update in %s status", ErrInvalidWidgetStatus, widget.Status)
 	}
 }
 
 // Publish transitions library widget from draft/changed → published
-// 1. check if widget in draft or changed status
-// 2. check is locked by other
-// 3. save current published to history (with auto version)
-// 4. delete published version and promote changed to published
 func (s *WidgetService) Publish(ctx context.Context, callerID, widgetID string) (*model.LibraryWidget, error) {
 	widget, err := s.WidgetRepo.GetLibraryWidget(ctx, widgetID)
 	if err != nil {
 		return nil, err
 	}
 	if widget == nil {
-		return nil, fmt.Errorf("library widget not found")
+		return nil, ErrWidgetNotFound
 	}
 
-	// Step 1: check status is draft or changed
 	if widget.Status != model.StatusDraft && widget.Status != model.StatusChanged {
-		return nil, fmt.Errorf("can only publish from draft or changed status (current: %s)", widget.Status)
+		return nil, fmt.Errorf("%w: can only publish from draft or changed (current: %s)", ErrInvalidWidgetStatus, widget.Status)
 	}
 
-	groupID := widget.GroupID
-	if groupID == "" {
-		groupID = widget.ID
-	}
+	groupID := resolveGroupID(widget)
 
-	// Step 2: check lock
 	if err := s.Entity.EnsureNotLockedByOther(ctx, model.EntityTypeLibraryWidget, widgetID, callerID); err != nil {
 		return nil, err
 	}
 
 	if widget.Status == model.StatusDraft {
-		// Publishing from draft: just change status
 		if err := model.ValidateStatusTransition(widget.Status, model.StatusPublished); err != nil {
 			return nil, err
 		}
@@ -131,19 +120,17 @@ func (s *WidgetService) Publish(ctx context.Context, callerID, widgetID string) 
 		changed = widget
 	}
 	if changed == nil {
-		return nil, fmt.Errorf("no changed version found to publish")
+		return nil, ErrNoChangedVersion
 	}
 
 	if err := model.ValidateStatusTransition(changed.Status, model.StatusPublished); err != nil {
 		return nil, err
 	}
 
-	// Step 3: save current published version to history
 	if err := s.WidgetRepo.SaveToHistory(ctx, groupID, callerID); err != nil {
 		return nil, fmt.Errorf("failed to save history: %w", err)
 	}
 
-	// Step 4: delete published version and promote changed
 	if err := s.WidgetRepo.DeleteByGroupAndStatus(ctx, groupID, model.StatusPublished); err != nil {
 		return nil, fmt.Errorf("failed to delete published version: %w", err)
 	}
@@ -158,19 +145,15 @@ func (s *WidgetService) Trash(ctx context.Context, callerID, widgetID string) (*
 		return nil, err
 	}
 	if widget == nil {
-		return nil, fmt.Errorf("library widget not found")
+		return nil, ErrWidgetNotFound
 	}
 
 	if err := model.ValidateStatusTransition(widget.Status, model.StatusTrashed); err != nil {
 		return nil, err
 	}
 
-	groupID := widget.GroupID
-	if groupID == "" {
-		groupID = widget.ID
-	}
+	groupID := resolveGroupID(widget)
 
-	// If trashing a published widget that has a changed copy, also delete the changed copy
 	if widget.Status == model.StatusPublished {
 		changed, err := s.WidgetRepo.GetByGroupAndStatus(ctx, groupID, model.StatusChanged)
 		if err != nil {
@@ -187,30 +170,21 @@ func (s *WidgetService) Trash(ctx context.Context, callerID, widgetID string) (*
 }
 
 // Restore transitions library widget from trashed → appropriate status
-// 1. check if widget in trashed status
-// 2. check if there's any history record (indicating it was published before)
-// 3. determine target status based on history (draft or published)
-// 4. restore the trashed widget to appropriate status
 func (s *WidgetService) Restore(ctx context.Context, callerID, widgetID string) (*model.LibraryWidget, error) {
 	widget, err := s.WidgetRepo.GetLibraryWidget(ctx, widgetID)
 	if err != nil {
 		return nil, err
 	}
 	if widget == nil {
-		return nil, fmt.Errorf("library widget not found")
+		return nil, ErrWidgetNotFound
 	}
 
-	// Step 1: check trashed status
 	if widget.Status != model.StatusTrashed {
-		return nil, fmt.Errorf("can only restore trashed widget")
+		return nil, fmt.Errorf("%w: can only restore trashed widget (current: %s)", ErrInvalidWidgetStatus, widget.Status)
 	}
 
-	groupID := widget.GroupID
-	if groupID == "" {
-		groupID = widget.ID
-	}
+	groupID := resolveGroupID(widget)
 
-	// Step 2 & 3: check history to determine target status
 	latestHistory, err := s.WidgetRepo.GetLatestHistory(ctx, groupID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check history: %w", err)
@@ -218,61 +192,46 @@ func (s *WidgetService) Restore(ctx context.Context, callerID, widgetID string) 
 
 	var targetStatus string
 	if latestHistory != nil {
-		// Has history → was published before → restore to published
 		targetStatus = model.StatusPublished
 	} else {
-		// No history → never published → restore to draft
 		targetStatus = model.StatusDraft
 	}
 
-	// Step 4: restore
 	return s.WidgetRepo.UpdateLibraryWidgetStatus(ctx, widgetID, targetStatus, "")
 }
 
 // Revert reverts a published widget to a specific history version
-// 1. check if widget in published status
-// 2. find history record by version
-// 3. get latest version number for next version
-// 4. create new history record (saving current published)
-// 5. update current widget with the reverted data
 func (s *WidgetService) Revert(ctx context.Context, callerID, widgetID string, version int) (*model.LibraryWidget, error) {
 	widget, err := s.WidgetRepo.GetLibraryWidget(ctx, widgetID)
 	if err != nil {
 		return nil, err
 	}
 	if widget == nil {
-		return nil, fmt.Errorf("library widget not found")
+		return nil, ErrWidgetNotFound
 	}
 
-	groupID := widget.GroupID
-	if groupID == "" {
-		groupID = widget.ID
-	}
+	groupID := resolveGroupID(widget)
 
-	// Step 1: check published status — find the published version
 	published, err := s.WidgetRepo.GetByGroupAndStatus(ctx, groupID, model.StatusPublished)
 	if err != nil {
 		return nil, err
 	}
 	if published == nil {
-		return nil, fmt.Errorf("can only revert published widget")
+		return nil, fmt.Errorf("%w: can only revert published widget", ErrInvalidWidgetStatus)
 	}
 
-	// Step 2: find history record by version
 	historyRecord, err := s.WidgetRepo.GetHistoryByVersion(ctx, groupID, version)
 	if err != nil {
 		return nil, err
 	}
 	if historyRecord == nil {
-		return nil, fmt.Errorf("history version %d not found", version)
+		return nil, fmt.Errorf("%w: version %d", ErrHistoryVersionNotFound, version)
 	}
 
-	// Step 3 & 4: save current published to history (auto-determines next version)
 	if err := s.WidgetRepo.SaveToHistory(ctx, groupID, callerID); err != nil {
 		return nil, fmt.Errorf("failed to save current version to history: %w", err)
 	}
 
-	// Step 5: update current published widget with reverted data
 	snapshot := historyRecord.Snapshot.Widget
 	revertUpdate := &repository.LibraryWidgetUpdate{
 		Name:         &snapshot.Name,
@@ -291,50 +250,39 @@ func (s *WidgetService) Revert(ctx context.Context, callerID, widgetID string, v
 }
 
 // Discard discards the changed version and keeps the published version
-// 1. check is locked by me (not locked by other)
-// 2. check if changed version exists
-// 3. delete changed version
-// 4. return published version
 func (s *WidgetService) Discard(ctx context.Context, callerID, widgetID string) (*model.LibraryWidget, error) {
 	widget, err := s.WidgetRepo.GetLibraryWidget(ctx, widgetID)
 	if err != nil {
 		return nil, err
 	}
 	if widget == nil {
-		return nil, fmt.Errorf("library widget not found")
+		return nil, ErrWidgetNotFound
 	}
 
-	groupID := widget.GroupID
-	if groupID == "" {
-		groupID = widget.ID
-	}
+	groupID := resolveGroupID(widget)
 
-	// Step 1: check lock
 	if err := s.Entity.EnsureNotLockedByOther(ctx, model.EntityTypeLibraryWidget, widgetID, callerID); err != nil {
 		return nil, err
 	}
 
-	// Step 2: find changed version
 	changed, err := s.WidgetRepo.GetByGroupAndStatus(ctx, groupID, model.StatusChanged)
 	if err != nil {
 		return nil, err
 	}
 	if changed == nil {
-		return nil, fmt.Errorf("no changed version to discard")
+		return nil, ErrNoChangedVersion
 	}
 
-	// Step 3: delete changed version
 	if err := s.WidgetRepo.DeleteByGroupAndStatus(ctx, groupID, model.StatusChanged); err != nil {
 		return nil, fmt.Errorf("failed to delete changed version: %w", err)
 	}
 
-	// Step 4: return published version
 	published, err := s.WidgetRepo.GetByGroupAndStatus(ctx, groupID, model.StatusPublished)
 	if err != nil {
 		return nil, err
 	}
 	if published == nil {
-		return nil, fmt.Errorf("published version not found")
+		return nil, ErrNoPublishedVersion
 	}
 
 	return published, nil
