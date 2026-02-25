@@ -31,6 +31,7 @@ type RBACService interface {
 	AssignResourceUserRoles(ctx context.Context, callerID string, req model.AssignResourceUserRolesReq) (*model.BatchUpsertResult, error) // Batch
 	DeleteResourceUserRole(ctx context.Context, callerID string, req model.DeleteResourceUserRoleReq) error
 	CheckPermission(ctx context.Context, callerID string, req model.CheckPermissionReq) (bool, error)
+	BatchCheckPermission(ctx context.Context, callerID string, req model.BatchCheckPermissionReq) (map[string]bool, error)
 	// Resource Management
 	SoftDeleteResource(ctx context.Context, callerID string, req *model.SoftDeleteResourceReq) error
 	GetDashboardResource(ctx context.Context, callerID string, req model.GetDashboardResourceReq) (*model.GetDashboardResourceResp, error)
@@ -101,6 +102,10 @@ func (s *Service) CheckPermission(ctx context.Context, callerID string, req mode
 	}
 
 	return false, ErrBadRequest
+}
+
+func (s *Service) BatchCheckPermission(ctx context.Context, callerID string, req model.BatchCheckPermissionReq) (map[string]bool, error) {
+	return s.Policy.BatchCheckResourceAccess(ctx, s.Repo, callerID, req.ResourceIDs, req.ResourceType, req.Permission)
 }
 
 // checkSystemPermissionInternal checks system permission using PolicyEngine's internal methods

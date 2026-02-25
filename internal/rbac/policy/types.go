@@ -38,7 +38,7 @@ type EntityPolicy struct {
 
 // CheckPermissionRule defines inheritance/fallback logic for permission checking
 type CheckPermissionRule struct {
-	Inheritance       string            `json:"inheritance"` // "none", "parent_if_no_roles"
+	Inheritance       string            `json:"inheritance"` // "none", "parent_if_no_roles", "public_if_no_roles"
 	ParentType        string            `json:"parent_type,omitempty"`
 	PermissionMapping map[string]string `json:"permission_mapping,omitempty"`
 }

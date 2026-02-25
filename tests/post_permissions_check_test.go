@@ -179,10 +179,12 @@ func TestPostPermissionsCheck(t *testing.T) {
 	})
 
 	// Library Widget Permission Check Tests
-	t.Run("check library_widget read permission allowed", func(t *testing.T) {
+	t.Run("check library_widget read permission allowed when whitelist exists and user is on it", func(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		e := SetupServerWithMiddleware(mockRepo)
 
+		// public_if_no_roles: first check if whitelist exists
+		mockRepo.On("CountResourceRoles", mock.Anything, "lw_1", "library_widget").Return(int64(1), nil)
 		mockRepo.On("HasAnyResourceRole", mock.Anything, "viewer_1", "lw_1", "library_widget", mock.Anything).Return(true, nil)
 
 		payload := map[string]string{
@@ -196,10 +198,12 @@ func TestPostPermissionsCheck(t *testing.T) {
 		assert.Contains(t, rec.Body.String(), `"allowed":true`)
 	})
 
-	t.Run("check library_widget read permission denied", func(t *testing.T) {
+	t.Run("check library_widget read permission denied when whitelist exists and user is not on it", func(t *testing.T) {
 		mockRepo := new(MockRBACRepository)
 		e := SetupServerWithMiddleware(mockRepo)
 
+		// public_if_no_roles: whitelist exists (count > 0), user not on it
+		mockRepo.On("CountResourceRoles", mock.Anything, "lw_1", "library_widget").Return(int64(2), nil)
 		mockRepo.On("HasAnyResourceRole", mock.Anything, "user_1", "lw_1", "library_widget", mock.Anything).Return(false, nil)
 
 		payload := map[string]string{
@@ -211,5 +215,23 @@ func TestPostPermissionsCheck(t *testing.T) {
 		rec := PerformRequest(e, http.MethodPost, apiPath, payload, map[string]string{"x-user-id": "user_1"})
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Contains(t, rec.Body.String(), `"allowed":false`)
+	})
+
+	t.Run("check library_widget read permission allowed when no whitelist (public)", func(t *testing.T) {
+		mockRepo := new(MockRBACRepository)
+		e := SetupServerWithMiddleware(mockRepo)
+
+		// public_if_no_roles: no whitelist (count == 0) = public access
+		mockRepo.On("CountResourceRoles", mock.Anything, "lw_1", "library_widget").Return(int64(0), nil)
+
+		payload := map[string]string{
+			"permission":    "resource.library_widget.read",
+			"scope":         "resource",
+			"resource_id":   "lw_1",
+			"resource_type": "library_widget",
+		}
+		rec := PerformRequest(e, http.MethodPost, apiPath, payload, map[string]string{"x-user-id": "user_1"})
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), `"allowed":true`)
 	})
 }

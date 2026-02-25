@@ -27,8 +27,9 @@ func RegisterRoutes(e *echo.Echo, h *handler.SystemHandler, policyEngine *policy
 	v1 := e.Group("/api/v1")
 	v1.Use(handler.RequestIDMiddleware) // Add Request ID middleware to API routes
 
-	// Permissions check endpoint - NO RBAC middleware (anyone can check permissions)
+	// Permissions check endpoints - NO RBAC middleware (anyone can check permissions)
 	v1.POST("/permissions/check", h.PostPermissionsCheck)
+	v1.POST("/permissions/check/batch", h.PostPermissionsCheckBatch)
 
 	// Create and apply RBAC middleware for protected routes
 	rbacMiddleware := handler.NewRBACMiddleware(policyEngine, repo, apiConfigs)

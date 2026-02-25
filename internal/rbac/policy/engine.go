@@ -233,9 +233,42 @@ func (e *Engine) CheckResourceAccess(
 
 		return e.checkResourcePermission(ctx, repo, callerID, parentResourceID, rule.ParentType, mappedPerm)
 
+	case "public_if_no_roles":
+		// First check if any roles exist on this resource
+		count, err := repo.CountResourceRoles(ctx, resourceID, resourceType)
+		if err != nil {
+			return false, err
+		}
+
+		if count == 0 {
+			return true, nil // No whitelist configured = public access for all
+		}
+
+		// Whitelist mode: strict check on the resource itself
+		return e.checkResourcePermission(ctx, repo, callerID, resourceID, resourceType, permission)
+
 	default:
 		return e.checkResourcePermission(ctx, repo, callerID, resourceID, resourceType, permission)
 	}
+}
+
+// BatchCheckResourceAccess checks if user can access multiple resources of the same type
+func (e *Engine) BatchCheckResourceAccess(
+	ctx context.Context,
+	repo repository.RBACRepository,
+	callerID string,
+	resourceIDs []string,
+	resourceType, permission string,
+) (map[string]bool, error) {
+	results := make(map[string]bool, len(resourceIDs))
+	for _, resourceID := range resourceIDs {
+		allowed, err := e.CheckResourceAccess(ctx, repo, callerID, resourceID, resourceType, permission, "")
+		if err != nil {
+			return nil, err
+		}
+		results[resourceID] = allowed
+	}
+	return results, nil
 }
 
 // checkSystemPermission checks if user has system-level permission
