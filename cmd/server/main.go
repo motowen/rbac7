@@ -50,6 +50,7 @@ func main() {
 	// 3. Init Layers
 	db := client.Database(cfg.DBName)
 	repo := repository.NewMongoRepository(db, cfg.UserRolesCollection, cfg.ResourceRolesCollection)
+	orgUserRepo := repository.NewMongoOrgUserRepository(db, cfg.OrgUsersCollection)
 
 	// Ensure Indexes
 	if err := repo.EnsureIndexes(context.Background()); err != nil {
@@ -60,7 +61,7 @@ func main() {
 		logger.Warn("Failed to ensure history indexes", "error", err)
 	}
 
-	svc := service.NewService(repo, repo) // repo implements both RBACRepository and HistoryRepository
+	svc := service.NewServiceWithOrg(repo, repo, orgUserRepo) // repo implements both RBACRepository and HistoryRepository
 	h := handler.NewSystemHandler(svc)
 
 	// 4. Init Echo & Routes

@@ -21,10 +21,19 @@ func SetupServer() *echo.Echo {
 // SetupServerWithMiddleware creates a full Echo server with RBAC middleware (for integration testing)
 // This uses the real router.RegisterRoutes which includes RBAC middleware
 func SetupServerWithMiddleware(mockRepo *MockRBACRepository) *echo.Echo {
+	return SetupServerWithMiddlewareAndOrg(mockRepo, nil)
+}
+
+// SetupServerWithMiddlewareAndOrg creates a full Echo server with RBAC middleware and optional org user repo.
+func SetupServerWithMiddlewareAndOrg(mockRepo *MockRBACRepository, orgRepo *MockOrgUserRepository) *echo.Echo {
 	e := echo.New()
 
-	// Create service with mock repo (same repo for both since MockRBACRepository implements both interfaces)
-	svc := service.NewService(mockRepo, mockRepo)
+	var svc *service.Service
+	if orgRepo != nil {
+		svc = service.NewServiceWithOrg(mockRepo, mockRepo, orgRepo)
+	} else {
+		svc = service.NewService(mockRepo, mockRepo)
+	}
 	h := handler.NewSystemHandler(svc)
 
 	// Create RBAC middleware

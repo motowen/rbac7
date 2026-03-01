@@ -45,4 +45,6 @@ type RBACRepository interface {
 	DeleteUserRolesByParent(ctx context.Context, userID, parentResourceID, resourceType, deletedBy string) error
 	// Soft delete all user roles for a resource (including owner)
 	SoftDeleteResourceUserRoles(ctx context.Context, req *model.SoftDeleteResourceReq, deletedBy string) error
+	// Find roles where user_id IN userIDs and user_type matches (for org permission check)
+	FindUserRolesByUserIDs(ctx context.Context, userIDs []string, userType, scope, namespace, resourceID, resourceType string) ([]*model.UserRole, error)
 }

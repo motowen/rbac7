@@ -3,6 +3,7 @@ package tests
 import (
 	"context"
 	"rbac7/internal/rbac/model"
+	"rbac7/internal/rbac/repository"
 
 	"github.com/stretchr/testify/mock"
 )
@@ -138,4 +139,25 @@ func (m *MockRBACRepository) FindHistory(ctx context.Context, req model.GetUserR
 func (m *MockRBACRepository) EnsureHistoryIndexes(ctx context.Context) error {
 	args := m.Called(ctx)
 	return args.Error(0)
+}
+
+func (m *MockRBACRepository) FindUserRolesByUserIDs(ctx context.Context, userIDs []string, userType, scope, namespace, resourceID, resourceType string) ([]*model.UserRole, error) {
+	args := m.Called(ctx, userIDs, userType, scope, namespace, resourceID, resourceType)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*model.UserRole), args.Error(1)
+}
+
+// MockOrgUserRepository is a mock implementation of repository.OrgUserRepository for testing.
+type MockOrgUserRepository struct {
+	mock.Mock
+}
+
+func (m *MockOrgUserRepository) GetOrgUser(ctx context.Context, userID string) (*repository.OrgUser, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*repository.OrgUser), args.Error(1)
 }

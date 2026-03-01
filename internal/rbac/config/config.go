@@ -13,6 +13,7 @@ type Config struct {
 	DBName                  string
 	UserRolesCollection     string
 	ResourceRolesCollection string
+	OrgUsersCollection      string // collection for org user data (imported periodically)
 	ReadTimeout             time.Duration
 	WriteTimeout            time.Duration
 }
@@ -42,6 +43,7 @@ func LoadConfig() (*Config, error) {
 		DBName:                  getEnv("DB_NAME", "rbac_db"),
 		UserRolesCollection:     getEnv("COLLECTION_USER_ROLES", "user_roles"),
 		ResourceRolesCollection: getEnv("COLLECTION_RESOURCE_ROLES", "user_resource_roles"),
+		OrgUsersCollection:      getEnv("COLLECTION_ORG_USERS", "org_users"),
 		ReadTimeout:             readTimeout,
 		WriteTimeout:            writeTimeout,
 	}

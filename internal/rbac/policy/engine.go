@@ -375,3 +375,52 @@ func (e *Engine) CheckSelfRolesPermission(roles []*model.UserRole, scope, resour
 
 	return e.CheckRolesHavePermission(roles, opPolicy.Permission)
 }
+
+// roleOrder defines the priority of roles (higher value = higher privilege)
+// Role constants: viewer/admin/owner/editor/dev_user/moderator are shared string values
+var roleOrder = map[string]int{
+	"viewer":    1,
+	"dev_user":  2,
+	"editor":    3,
+	"admin":     4,
+	"owner":     5,
+	"moderator": 6,
+}
+
+// GetMaxRole returns the highest-privilege role from a list of UserRoles.
+// Role order: owner > admin > editor > viewer (dev_user between viewer and admin)
+// Returns empty string if roles is empty.
+func (e *Engine) GetMaxRole(roles []*model.UserRole) string {
+	maxPriority := -1
+	maxRole := ""
+	for _, r := range roles {
+		if p, ok := roleOrder[r.Role]; ok {
+			if p > maxPriority {
+				maxPriority = p
+				maxRole = r.Role
+			}
+		}
+	}
+	return maxRole
+}
+
+// RoleHasPermission checks if the given role has the specified permission.
+// isSystem=true checks system role permissions; isSystem=false checks resource role permissions.
+func (e *Engine) RoleHasPermission(role, permission string, isSystem bool) bool {
+	var rolePerms map[string][]string
+	if isSystem {
+		rolePerms = e.systemRolePerms
+	} else {
+		rolePerms = e.resourceRolePerms
+	}
+	perms, ok := rolePerms[role]
+	if !ok {
+		return false
+	}
+	for _, p := range perms {
+		if p == permission {
+			return true
+		}
+	}
+	return false
+}
