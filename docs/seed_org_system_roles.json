@@ -1,0 +1,77 @@
+[
+    {
+        "user_id": "00R00000",
+        "user_type": "org",
+        "role": "admin",
+        "scope": "system",
+        "namespace": "NS1",
+        "created_at": {
+            "$date": "2026-03-03T00:00:00Z"
+        },
+        "updated_at": {
+            "$date": "2026-03-03T00:00:00Z"
+        },
+        "created_by": "seed",
+        "updated_by": "seed"
+    },
+    {
+        "user_id": "00600000",
+        "user_type": "org",
+        "role": "viewer",
+        "scope": "system",
+        "namespace": "NS1",
+        "created_at": {
+            "$date": "2026-03-03T00:00:00Z"
+        },
+        "updated_at": {
+            "$date": "2026-03-03T00:00:00Z"
+        },
+        "created_by": "seed",
+        "updated_by": "seed"
+    },
+    {
+        "user_id": "0060D000",
+        "user_type": "org",
+        "role": "dev_user",
+        "scope": "system",
+        "namespace": "NS1",
+        "created_at": {
+            "$date": "2026-03-03T00:00:00Z"
+        },
+        "updated_at": {
+            "$date": "2026-03-03T00:00:00Z"
+        },
+        "created_by": "seed",
+        "updated_by": "seed"
+    },
+    {
+        "user_id": "00302T00",
+        "user_type": "org",
+        "role": "viewer",
+        "scope": "system",
+        "namespace": "NS1",
+        "created_at": {
+            "$date": "2026-03-03T00:00:00Z"
+        },
+        "updated_at": {
+            "$date": "2026-03-03T00:00:00Z"
+        },
+        "created_by": "seed",
+        "updated_by": "seed"
+    },
+    {
+        "user_id": "00302T0B",
+        "user_type": "org",
+        "role": "admin",
+        "scope": "system",
+        "namespace": "NS1",
+        "created_at": {
+            "$date": "2026-03-03T00:00:00Z"
+        },
+        "updated_at": {
+            "$date": "2026-03-03T00:00:00Z"
+        },
+        "created_by": "seed",
+        "updated_by": "seed"
+    }
+]
