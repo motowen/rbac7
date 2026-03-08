@@ -16,6 +16,14 @@ type Config struct {
 	OrgUsersCollection      string // collection for org user data (imported periodically)
 	ReadTimeout             time.Duration
 	WriteTimeout            time.Duration
+
+	// NATS
+	NATSEnabled       bool   // 是否啟用 NATS Auth Callout + Request-Reply
+	NATSURL           string // NATS server URL (e.g., "nats://localhost:4222")
+	NATSAuthUser      string // Auth Callout 服務連線用的 user
+	NATSAuthPassword  string // Auth Callout 服務連線用的 password
+	NATSAccountSeed   string // Account private key seed (SA...) for signing JWTs
+	NATSEncryptionKey string // 可選，XKey curve seed for encrypted callout (SX...)
 }
 
 func LoadConfig() (*Config, error) {
@@ -46,6 +54,14 @@ func LoadConfig() (*Config, error) {
 		OrgUsersCollection:      getEnv("COLLECTION_ORG_USERS", "org_users"),
 		ReadTimeout:             readTimeout,
 		WriteTimeout:            writeTimeout,
+
+		// NATS
+		NATSEnabled:       getEnv("NATS_ENABLED", "false") == "true",
+		NATSURL:           getEnv("NATS_URL", "nats://localhost:4222"),
+		NATSAuthUser:      getEnv("NATS_AUTH_USER", "auth"),
+		NATSAuthPassword:  os.Getenv("NATS_AUTH_PASSWORD"),
+		NATSAccountSeed:   os.Getenv("NATS_ACCOUNT_SEED"),
+		NATSEncryptionKey: os.Getenv("NATS_ENCRYPTION_KEY"),
 	}
 
 	if err := cfg.Validate(); err != nil {
@@ -58,6 +74,14 @@ func LoadConfig() (*Config, error) {
 func (c *Config) Validate() error {
 	if c.MongoURI == "" {
 		return fmt.Errorf("MONGO_URI is required")
+	}
+	if c.NATSEnabled {
+		if c.NATSAuthPassword == "" {
+			return fmt.Errorf("NATS_AUTH_PASSWORD is required when NATS is enabled")
+		}
+		if c.NATSAccountSeed == "" {
+			return fmt.Errorf("NATS_ACCOUNT_SEED is required when NATS is enabled")
+		}
 	}
 	return nil
 }

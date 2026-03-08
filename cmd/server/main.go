@@ -10,6 +10,7 @@ import (
 
 	"rbac7/internal/rbac/config"
 	"rbac7/internal/rbac/handler"
+	natshandler "rbac7/internal/rbac/nats"
 	"rbac7/internal/rbac/repository"
 	"rbac7/internal/rbac/router"
 	"rbac7/internal/rbac/service"
@@ -17,13 +18,10 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/nats-io/nats.go"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	// Note: Go 1.21+ uses "log/slog", but for compatibility check standard lib
 )
-
-// Using standard lib "log/slog" if Go 1.21+, else adapter.
-// Since go.mod says 1.24.6, we use "log/slog" inside util, but here we just call util.
 
 func main() {
 	// 0. Init Logger
@@ -55,7 +53,7 @@ func main() {
 	// Ensure Indexes
 	if err := repo.EnsureIndexes(context.Background()); err != nil {
 		logger.Warn("Failed to ensure indexes", "error", err)
-		// Non-fatal?
+		// Non-fatal
 	}
 	if err := repo.EnsureHistoryIndexes(context.Background()); err != nil {
 		logger.Warn("Failed to ensure history indexes", "error", err)
@@ -64,7 +62,7 @@ func main() {
 	svc := service.NewServiceWithOrg(repo, repo, orgUserRepo) // repo implements both RBACRepository and HistoryRepository
 	h := handler.NewSystemHandler(svc)
 
-	// 4. Init Echo & Routes
+	// 4. Init Echo & Routes (HTTP)
 	e := echo.New()
 	e.Use(middleware.Recover())
 	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
@@ -87,7 +85,49 @@ func main() {
 
 	router.RegisterRoutes(e, h, svc.Policy, repo, apiConfigs)
 
-	// 5. Start Server with Graceful Shutdown
+	// 5. Init NATS (Conditional)
+	var nc *nats.Conn
+	var authCallout *natshandler.AuthCalloutService
+	var natsHandler *natshandler.NATSHandler
+
+	if cfg.NATSEnabled {
+		logger.Info("NATS is enabled, connecting...", "url", cfg.NATSURL)
+
+		nc, err = nats.Connect(cfg.NATSURL,
+			nats.UserInfo(cfg.NATSAuthUser, cfg.NATSAuthPassword),
+			nats.MaxReconnects(-1),
+			nats.ReconnectWait(2*time.Second),
+			nats.DisconnectErrHandler(func(nc *nats.Conn, err error) {
+				if err != nil {
+					logger.Warn("NATS disconnected", "error", err)
+				}
+			}),
+			nats.ReconnectHandler(func(nc *nats.Conn) {
+				logger.Info("NATS reconnected", "url", nc.ConnectedUrl())
+			}),
+		)
+		if err != nil {
+			logger.Error("Failed to connect to NATS", "error", err)
+			os.Exit(1)
+		}
+		logger.Info("Connected to NATS", "url", nc.ConnectedUrl())
+
+		// Start Auth Callout Service
+		authCallout, err = natshandler.NewAuthCalloutService(cfg, svc, nc)
+		if err != nil {
+			logger.Error("Failed to start NATS Auth Callout", "error", err)
+			os.Exit(1)
+		}
+
+		// Register NATS Request-Reply Handlers
+		natsHandler = natshandler.NewNATSHandler(nc, svc, svc.Policy, repo)
+		if err := natsHandler.RegisterAll(); err != nil {
+			logger.Error("Failed to register NATS handlers", "error", err)
+			os.Exit(1)
+		}
+	}
+
+	// 6. Start HTTP Server with Graceful Shutdown
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,
 		Handler:      e,
@@ -96,7 +136,7 @@ func main() {
 	}
 
 	go func() {
-		logger.Info("Starting server", "port", cfg.Port)
+		logger.Info("Starting HTTP server", "port", cfg.Port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("shutting down the server", "error", err)
 			os.Exit(1)
@@ -113,6 +153,20 @@ func main() {
 
 	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+
+	// Shutdown NATS
+	if natsHandler != nil {
+		natsHandler.UnsubscribeAll()
+	}
+	if authCallout != nil {
+		if err := authCallout.Stop(); err != nil {
+			logger.Error("Failed to stop Auth Callout", "error", err)
+		}
+	}
+	if nc != nil {
+		nc.Close()
+		logger.Info("NATS connection closed")
+	}
 
 	// Shutdown Echo/Server
 	if err := srv.Shutdown(ctx); err != nil {
