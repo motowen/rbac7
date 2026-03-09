@@ -7,26 +7,28 @@ import (
 	"time"
 )
 
+type JWTConfig struct {
+	Issuer   string
+	Audience string
+	JWKSURL  string
+}
+
 type Config struct {
 	MongoURI                string
 	Port                    string
 	DBName                  string
 	UserRolesCollection     string
 	ResourceRolesCollection string
-	OrgUsersCollection      string // collection for org user data (imported periodically)
+	OrgUsersCollection      string
 	ReadTimeout             time.Duration
 	WriteTimeout            time.Duration
+	JWT                     JWTConfig
 }
 
 func LoadConfig() (*Config, error) {
 	mongoURI := os.Getenv("MONGO_URI")
 	if mongoURI == "" {
 		mongoURI = "mongodb://localhost:27017"
-		// In strict production, we might want to error if not set?
-		// but let's keep default for ease of local testing if acceptable.
-		// For Prod readiness, let's validate critical ones if explicitly requested?
-		// Current User Plan says "verify server fails if critical env vars are invalid"
-		// Let's enforce MONGO_URI if GO_ENV is production
 	}
 
 	port := os.Getenv("PORT")
@@ -46,6 +48,11 @@ func LoadConfig() (*Config, error) {
 		OrgUsersCollection:      getEnv("COLLECTION_ORG_USERS", "org_users"),
 		ReadTimeout:             readTimeout,
 		WriteTimeout:            writeTimeout,
+		JWT: JWTConfig{
+			Issuer:   getEnv("JWT_ISSUER", ""),
+			Audience: getEnv("JWT_AUDIENCE", ""),
+			JWKSURL:  getEnv("JWT_JWKS_URL", ""),
+		},
 	}
 
 	if err := cfg.Validate(); err != nil {
@@ -76,7 +83,6 @@ func getEnvDuration(key string, fallback time.Duration) time.Duration {
 	}
 	val, err := strconv.Atoi(valStr)
 	if err != nil {
-		// Try parsing as duration string? e.g. "10s"
 		d, err := time.ParseDuration(valStr)
 		if err == nil {
 			return d
