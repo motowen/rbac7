@@ -34,6 +34,10 @@ func NewServer(cfg config.NATSConfig, svc service.RBACService, verifier identity
 
 func (s *Server) HandleRequest(ctx context.Context, subject string, payload []byte) ([]byte, error) {
 	start := time.Now()
+	if subject == SubjectAuthCallout {
+		return s.handleAuthCallout(ctx, payload, start)
+	}
+
 	envelope, err := DecodeRequestEnvelope(payload)
 	if err != nil {
 		return s.encodeErrorResponse("", CodeBadRequest, "invalid request envelope", start), nil
@@ -68,6 +72,9 @@ func (s *Server) Register(conn *gonats.Conn) error {
 		},
 		SubjectRolesMe: func(msg *gonats.Msg) {
 			s.respond(msg, SubjectRolesMe)
+		},
+		SubjectAuthCallout: func(msg *gonats.Msg) {
+			s.respond(msg, SubjectAuthCallout)
 		},
 	}
 

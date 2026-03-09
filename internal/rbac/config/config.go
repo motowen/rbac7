@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -14,7 +15,8 @@ type JWTConfig struct {
 }
 
 type NATSConfig struct {
-	URL string
+	URL                       string
+	AppRequestSubjectPrefixes []string
 }
 
 type Config struct {
@@ -59,7 +61,8 @@ func LoadConfig() (*Config, error) {
 			JWKSURL:  getEnv("JWT_JWKS_URL", ""),
 		},
 		NATS: NATSConfig{
-			URL: getEnv("NATS_URL", ""),
+			URL:                       getEnv("NATS_URL", ""),
+			AppRequestSubjectPrefixes: getEnvCSV("NATS_APP_REQUEST_PREFIXES"),
 		},
 	}
 
@@ -82,6 +85,23 @@ func getEnv(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func getEnvCSV(key string) []string {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return nil
+	}
+
+	parts := strings.Split(value, ",")
+	values := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			values = append(values, trimmed)
+		}
+	}
+	return values
 }
 
 func getEnvDuration(key string, fallback time.Duration) time.Duration {
