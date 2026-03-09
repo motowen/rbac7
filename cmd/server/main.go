@@ -14,10 +14,12 @@ import (
 	"rbac7/internal/rbac/repository"
 	"rbac7/internal/rbac/router"
 	"rbac7/internal/rbac/service"
+	rbacnats "rbac7/internal/rbac/transport/nats"
 	"rbac7/internal/rbac/util"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	gonats "github.com/nats-io/nats.go"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -56,6 +58,25 @@ func main() {
 	keySource := identity.NewRemoteJWKSKeySource(cfg.JWT.JWKSURL, http.DefaultClient)
 	verifier := identity.NewJWTVerifier(cfg.JWT, keySource)
 	h := handler.NewSystemHandlerWithVerifier(svc, verifier)
+
+	var natsConn *gonats.Conn
+	if cfg.NATS.URL != "" {
+		natsConn, err = gonats.Connect(cfg.NATS.URL)
+		if err != nil {
+			logger.Error("Failed to connect to NATS", "error", err)
+			os.Exit(1)
+		}
+
+		natsServer, err := rbacnats.NewServer(cfg.NATS, svc, verifier)
+		if err != nil {
+			logger.Error("Failed to initialize NATS RBAC server", "error", err)
+			os.Exit(1)
+		}
+		if err := natsServer.Register(natsConn); err != nil {
+			logger.Error("Failed to register NATS RBAC handlers", "error", err)
+			os.Exit(1)
+		}
+	}
 
 	e := echo.New()
 	e.Use(middleware.Recover())
@@ -104,6 +125,11 @@ func main() {
 
 	if err := srv.Shutdown(ctx); err != nil {
 		logger.Error("Server Shutdown Failed", "error", err)
+	}
+
+	if natsConn != nil {
+		natsConn.Drain()
+		natsConn.Close()
 	}
 
 	if err := client.Disconnect(ctx); err != nil {

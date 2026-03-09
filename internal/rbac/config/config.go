@@ -13,6 +13,10 @@ type JWTConfig struct {
 	JWKSURL  string
 }
 
+type NATSConfig struct {
+	URL string
+}
+
 type Config struct {
 	MongoURI                string
 	Port                    string
@@ -23,6 +27,7 @@ type Config struct {
 	ReadTimeout             time.Duration
 	WriteTimeout            time.Duration
 	JWT                     JWTConfig
+	NATS                    NATSConfig
 }
 
 func LoadConfig() (*Config, error) {
@@ -52,6 +57,9 @@ func LoadConfig() (*Config, error) {
 			Issuer:   getEnv("JWT_ISSUER", ""),
 			Audience: getEnv("JWT_AUDIENCE", ""),
 			JWKSURL:  getEnv("JWT_JWKS_URL", ""),
+		},
+		NATS: NATSConfig{
+			URL: getEnv("NATS_URL", ""),
 		},
 	}
 
