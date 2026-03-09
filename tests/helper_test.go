@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"rbac7/internal/rbac/handler"
+	"rbac7/internal/rbac/identity"
 	"rbac7/internal/rbac/router"
 	"rbac7/internal/rbac/service"
 
@@ -26,6 +27,10 @@ func SetupServerWithMiddleware(mockRepo *MockRBACRepository) *echo.Echo {
 
 // SetupServerWithMiddlewareAndOrg creates a full Echo server with RBAC middleware and optional org user repo.
 func SetupServerWithMiddlewareAndOrg(mockRepo *MockRBACRepository, orgRepo *MockOrgUserRepository) *echo.Echo {
+	return SetupServerWithMiddlewareAndVerifier(mockRepo, orgRepo, nil)
+}
+
+func SetupServerWithMiddlewareAndVerifier(mockRepo *MockRBACRepository, orgRepo *MockOrgUserRepository, verifier identity.TokenVerifier) *echo.Echo {
 	e := echo.New()
 
 	var svc *service.Service
@@ -34,14 +39,18 @@ func SetupServerWithMiddlewareAndOrg(mockRepo *MockRBACRepository, orgRepo *Mock
 	} else {
 		svc = service.NewService(mockRepo, mockRepo)
 	}
-	h := handler.NewSystemHandler(svc)
 
-	// Create RBAC middleware
+	var h *handler.SystemHandler
+	if verifier != nil {
+		h = handler.NewSystemHandlerWithVerifier(svc, verifier)
+	} else {
+		h = handler.NewSystemHandler(svc)
+	}
+
 	policyLoader := svc.Policy.GetLoader()
 	apiConfigs := policyLoader.LoadAPIConfigs(svc.Policy.GetEntityPolicies())
 
-	// Register routes with middleware
-	router.RegisterRoutes(e, h, svc.Policy, mockRepo, apiConfigs)
+	router.RegisterRoutesWithVerifier(e, h, svc.Policy, mockRepo, apiConfigs, verifier)
 
 	return e
 }

@@ -14,6 +14,10 @@ import (
 	"rbac7/internal/rbac/config"
 )
 
+type TokenVerifier interface {
+	VerifyToken(ctx context.Context, token string) (CallerContext, error)
+}
+
 type PublicKeySource interface {
 	PublicKey(ctx context.Context, keyID string) (*rsa.PublicKey, error)
 }
