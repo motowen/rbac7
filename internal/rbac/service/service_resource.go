@@ -11,9 +11,12 @@ import (
 )
 
 func (s *Service) AssignResourceOwner(ctx context.Context, callerID string, req model.AssignResourceOwnerReq) error {
-	// Permission check handled by RBAC middleware (check_scope: none)
+	caller, err := s.callerContext(ctx, callerID)
+	if err != nil {
+		return err
+	}
 
-	// Check if owner already exists
+	actorID := caller.UserID
 	count, err := s.Repo.CountResourceOwners(ctx, req.ResourceID, req.ResourceType)
 	if err != nil {
 		return err
@@ -23,14 +26,14 @@ func (s *Service) AssignResourceOwner(ctx context.Context, callerID string, req 
 	}
 
 	newRole := &model.UserRole{
-		UserID:       callerID, // Caller becomes owner
+		UserID:       actorID,
 		Role:         model.RoleResourceOwner,
 		Scope:        model.ScopeResource,
 		ResourceID:   req.ResourceID,
 		ResourceType: req.ResourceType,
 		UserType:     model.UserTypeMember,
-		CreatedBy:    callerID,
-		UpdatedBy:    callerID,
+		CreatedBy:    actorID,
+		UpdatedBy:    actorID,
 	}
 
 	err = s.Repo.CreateUserRole(ctx, newRole)
@@ -41,41 +44,42 @@ func (s *Service) AssignResourceOwner(ctx context.Context, callerID string, req 
 		return err
 	}
 
-	log.Printf("Audit: Resource Owner Assigned. Caller=%s, Target=%s, Resource=%s:%s", callerID, callerID, req.ResourceType, req.ResourceID)
+	log.Printf("Audit: Resource Owner Assigned. Caller=%s, Target=%s, Resource=%s:%s", actorID, actorID, req.ResourceType, req.ResourceID)
 
-	// Record history
 	s.recordHistory(&model.UserRoleHistory{
 		Operation:    "assign_owner",
-		CallerID:     callerID,
+		CallerID:     actorID,
 		Scope:        model.ScopeResource,
 		ResourceID:   req.ResourceID,
 		ResourceType: req.ResourceType,
-		UserID:       callerID,
+		UserID:       actorID,
 	})
 
 	return nil
 }
 
 func (s *Service) TransferResourceOwner(ctx context.Context, callerID string, req model.TransferResourceOwnerReq) error {
-	if req.UserID == callerID {
-		return ErrBadRequest
-	}
-
-	// Permission check handled by RBAC middleware
-
-	oldOwnerID := callerID
-
-	err := s.Repo.TransferResourceOwner(ctx, req.ResourceID, req.ResourceType, oldOwnerID, req.UserID, callerID)
+	caller, err := s.callerContext(ctx, callerID)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("Audit: Resource Owner Transferred. Caller=%s, NewOwner=%s, OldOwner=%s, Resource=%s:%s", callerID, req.UserID, oldOwnerID, req.ResourceType, req.ResourceID)
+	actorID := caller.UserID
+	if req.UserID == actorID {
+		return ErrBadRequest
+	}
 
-	// Record history
+	oldOwnerID := actorID
+	err = s.Repo.TransferResourceOwner(ctx, req.ResourceID, req.ResourceType, oldOwnerID, req.UserID, actorID)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Audit: Resource Owner Transferred. Caller=%s, NewOwner=%s, OldOwner=%s, Resource=%s:%s", actorID, req.UserID, oldOwnerID, req.ResourceType, req.ResourceID)
+
 	s.recordHistory(&model.UserRoleHistory{
 		Operation:    "transfer_owner",
-		CallerID:     callerID,
+		CallerID:     actorID,
 		Scope:        model.ScopeResource,
 		ResourceID:   req.ResourceID,
 		ResourceType: req.ResourceType,
@@ -86,16 +90,19 @@ func (s *Service) TransferResourceOwner(ctx context.Context, callerID string, re
 }
 
 func (s *Service) AssignResourceUserRole(ctx context.Context, callerID string, req model.AssignResourceUserRoleReq) error {
+	caller, err := s.callerContext(ctx, callerID)
+	if err != nil {
+		return err
+	}
+
+	actorID := caller.UserID
 	if req.Role == model.RoleResourceOwner {
-		return ErrForbidden // Use Transfer or AssignOwner
+		return ErrForbidden
 	}
 	if req.Role != "admin" && req.Role != "editor" && req.Role != "viewer" {
 		return ErrBadRequest
 	}
 
-	// Permission check handled by RBAC middleware
-
-	// Check if target user is already owner
 	isOwner, err := s.Repo.HasResourceRole(ctx, req.UserID, req.ResourceID, req.ResourceType, model.RoleResourceOwner)
 	if err != nil {
 		return err
@@ -104,7 +111,6 @@ func (s *Service) AssignResourceUserRole(ctx context.Context, callerID string, r
 		return ErrForbidden
 	}
 
-	// For dashboard_widget: target user must have parent dashboard read permission
 	if req.ResourceType == model.ResourceTypeDashboardWidget {
 		viewerRoles := s.Policy.GetRolesWithPermission(model.PermResourceDashboardRead, false)
 		hasParentAccess, err := s.Repo.HasAnyResourceRole(ctx, req.UserID, req.ParentResourceID, model.ResourceTypeDashboard, viewerRoles)
@@ -112,7 +118,7 @@ func (s *Service) AssignResourceUserRole(ctx context.Context, callerID string, r
 			return err
 		}
 		if !hasParentAccess {
-			return ErrBadRequest // User must have parent dashboard read permission to be added to widget whitelist
+			return ErrBadRequest
 		}
 	}
 
@@ -125,8 +131,8 @@ func (s *Service) AssignResourceUserRole(ctx context.Context, callerID string, r
 		ResourceType:     req.ResourceType,
 		ParentResourceID: req.ParentResourceID,
 		UserType:         req.UserType,
-		CreatedBy:        callerID,
-		UpdatedBy:        callerID,
+		CreatedBy:        actorID,
+		UpdatedBy:        actorID,
 	}
 	if role.UserType == "" {
 		role.UserType = model.UserTypeMember
@@ -135,12 +141,11 @@ func (s *Service) AssignResourceUserRole(ctx context.Context, callerID string, r
 		return err
 	}
 
-	log.Printf("Audit: Resource User Role Assigned. Caller=%s, Target=%s, Role=%s, Resource=%s:%s", callerID, req.UserID, req.Role, req.ResourceType, req.ResourceID)
+	log.Printf("Audit: Resource User Role Assigned. Caller=%s, Target=%s, Role=%s, Resource=%s:%s", actorID, req.UserID, req.Role, req.ResourceType, req.ResourceID)
 
-	// Record history
 	s.recordHistory(&model.UserRoleHistory{
 		Operation:        "assign_user_role",
-		CallerID:         callerID,
+		CallerID:         actorID,
 		Scope:            model.ScopeResource,
 		ResourceID:       req.ResourceID,
 		ResourceType:     req.ResourceType,
@@ -154,13 +159,16 @@ func (s *Service) AssignResourceUserRole(ctx context.Context, callerID string, r
 }
 
 func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID string, req model.DeleteResourceUserRoleReq) error {
+	caller, err := s.callerContext(ctx, callerID)
+	if err != nil {
+		return err
+	}
+
+	actorID := caller.UserID
 	if req.UserID == "" || req.ResourceID == "" || req.ResourceType == "" {
 		return ErrBadRequest
 	}
 
-	// Permission check handled by RBAC middleware
-
-	// Cannot remove Owner
 	isOwner, err := s.Repo.HasResourceRole(ctx, req.UserID, req.ResourceID, req.ResourceType, model.RoleResourceOwner)
 	if err != nil {
 		return err
@@ -169,7 +177,7 @@ func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID string, r
 		return ErrForbidden
 	}
 
-	err = s.Repo.DeleteUserRole(ctx, req.Namespace, req.UserID, model.ScopeResource, req.ResourceID, req.ResourceType, req.ParentResourceID, callerID)
+	err = s.Repo.DeleteUserRole(ctx, req.Namespace, req.UserID, model.ScopeResource, req.ResourceID, req.ResourceType, req.ParentResourceID, actorID)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil
@@ -177,18 +185,15 @@ func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID string, r
 		return err
 	}
 
-	log.Printf("Audit: Resource User Role Deleted. Caller=%s, Target=%s, Resource=%s:%s", callerID, req.UserID, req.ResourceType, req.ResourceID)
+	log.Printf("Audit: Resource User Role Deleted. Caller=%s, Target=%s, Resource=%s:%s", actorID, req.UserID, req.ResourceType, req.ResourceID)
 
-	// For dashboard: cascade delete user's child widget whitelist roles
 	if req.ResourceType == model.ResourceTypeDashboard {
-		// Ignore errors - this is a best-effort cleanup
-		_ = s.Repo.DeleteUserRolesByParent(ctx, req.UserID, req.ResourceID, model.ResourceTypeDashboardWidget, callerID)
+		_ = s.Repo.DeleteUserRolesByParent(ctx, req.UserID, req.ResourceID, model.ResourceTypeDashboardWidget, actorID)
 	}
 
-	// Record history
 	s.recordHistory(&model.UserRoleHistory{
 		Operation:        "delete_user_role",
-		CallerID:         callerID,
+		CallerID:         actorID,
 		Scope:            model.ScopeResource,
 		ResourceID:       req.ResourceID,
 		ResourceType:     req.ResourceType,
@@ -202,9 +207,12 @@ func (s *Service) DeleteResourceUserRole(ctx context.Context, callerID string, r
 }
 
 func (s *Service) AssignResourceUserRoles(ctx context.Context, callerID string, req model.AssignResourceUserRolesReq) (*model.BatchUpsertResult, error) {
-	// Permission check handled by RBAC middleware
+	caller, err := s.callerContext(ctx, callerID)
+	if err != nil {
+		return nil, err
+	}
 
-	// For dashboard_widget: filter users who have parent dashboard read permission
+	actorID := caller.UserID
 	validUserIDs := req.UserIDs
 	var invalidUsers []model.FailedUserInfo
 	if req.ResourceType == model.ResourceTypeDashboardWidget {
@@ -224,7 +232,6 @@ func (s *Service) AssignResourceUserRoles(ctx context.Context, callerID string, 
 				})
 			}
 		}
-		// If no valid users, return early with failure result
 		if len(validUserIDs) == 0 {
 			return &model.BatchUpsertResult{
 				SuccessCount: 0,
@@ -234,7 +241,6 @@ func (s *Service) AssignResourceUserRoles(ctx context.Context, callerID string, 
 		}
 	}
 
-	// Build roles slice for bulk upsert
 	roles := make([]*model.UserRole, 0, len(validUserIDs))
 	userType := req.UserType
 	if userType == "" {
@@ -250,8 +256,8 @@ func (s *Service) AssignResourceUserRoles(ctx context.Context, callerID string, 
 			ResourceType:     req.ResourceType,
 			ParentResourceID: req.ParentResourceID,
 			UserType:         userType,
-			CreatedBy:        callerID,
-			UpdatedBy:        callerID,
+			CreatedBy:        actorID,
+			UpdatedBy:        actorID,
 		}
 		roles = append(roles, role)
 	}
@@ -261,19 +267,17 @@ func (s *Service) AssignResourceUserRoles(ctx context.Context, callerID string, 
 		return nil, err
 	}
 
-	// Merge invalid users (no parent permission) into result
 	if len(invalidUsers) > 0 {
 		result.FailedCount += len(invalidUsers)
 		result.FailedUsers = append(result.FailedUsers, invalidUsers...)
 	}
 
 	log.Printf("Audit: Resource User Roles Assigned (Batch). Caller=%s, Success=%d, Failed=%d, Role=%s, Resource=%s:%s",
-		callerID, result.SuccessCount, result.FailedCount, req.Role, req.ResourceType, req.ResourceID)
+		actorID, result.SuccessCount, result.FailedCount, req.Role, req.ResourceType, req.ResourceID)
 
-	// Record history
 	s.recordHistory(&model.UserRoleHistory{
 		Operation:        "assign_user_roles_batch",
-		CallerID:         callerID,
+		CallerID:         actorID,
 		Scope:            model.ScopeResource,
 		ResourceID:       req.ResourceID,
 		ResourceType:     req.ResourceType,
@@ -287,22 +291,23 @@ func (s *Service) AssignResourceUserRoles(ctx context.Context, callerID string, 
 	return result, nil
 }
 
-// SoftDeleteResource - Soft delete all user roles for a resource
-// This is used when deleting a resource entirely (dashboard, dashboard_widget, library_widget)
 func (s *Service) SoftDeleteResource(ctx context.Context, callerID string, req *model.SoftDeleteResourceReq) error {
-	// Permission check handled by RBAC middleware
+	caller, err := s.callerContext(ctx, callerID)
+	if err != nil {
+		return err
+	}
 
-	if err := s.Repo.SoftDeleteResourceUserRoles(ctx, req, callerID); err != nil {
+	actorID := caller.UserID
+	if err := s.Repo.SoftDeleteResourceUserRoles(ctx, req, actorID); err != nil {
 		return err
 	}
 
 	log.Printf("Audit: Resource Soft Deleted. Caller=%s, Resource=%s:%s, ChildResources=%d",
-		callerID, req.ResourceType, req.ResourceID, len(req.ChildResourceIDs))
+		actorID, req.ResourceType, req.ResourceID, len(req.ChildResourceIDs))
 
-	// Record history
 	s.recordHistory(&model.UserRoleHistory{
 		Operation:        "delete_resource",
-		CallerID:         callerID,
+		CallerID:         actorID,
 		Scope:            model.ScopeResource,
 		ResourceID:       req.ResourceID,
 		ResourceType:     req.ResourceType,
@@ -313,15 +318,15 @@ func (s *Service) SoftDeleteResource(ctx context.Context, callerID string, req *
 	return nil
 }
 
-// GetDashboardResource - Get dashboard user roles and accessible widget IDs
-// Permission check is handled by RBAC middleware (resource.dashboard.read)
-// For each widget, check if caller can access:
-// - Inheritance mode (0 roles): inherit from parent dashboard -> accessible
-// - Whitelist mode (>0 roles): strict check on widget -> accessible only if caller has role
 func (s *Service) GetDashboardResource(ctx context.Context, callerID string, req model.GetDashboardResourceReq) (*model.GetDashboardResourceResp, error) {
-	// Get dashboard user roles
+	caller, err := s.callerContext(ctx, callerID)
+	if err != nil {
+		return nil, err
+	}
+
+	actorID := caller.UserID
 	filter := model.UserRoleFilter{
-		UserID:       callerID,
+		UserID:       actorID,
 		ResourceID:   req.ResourceID,
 		ResourceType: req.ResourceType,
 		Scope:        model.ScopeResource,
@@ -331,7 +336,6 @@ func (s *Service) GetDashboardResource(ctx context.Context, callerID string, req
 		return nil, err
 	}
 
-	// Convert to DTO
 	roleDTOs := make([]*model.UserRoleDTO, 0, len(userRoles))
 	for _, role := range userRoles {
 		roleDTOs = append(roleDTOs, &model.UserRoleDTO{
@@ -341,23 +345,19 @@ func (s *Service) GetDashboardResource(ctx context.Context, callerID string, req
 		})
 	}
 
-	// Determine accessible widget IDs
 	accessibleWidgetIDs := make([]string, 0)
 	viewerRoles := s.Policy.GetRolesWithPermission(model.PermResourceDashboardWidgetRead, false)
 
 	for _, widgetID := range req.ChildResourceIDs {
-		// Check if widget is in whitelist mode (has roles assigned)
 		roleCount, err := s.Repo.CountResourceRoles(ctx, widgetID, "dashboard_widget")
 		if err != nil {
 			return nil, err
 		}
 
 		if roleCount == 0 {
-			// Inheritance mode: inherit from parent dashboard -> accessible
 			accessibleWidgetIDs = append(accessibleWidgetIDs, widgetID)
 		} else {
-			// Whitelist mode: strict check on widget
-			hasRole, err := s.Repo.HasAnyResourceRole(ctx, callerID, widgetID, "dashboard_widget", viewerRoles)
+			hasRole, err := s.Repo.HasAnyResourceRole(ctx, actorID, widgetID, "dashboard_widget", viewerRoles)
 			if err != nil {
 				return nil, err
 			}

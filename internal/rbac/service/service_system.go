@@ -11,19 +11,23 @@ import (
 )
 
 func (s *Service) AssignSystemOwner(ctx context.Context, callerID string, req model.AssignSystemOwnerReq) error {
-	// Permission check handled by RBAC middleware
+	caller, err := s.callerContext(ctx, callerID)
+	if err != nil {
+		return err
+	}
 
+	actorID := caller.UserID
 	newRole := &model.UserRole{
 		UserID:    req.UserID,
 		Role:      model.RoleSystemOwner,
 		Scope:     model.ScopeSystem,
 		Namespace: req.Namespace,
 		UserType:  model.UserTypeMember,
-		CreatedBy: callerID,
-		UpdatedBy: callerID,
+		CreatedBy: actorID,
+		UpdatedBy: actorID,
 	}
 
-	err := s.Repo.CreateUserRole(ctx, newRole)
+	err = s.Repo.CreateUserRole(ctx, newRole)
 	if err != nil {
 		if errors.Is(err, repository.ErrDuplicate) {
 			return ErrConflict
@@ -31,12 +35,11 @@ func (s *Service) AssignSystemOwner(ctx context.Context, callerID string, req mo
 		return err
 	}
 
-	log.Printf("Audit: System Owner Assigned. Caller=%s, Target=%s, Namespace=%s", callerID, req.UserID, req.Namespace)
+	log.Printf("Audit: System Owner Assigned. Caller=%s, Target=%s, Namespace=%s", actorID, req.UserID, req.Namespace)
 
-	// Record history
 	s.recordHistory(&model.UserRoleHistory{
 		Operation: "assign_owner",
-		CallerID:  callerID,
+		CallerID:  actorID,
 		Scope:     model.ScopeSystem,
 		Namespace: req.Namespace,
 		UserID:    req.UserID,
@@ -46,14 +49,16 @@ func (s *Service) AssignSystemOwner(ctx context.Context, callerID string, req mo
 }
 
 func (s *Service) TransferSystemOwner(ctx context.Context, callerID string, req model.TransferSystemOwnerReq) error {
-	// Cannot transfer to self
-	if req.UserID == callerID {
+	caller, err := s.callerContext(ctx, callerID)
+	if err != nil {
+		return err
+	}
+
+	actorID := caller.UserID
+	if req.UserID == actorID {
 		return ErrBadRequest
 	}
 
-	// Permission check handled by RBAC middleware
-
-	// Validate ownership specifics
 	currentOwner, err := s.Repo.GetSystemOwner(ctx, req.Namespace)
 	if err != nil {
 		return err
@@ -62,18 +67,16 @@ func (s *Service) TransferSystemOwner(ctx context.Context, callerID string, req 
 		return errors.New("system not found or has no owner")
 	}
 
-	// Perform Transfer (Transaction)
-	err = s.Repo.TransferSystemOwner(ctx, req.Namespace, callerID, req.UserID, callerID)
+	err = s.Repo.TransferSystemOwner(ctx, req.Namespace, actorID, req.UserID, actorID)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("Audit: System Owner Transferred. Caller=%s, NewOwner=%s, OldOwner=%s, Namespace=%s", callerID, req.UserID, callerID, req.Namespace)
+	log.Printf("Audit: System Owner Transferred. Caller=%s, NewOwner=%s, OldOwner=%s, Namespace=%s", actorID, req.UserID, actorID, req.Namespace)
 
-	// Record history
 	s.recordHistory(&model.UserRoleHistory{
 		Operation:  "transfer_owner",
-		CallerID:   callerID,
+		CallerID:   actorID,
 		Scope:      model.ScopeSystem,
 		Namespace:  req.Namespace,
 		NewOwnerID: req.UserID,
@@ -83,15 +86,18 @@ func (s *Service) TransferSystemOwner(ctx context.Context, callerID string, req 
 }
 
 func (s *Service) AssignSystemUserRole(ctx context.Context, callerID string, req model.AssignSystemUserRoleReq) error {
+	caller, err := s.callerContext(ctx, callerID)
+	if err != nil {
+		return err
+	}
+
+	actorID := caller.UserID
 	if req.Role == model.RoleSystemOwner {
 		return ErrForbidden
 	}
-	// Check if role being assigned is valid
 	if req.Role != "admin" && req.Role != "viewer" && req.Role != "dev_user" && req.Role != "moderator" {
 		return ErrBadRequest
 	}
-
-	// Permission check handled by RBAC middleware
 
 	currentOwner, err := s.Repo.GetSystemOwner(ctx, req.Namespace)
 	if err != nil {
@@ -113,8 +119,8 @@ func (s *Service) AssignSystemUserRole(ctx context.Context, callerID string, req
 		Scope:     model.ScopeSystem,
 		Namespace: req.Namespace,
 		UserType:  req.UserType,
-		CreatedBy: callerID,
-		UpdatedBy: callerID,
+		CreatedBy: actorID,
+		UpdatedBy: actorID,
 	}
 	if role.UserType == "" {
 		role.UserType = model.UserTypeMember
@@ -123,12 +129,11 @@ func (s *Service) AssignSystemUserRole(ctx context.Context, callerID string, req
 		return err
 	}
 
-	log.Printf("Audit: System User Role Assigned. Caller=%s, Target=%s, Role=%s, Namespace=%s", callerID, req.UserID, req.Role, req.Namespace)
+	log.Printf("Audit: System User Role Assigned. Caller=%s, Target=%s, Role=%s, Namespace=%s", actorID, req.UserID, req.Role, req.Namespace)
 
-	// Record history
 	s.recordHistory(&model.UserRoleHistory{
 		Operation: "assign_user_role",
-		CallerID:  callerID,
+		CallerID:  actorID,
 		Scope:     model.ScopeSystem,
 		Namespace: req.Namespace,
 		UserID:    req.UserID,
@@ -140,9 +145,12 @@ func (s *Service) AssignSystemUserRole(ctx context.Context, callerID string, req
 }
 
 func (s *Service) AssignSystemUserRoles(ctx context.Context, callerID string, req model.AssignSystemUserRolesReq) (*model.BatchUpsertResult, error) {
-	// Permission check handled by RBAC middleware
+	caller, err := s.callerContext(ctx, callerID)
+	if err != nil {
+		return nil, err
+	}
 
-	// Build roles slice for bulk upsert
+	actorID := caller.UserID
 	var roles []*model.UserRole
 	for _, userID := range req.UserIDs {
 		userType := req.UserType
@@ -155,8 +163,8 @@ func (s *Service) AssignSystemUserRoles(ctx context.Context, callerID string, re
 			Scope:     model.ScopeSystem,
 			Namespace: req.Namespace,
 			UserType:  userType,
-			CreatedBy: callerID,
-			UpdatedBy: callerID,
+			CreatedBy: actorID,
+			UpdatedBy: actorID,
 		}
 		roles = append(roles, role)
 	}
@@ -167,12 +175,11 @@ func (s *Service) AssignSystemUserRoles(ctx context.Context, callerID string, re
 	}
 
 	log.Printf("Audit: System User Roles Assigned (Batch). Caller=%s, Success=%d, Failed=%d, Role=%s, Namespace=%s",
-		callerID, result.SuccessCount, result.FailedCount, req.Role, req.Namespace)
+		actorID, result.SuccessCount, result.FailedCount, req.Role, req.Namespace)
 
-	// Record history
 	s.recordHistory(&model.UserRoleHistory{
 		Operation: "assign_user_roles_batch",
-		CallerID:  callerID,
+		CallerID:  actorID,
 		Scope:     model.ScopeSystem,
 		Namespace: req.Namespace,
 		UserIDs:   req.UserIDs,
@@ -184,8 +191,12 @@ func (s *Service) AssignSystemUserRoles(ctx context.Context, callerID string, re
 }
 
 func (s *Service) DeleteSystemUserRole(ctx context.Context, callerID string, req model.DeleteSystemUserRoleReq) error {
-	// Permission check handled by RBAC middleware
+	caller, err := s.callerContext(ctx, callerID)
+	if err != nil {
+		return err
+	}
 
+	actorID := caller.UserID
 	currentOwner, err := s.Repo.GetSystemOwner(ctx, req.Namespace)
 	if err != nil {
 		return err
@@ -200,7 +211,7 @@ func (s *Service) DeleteSystemUserRole(ctx context.Context, callerID string, req
 		}
 	}
 
-	err = s.Repo.DeleteUserRole(ctx, req.Namespace, req.UserID, model.ScopeSystem, "", "", "", callerID)
+	err = s.Repo.DeleteUserRole(ctx, req.Namespace, req.UserID, model.ScopeSystem, "", "", "", actorID)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil
@@ -208,12 +219,11 @@ func (s *Service) DeleteSystemUserRole(ctx context.Context, callerID string, req
 		return err
 	}
 
-	log.Printf("Audit: System User Role Deleted. Caller=%s, Target=%s, Namespace=%s", callerID, req.UserID, req.Namespace)
+	log.Printf("Audit: System User Role Deleted. Caller=%s, Target=%s, Namespace=%s", actorID, req.UserID, req.Namespace)
 
-	// Record history
 	s.recordHistory(&model.UserRoleHistory{
 		Operation: "delete_user_role",
-		CallerID:  callerID,
+		CallerID:  actorID,
 		Scope:     model.ScopeSystem,
 		Namespace: req.Namespace,
 		UserID:    req.UserID,
