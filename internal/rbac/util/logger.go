@@ -22,3 +22,7 @@ func GetLogger() *slog.Logger {
 	}
 	return Logger
 }
+
+func LogRBACDecision(event string, attrs ...any) {
+	GetLogger().Info(event, attrs...)
+}
