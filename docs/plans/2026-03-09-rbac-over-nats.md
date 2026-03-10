@@ -94,10 +94,14 @@ git commit -m "feat: add shared jwt verifier"
 ### Task 3: Refactor HTTP Adapters To Use Shared Identity
 
 **Files:**
+- Create: `internal/rbac/identity/jwks_source.go`
 - Modify: `internal/rbac/handler/handler_common.go`
 - Modify: `internal/rbac/handler/handler_system.go`
 - Modify: `internal/rbac/handler/handler_resource.go`
 - Modify: `internal/rbac/handler/rbac_middleware.go`
+- Modify: `internal/rbac/router/router.go`
+- Modify: `cmd/server/main.go`
+- Modify: `tests/helper_test.go`
 - Test: `tests/http_identity_adapter_test.go`
 
 **Step 1: Write the failing test**
@@ -107,6 +111,7 @@ Add tests proving HTTP handlers and middleware can:
 - read a bearer token
 - build a `CallerContext`
 - invoke the RBAC core without reading `x-user-id`
+- accept verifier injection in test setup so handlers and middleware share the same identity path
 
 **Step 2: Run test to verify it fails**
 
@@ -117,6 +122,9 @@ Expected: FAIL because handlers still require `x-user-id`.
 **Step 3: Write minimal implementation**
 
 - Replace direct `x-user-id` extraction with shared JWT verification.
+- Add a production key source that can resolve signing keys from JWKS or an equivalent configured source.
+- Thread the verifier through handler and middleware constructors so runtime code and tests use the same entry point.
+- Update HTTP CORS and request parsing to accept `Authorization: Bearer <token>`.
 - Keep request validation and error mapping behavior equivalent to current handlers.
 - Preserve backward compatibility only if needed for migration; otherwise remove the header dependency.
 
@@ -129,7 +137,7 @@ Expected: PASS
 **Step 5: Commit**
 
 ```bash
-git add internal/rbac/handler/handler_common.go internal/rbac/handler/handler_system.go internal/rbac/handler/handler_resource.go internal/rbac/handler/rbac_middleware.go tests/http_identity_adapter_test.go
+git add internal/rbac/identity/jwks_source.go internal/rbac/handler/handler_common.go internal/rbac/handler/handler_system.go internal/rbac/handler/handler_resource.go internal/rbac/handler/rbac_middleware.go internal/rbac/router/router.go cmd/server/main.go tests/helper_test.go tests/http_identity_adapter_test.go
 git commit -m "refactor: route http identity through jwt verifier"
 ```
 
@@ -180,7 +188,10 @@ git commit -m "feat: define nats rbac contracts"
 **Files:**
 - Create: `internal/rbac/transport/nats/server.go`
 - Create: `internal/rbac/transport/nats/handlers.go`
+- Modify: `internal/rbac/config/config.go`
 - Modify: `cmd/server/main.go`
+- Modify: `go.mod`
+- Modify: `go.sum`
 - Test: `tests/nats_permission_handlers_test.go`
 
 **Step 1: Write the failing test**
@@ -191,6 +202,7 @@ Add tests covering:
 - `rbac.check` rejects invalid request bodies
 - `rbac.check.batch` returns a result map
 - `rbac.roles.me` returns only the caller's roles
+- server construction can accept NATS runtime config and a verifier without relying on HTTP setup
 
 **Step 2: Run test to verify it fails**
 
@@ -200,6 +212,8 @@ Expected: FAIL because there is no NATS transport implementation.
 
 **Step 3: Write minimal implementation**
 
+- Add NATS runtime config for server URL and any handler setup needed by `cmd/server/main.go`.
+- Add the NATS Go client dependency to the module.
 - Create a NATS transport server that subscribes to the three public RBAC subjects.
 - Verify the JWT from the request envelope, construct `CallerContext`, and dispatch into the RBAC core.
 - Return consistent response envelopes and request ids.
@@ -213,7 +227,7 @@ Expected: PASS
 **Step 5: Commit**
 
 ```bash
-git add internal/rbac/transport/nats/server.go internal/rbac/transport/nats/handlers.go cmd/server/main.go tests/nats_permission_handlers_test.go
+git add internal/rbac/transport/nats/server.go internal/rbac/transport/nats/handlers.go internal/rbac/config/config.go cmd/server/main.go go.mod go.sum tests/nats_permission_handlers_test.go
 git commit -m "feat: add nats rbac request handlers"
 ```
 
@@ -222,6 +236,7 @@ git commit -m "feat: add nats rbac request handlers"
 **Files:**
 - Create: `internal/rbac/transport/nats/auth_callout.go`
 - Create: `internal/rbac/transport/nats/grants.go`
+- Modify: `internal/rbac/config/config.go`
 - Modify: `internal/rbac/transport/nats/server.go`
 - Test: `tests/nats_auth_callout_test.go`
 
@@ -233,6 +248,7 @@ Add tests covering:
 - expired JWT is denied
 - malformed claims are denied
 - auth callout never returns resource-specific subject grants
+- coarse-grained grants can include only configured application request prefixes
 
 **Step 2: Run test to verify it fails**
 
@@ -243,6 +259,7 @@ Expected: FAIL because there is no auth callout implementation.
 **Step 3: Write minimal implementation**
 
 - Add auth callout request and response handling.
+- Extend config with the approved application request prefix or prefixes used for coarse grants.
 - Reuse the shared verifier and caller mapper.
 - Return only coarse-grained subject grants for `_INBOX.>`, `rbac.check`, `rbac.check.batch`, `rbac.roles.me`, and any approved application request prefix.
 
@@ -255,7 +272,7 @@ Expected: PASS
 **Step 5: Commit**
 
 ```bash
-git add internal/rbac/transport/nats/auth_callout.go internal/rbac/transport/nats/grants.go internal/rbac/transport/nats/server.go tests/nats_auth_callout_test.go
+git add internal/rbac/transport/nats/auth_callout.go internal/rbac/transport/nats/grants.go internal/rbac/config/config.go internal/rbac/transport/nats/server.go tests/nats_auth_callout_test.go
 git commit -m "feat: add nats auth callout"
 ```
 
@@ -336,3 +353,5 @@ Expected: PASS
 git add docs/rbac_system_spec.md docs/rbac.yaml README.md tests
 git commit -m "docs: describe rbac over nats"
 ```
+
+
