@@ -1,0 +1,517 @@
+openapi: 3.0.3
+info:
+  title: ABAC+OPA Service API
+  version: 1.0.0
+  description: >
+    Attribute-Based Access Control service API documentation.
+    Provides endpoints for dynamic policy rule checking, subject management, and policy management.
+servers:
+  - url: http://localhost:8081/api/v1
+    description: Local development server
+
+components:
+  securitySchemes:
+    UserIdHeader:
+      type: apiKey
+      in: header
+      name: x-user-id
+      description: User ID of the caller (required for auditing and authentication)
+
+  schemas:
+    CheckAccessReq:
+      type: object
+      required:
+        - action
+        - resource
+      properties:
+        subject_id:
+          type: string
+          description: Subject to check (defaults to caller ID if not provided)
+        action:
+          type: string
+        resource:
+          $ref: '#/components/schemas/ResourceAttrs'
+          
+    BatchCheckAccessReq:
+      type: object
+      required:
+        - action
+        - resources
+      properties:
+        subject_id:
+          type: string
+        action:
+          type: string
+        resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourceAttrs'
+
+    ResourceAttrs:
+      type: object
+      required:
+        - resource_id
+        - resource_type
+      properties:
+        resource_id:
+          type: string
+        resource_type:
+          type: string
+        resource_parent_id:
+          type: string
+        owner_id:
+          type: string
+        sensitivity_level:
+          type: string
+        status:
+          type: string
+        allowed_group_ids:
+          type: array
+          items:
+            type: string
+        denied_group_ids:
+          type: array
+          items:
+            type: string
+        resource_group_ids:
+          type: array
+          items:
+            type: string
+        custom_attrs:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomAttr'
+
+    Subject:
+      type: object
+      properties:
+        user_id:
+          type: string
+        role:
+          type: string
+        status:
+          type: string
+        sensitivity_level:
+          type: string
+        orgs:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrgMembership'
+        group_ids:
+          type: array
+          items:
+            type: string
+        custom_attrs:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomAttr'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CustomAttr:
+      type: object
+      properties:
+        key:
+          type: string
+        value: {}
+
+    OrgMembership:
+      type: object
+      properties:
+        org_id:
+          type: string
+        org_type:
+          type: string
+
+    PolicyRule:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        resource_type:
+          type: string
+        action:
+          type: string
+        effect:
+          type: string
+          enum: [allow, deny]
+        priority:
+          type: integer
+        enabled:
+          type: boolean
+        conditions:
+          $ref: '#/components/schemas/ConditionSet'
+
+    ConditionSet:
+      type: object
+      properties:
+        subject:
+          type: array
+          items:
+            $ref: '#/components/schemas/Condition'
+        resource:
+          type: array
+          items:
+            $ref: '#/components/schemas/Condition'
+
+    Condition:
+      type: object
+      properties:
+        field:
+          type: string
+        operator:
+          type: string
+          enum: [eq, neq, in, not_in, gt, gte, lt, lte, contains]
+        value: {}
+
+    AttributeDefinition:
+      type: object
+      properties:
+        key:
+          type: string
+        scope:
+          type: string
+          enum: [subject, resource]
+        resource_type:
+          type: string
+        type:
+          type: string
+          enum: [string, number, enum, bool]
+        managed_by:
+          type: string
+        operators:
+          type: array
+          items:
+            type: string
+        allowed_values:
+          type: array
+          items:
+            type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+
+security:
+  - UserIdHeader: []
+
+paths:
+  /access/check:
+    post:
+      summary: Check if a subject has access to a resource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckAccessReq'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  allowed:
+                    type: boolean
+                  reason:
+                    type: string
+
+  /access/check/batch:
+    post:
+      summary: Check access for multiple resources in batch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchCheckAccessReq'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        allowed:
+                          type: boolean
+                        reason:
+                          type: string
+
+  /subjects:
+    post:
+      summary: Create a newly managed subject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Subject'
+      responses:
+        '201':
+          description: Created
+
+  /subjects/{user_id}:
+    get:
+      summary: Get subject attributes
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subject'
+    put:
+      summary: Update subject
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Subject'
+      responses:
+        '200':
+          description: OK
+    delete:
+      summary: Soft-delete subject
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+
+  /subjects/{user_id}/groups:
+    post:
+      summary: Add subject to a functional group
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                group_id:
+                  type: string
+      responses:
+        '200':
+          description: OK
+
+  /subjects/{user_id}/groups/{group_id}:
+    delete:
+      summary: Remove subject from a functional group
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: group_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+
+  /subjects/{user_id}/orgs:
+    put:
+      summary: Upsert an organization affiliation for a subject
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                org:
+                  $ref: '#/components/schemas/OrgMembership'
+      responses:
+        '200':
+          description: OK
+
+  /subjects/{user_id}/orgs/{org_id}:
+    delete:
+      summary: Remove an organization affiliation
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: org_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+
+  /policies:
+    post:
+      summary: Create a new policy rule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyRule'
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyRule'
+    get:
+      summary: List policy rules
+      parameters:
+        - name: resource_type
+          in: query
+          schema:
+            type: string
+        - name: action
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PolicyRule'
+
+  /policies/{rule_id}:
+    put:
+      summary: Update a policy rule
+      parameters:
+        - name: rule_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyRule'
+      responses:
+        '200':
+          description: OK
+    delete:
+      summary: Delete a policy rule
+      parameters:
+        - name: rule_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+
+  /attributes:
+    post:
+      summary: Create an attribute definition
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttributeDefinition'
+      responses:
+        '201':
+          description: Created
+    get:
+      summary: List attribute definitions
+      parameters:
+        - name: scope
+          in: query
+          schema:
+            type: string
+            enum: [subject, resource]
+        - name: resource_type
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AttributeDefinition'
+
+  /attributes/{key}:
+    delete:
+      summary: Delete an attribute definition
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: scope
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [subject, resource]
+      responses:
+        '200':
+          description: OK
