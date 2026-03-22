@@ -15,6 +15,12 @@ import (
 	"rbac7/internal/rbac/service"
 	"rbac7/internal/rbac/util"
 
+	abacconfig "rbac7/internal/abac/config"
+	abachandler "rbac7/internal/abac/handler"
+	abacrepo "rbac7/internal/abac/repository"
+	abacrouter "rbac7/internal/abac/router"
+	abacservice "rbac7/internal/abac/service"
+
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -30,10 +36,17 @@ func main() {
 	util.InitLogger()
 	logger := util.GetLogger()
 
-	// 1. Load Config
+	// 1. Load Config (RBAC)
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		logger.Error("Failed to load config", "error", err)
+		os.Exit(1)
+	}
+
+	// 1.1 Load Config (ABAC)
+	abacCfg, err := abacconfig.LoadConfig()
+	if err != nil {
+		logger.Error("Failed to load ABAC config", "error", err)
 		os.Exit(1)
 	}
 
@@ -47,7 +60,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// 3. Init Layers
+	// 3. Init Layers (RBAC)
 	db := client.Database(cfg.DBName)
 	repo := repository.NewMongoRepository(db, cfg.UserRolesCollection, cfg.ResourceRolesCollection)
 	orgUserRepo := repository.NewMongoOrgUserRepository(db, cfg.OrgUsersCollection)
@@ -63,6 +76,26 @@ func main() {
 
 	svc := service.NewServiceWithOrg(repo, repo, orgUserRepo) // repo implements both RBACRepository and HistoryRepository
 	h := handler.NewSystemHandler(svc)
+
+	// 3.1 Init Layers (ABAC)
+	abacDB := client.Database(abacCfg.DBName)
+	abacSubjectRepo := abacrepo.NewMongoABACRepository(abacDB, abacCfg.SubjectsCollection)
+	abacPolicyRepo := abacrepo.NewMongoPolicyRepository(abacDB, abacCfg.PolicyRulesCollection, abacCfg.AttributeDefsCollection)
+
+	// Ensure ABAC Indexes
+	if err := abacSubjectRepo.EnsureIndexes(context.Background()); err != nil {
+		logger.Warn("Failed to ensure ABAC subject indexes", "error", err)
+	}
+	if err := abacPolicyRepo.EnsureIndexes(context.Background()); err != nil {
+		logger.Warn("Failed to ensure ABAC policy indexes", "error", err)
+	}
+
+	abacSvc, err := abacservice.NewService(abacSubjectRepo, abacPolicyRepo)
+	if err != nil {
+		logger.Error("Failed to init ABAC service", "error", err)
+		os.Exit(1)
+	}
+	abacH := abachandler.NewHandler(abacSvc)
 
 	// 4. Init Echo & Routes
 	e := echo.New()
@@ -86,6 +119,7 @@ func main() {
 	apiConfigs := policyLoader.LoadAPIConfigs(svc.Policy.GetEntityPolicies())
 
 	router.RegisterRoutes(e, h, svc.Policy, repo, apiConfigs)
+	abacrouter.RegisterRoutes(e, abacH)
 
 	// 5. Start Server with Graceful Shutdown
 	srv := &http.Server{
