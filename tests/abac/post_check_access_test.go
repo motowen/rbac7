@@ -67,6 +67,8 @@ func TestPostCheckAccess(t *testing.T) {
 			GroupIDs: []string{"group_blocked"},
 		}, nil)
 
+		mockPolicyRepo.On("FindPolicyRules", mock.Anything, "docs", "read").Return([]*model.PolicyRule{}, nil)
+
 		payload := map[string]interface{}{
 			"subject_id": "user_1",
 			"action":     "read",
@@ -93,6 +95,8 @@ func TestPostCheckAccess(t *testing.T) {
 			Status:   "active",
 			GroupIDs: []string{"group_x"},
 		}, nil)
+
+		mockPolicyRepo.On("FindPolicyRules", mock.Anything, "docs", "read").Return([]*model.PolicyRule{}, nil)
 
 		payload := map[string]interface{}{
 			"subject_id": "user_1",

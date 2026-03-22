@@ -29,7 +29,7 @@ func NewEngine(policyRepo repository.PolicyRepository) (*Engine, error) {
 	}
 
 	query, err := rego.New(
-		rego.Query("data.abac.allow; data.abac.reason"),
+		rego.Query("data.abac"),
 		rego.Module("abac.rego", string(policyBytes)),
 	).PrepareForEval(context.Background())
 	if err != nil {
@@ -204,16 +204,14 @@ func parseOPAResult(results rego.ResultSet) (*model.CheckAccessResponse, error) 
 	allowed := false
 	reason := "no matching policy rules"
 
-	// results[0].Expressions[0] = data.abac.allow
-	// results[0].Expressions[1] = data.abac.reason
-	if len(results[0].Expressions) >= 1 {
-		if v, ok := results[0].Expressions[0].Value.(bool); ok {
-			allowed = v
-		}
-	}
-	if len(results[0].Expressions) >= 2 {
-		if v, ok := results[0].Expressions[1].Value.(string); ok {
-			reason = v
+	if len(results[0].Expressions) > 0 {
+		if pkg, ok := results[0].Expressions[0].Value.(map[string]interface{}); ok {
+			if v, ok := pkg["allow"].(bool); ok {
+				allowed = v
+			}
+			if v, ok := pkg["reason"].(string); ok {
+				reason = v
+			}
 		}
 	}
 

@@ -10,7 +10,7 @@ default group_denied := false
 
 # Default: no group allow restriction
 default group_allow_required := false
-default group_allow_passed := true
+default group_allow_passed := false
 
 # =====================
 # Step 1: Group Deny List
@@ -46,7 +46,7 @@ group_allow_passed if {
 # =====================
 
 # Collect all matching rules with their priority and effect
-matching_rules[rule] if {
+matching_rules contains rule if {
     some r in input.rules
     r.enabled == true
     r.resource_type == input.resource.resource_type
@@ -63,7 +63,7 @@ matching_rules[rule] if {
 max_priority := max({r.priority | some r in matching_rules})
 
 # Rules at the highest matched priority level
-top_rules[r] if {
+top_rules contains r if {
     some r in matching_rules
     r.priority == max_priority
 }
@@ -93,6 +93,8 @@ allow if {
 # =====================
 # Reason output
 # =====================
+default reason := "no matching policy rules"
+
 reason := "subject is in denied group" if {
     group_denied
 }
@@ -102,27 +104,27 @@ reason := "subject is not in any allowed group" if {
     not group_allow_passed
 }
 
-reason := concat("", ["denied by rule: ", r.name]) if {
-    not group_denied
-    group_allow_passed
-    top_deny
+deny_rule_names contains r.name if {
     some r in top_rules
     r.effect == "deny"
 }
 
-reason := concat("", ["allowed by rule: ", r.name]) if {
-    not group_denied
-    group_allow_passed
-    not top_deny
-    top_allow
+allow_rule_names contains r.name if {
     some r in top_rules
     r.effect == "allow"
 }
 
-reason := "no matching policy rules" if {
+reason := sprintf("denied by rule: %s", [concat(", ", sort(deny_rule_names))]) if {
     not group_denied
     group_allow_passed
-    count(matching_rules) == 0
+    top_deny
+}
+
+reason := sprintf("allowed by rule: %s", [concat(", ", sort(allow_rule_names))]) if {
+    not group_denied
+    group_allow_passed
+    not top_deny
+    top_allow
 }
 
 # =====================

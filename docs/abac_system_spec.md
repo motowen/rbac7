@@ -42,34 +42,30 @@ ABAC+OPA (Attribute-Based Access Control + Open Policy Agent 概念) 服務是�
 可選的 Schema 定義，幫助前端或管理系統了解有哪些可用屬性。
 - 定義 `Key`, `Scope` (subject/resource), `Type` (string/number/enum/bool), `Operators` 與 `AllowedValues` (針對 enum)。
 
-## 3. 權限決策引擎邏輯 (Policy Engine Logic)
+## 3. 權限決策引擎邏輯 (Policy Engine Logic - OPA Rego)
 
-當呼叫 `CheckAccess` API 時，`Engine` 遵循以下嚴格的決策流程：
+當呼叫 `CheckAccess` API 時，`Engine` 會準備 OPA `input` (包含 Subject, Resource, Action 以及從資料庫載入的相關 Policy Rules)，並透過嵌入式 OPA Go SDK 執行 `abac.rego` 策略檔案。決策流程完全由 Rego 腳本控制，依循以下步驟：
 
 **1. 群組黑名單檢查 (Deny List Check)**
-   - 若 `resource.denied_group_ids` 不為空。
-   - 檢查 Subject 的 `group_ids` 是否與之有交集。
-   - **若有交集：立即返回 Deny** (最高優先級)。
+   - 若 Subject 的 `group_ids` 與 Resource 的 `denied_group_ids` 存在交集。
+   - **立即返回 Deny** (`allow = false`, 原因: subject is in denied group)。
 
 **2. 群組白名單檢查 (Allow List Check)**
-   - 若 `resource.allowed_group_ids` 不為空。
-   - 檢查 Subject 的 `group_ids` 是否與之有交集。
-   - **若無交集 (或主體無群組)：立即返回 Deny**。
+   - 若 Resource 首度宣告了 `allowed_group_ids`，Subject 的 `group_ids` 必須與之有交集。
+   - **若無交集：立即返回 Deny** (`allow = false`, 原因: subject is not in any allowed group)。
 
-**3. 載入策略規則 (Load Policy Rules)**
-   - 根據 `resource_type` 與 `action` 從資料庫載入所有啟用的 (Enabled) 策略規則。
-   - 這些規則已根據 `priority` 由高至低排序。
+**3. 策略規則比對 (Policy Rule Evaluation)**
+   - Rego 將遍歷 `input.rules` 中的所有規則，篩選出符合資源類型、操作類型且條件 (Conditions) 全數吻合的啟用規則。
+   - 包含的條件比對器涵蓋了 Subject 與 Resource 的各項屬性 (如自定義欄位 `custom.team`, `status`, `role` 等)，支援 `eq`, `neq`, `in`, `not_in` 等多種比對符號。
 
-**4. 評估策略規則 (Evaluate Rules - Priority-based & Deny-first)**
-   - 依序評估每一優先級 (Priority) 群組的規則。
-   - 針對同一 Priority 內的規則：
-     - 若條件皆符合，收集匹配到的 `allow` 與 `deny` 規則。
-     - **Deny-first 原則**：在同一 Priority 內，只要有任何一條 `deny` 規則命中，**立即返回 Deny**。
-     - 若無 `deny` 命中，但有 `allow` 命中，**立即返回 Allow** (不再檢查較低 Priority)。
-   - 若該 Priority 內無任何規則命中，則進入下一個 (較低的) Priority 繼續評估。
+**4. 優先級與 Deny-first 決策 (Priority & Deny-First)**
+   - 找出匹配規則中最高的 Priority (`max_priority`)。
+   - 針對該最高 Priority 級別下的所有匹配規則：
+     - 若包含任何 `effect == "deny"`，則**決策為 Deny** (原因: denied by rule)。
+     - 若僅有 `effect == "allow"`，則**決策為 Allow** (原因: allowed by rule)。
 
 **5. 預設結果 (Default Deny)**
-   - 若所有規則皆評估完畢，沒有任何規則命中，則**預設返回 Deny** (Default Deny 原則)。
+   - 若沒有任何符合條件的 policy rules (或者全數未命中)，**預設返回 Deny** (原因: no matching policy rules)。
 
 ## 4. 系統架構圖 (Architecture Diagram)
 
@@ -95,7 +91,8 @@ HTTP Request (Caller / Middleware)
      \       / (Load subjective rules & data)
       v     v
 +------------------+
-|  Policy Engine   | -> Eval Conditions -> Output: Allowed (true/false)
+|  Policy Engine   | (Embedded OPA with abac.rego)
+|                  | -> Eval rego Query (data.abac) -> Output: Allowed (true/false) & Reason
 +------------------+
 ```
 
