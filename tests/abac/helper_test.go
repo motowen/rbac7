@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http/httptest"
 	"strings"
+	"testing"
 
 	"rbac7/internal/abac/handler"
 	"rbac7/internal/abac/router"
@@ -15,7 +16,24 @@ import (
 // SetupServer creates a full Echo server with ABAC routes
 func SetupServer(mockSubjectRepo *MockABACRepository, mockPolicyRepo *MockPolicyRepository) *echo.Echo {
 	e := echo.New()
-	svc := service.NewService(mockSubjectRepo, mockPolicyRepo)
+	svc, err := service.NewService(mockSubjectRepo, mockPolicyRepo)
+	if err != nil {
+		// This should never happen in tests since the Rego file is embedded
+		panic("failed to create ABAC service: " + err.Error())
+	}
+	h := handler.NewHandler(svc)
+	router.RegisterRoutes(e, h)
+	return e
+}
+
+// SetupServerT creates a full Echo server with ABAC routes, using testing.T for error reporting
+func SetupServerT(t *testing.T, mockSubjectRepo *MockABACRepository, mockPolicyRepo *MockPolicyRepository) *echo.Echo {
+	t.Helper()
+	e := echo.New()
+	svc, err := service.NewService(mockSubjectRepo, mockPolicyRepo)
+	if err != nil {
+		t.Fatalf("failed to create ABAC service: %v", err)
+	}
 	h := handler.NewHandler(svc)
 	router.RegisterRoutes(e, h)
 	return e

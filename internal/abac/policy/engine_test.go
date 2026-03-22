@@ -1,169 +1,329 @@
 package policy
 
 import (
+	"context"
 	"testing"
 
 	"rbac7/internal/abac/model"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
-func TestEvaluateCondition(t *testing.T) {
-	// eq operator
-	t.Run("eq string match", func(t *testing.T) {
-		assert.True(t, EvaluateCondition("active", "eq", "active"))
-	})
-	t.Run("eq string no match", func(t *testing.T) {
-		assert.False(t, EvaluateCondition("active", "eq", "inactive"))
-	})
-
-	// neq operator
-	t.Run("neq string match", func(t *testing.T) {
-		assert.True(t, EvaluateCondition("active", "neq", "inactive"))
-	})
-	t.Run("neq string no match", func(t *testing.T) {
-		assert.False(t, EvaluateCondition("active", "neq", "active"))
-	})
-
-	// in operator
-	t.Run("in match", func(t *testing.T) {
-		assert.True(t, EvaluateCondition("editor", "in", []interface{}{"viewer", "editor", "admin"}))
-	})
-	t.Run("in no match", func(t *testing.T) {
-		assert.False(t, EvaluateCondition("guest", "in", []interface{}{"viewer", "editor", "admin"}))
-	})
-	t.Run("in with string slice", func(t *testing.T) {
-		assert.True(t, EvaluateCondition("editor", "in", []string{"viewer", "editor", "admin"}))
-	})
-
-	// not_in operator
-	t.Run("not_in match", func(t *testing.T) {
-		assert.True(t, EvaluateCondition("guest", "not_in", []interface{}{"viewer", "editor"}))
-	})
-	t.Run("not_in no match", func(t *testing.T) {
-		assert.False(t, EvaluateCondition("editor", "not_in", []interface{}{"viewer", "editor"}))
-	})
-
-	// contains operator
-	t.Run("contains match", func(t *testing.T) {
-		assert.True(t, EvaluateCondition([]string{"group_a", "group_b"}, "contains", "group_a"))
-	})
-	t.Run("contains no match", func(t *testing.T) {
-		assert.False(t, EvaluateCondition([]string{"group_a", "group_b"}, "contains", "group_c"))
-	})
-
-	// gt, gte, lt, lte operators
-	t.Run("gt match", func(t *testing.T) {
-		assert.True(t, EvaluateCondition(10, "gt", 5))
-	})
-	t.Run("gt no match", func(t *testing.T) {
-		assert.False(t, EvaluateCondition(5, "gt", 10))
-	})
-	t.Run("gte match equal", func(t *testing.T) {
-		assert.True(t, EvaluateCondition(10, "gte", 10))
-	})
-	t.Run("lt match", func(t *testing.T) {
-		assert.True(t, EvaluateCondition(5, "lt", 10))
-	})
-	t.Run("lte match equal", func(t *testing.T) {
-		assert.True(t, EvaluateCondition(10, "lte", 10))
-	})
-
-	// unknown operator
-	t.Run("unknown operator", func(t *testing.T) {
-		assert.False(t, EvaluateCondition("a", "unknown_op", "b"))
-	})
-
-	// nil field value
-	t.Run("nil field eq", func(t *testing.T) {
-		assert.False(t, EvaluateCondition(nil, "eq", "active"))
-	})
+// mockPolicyRepoForEngine is a minimal mock for Engine tests
+type mockPolicyRepoForEngine struct {
+	mock.Mock
 }
 
-func TestResolveSubjectField(t *testing.T) {
-	subject := &model.Subject{
-		UserID:           "user_1",
-		Role:             "editor",
-		Status:           "active",
-		SensitivityLevel: "internal",
-		GroupIDs:         []string{"group_a", "group_b"},
-		CustomAttrs: []model.CustomAttr{
-			{Key: "team", Value: "engineering"},
-			{Key: "level", Value: 5},
-		},
+func (m *mockPolicyRepoForEngine) CreatePolicyRule(ctx context.Context, rule *model.PolicyRule) error {
+	return nil
+}
+func (m *mockPolicyRepoForEngine) GetPolicyRule(ctx context.Context, ruleID string) (*model.PolicyRule, error) {
+	return nil, nil
+}
+func (m *mockPolicyRepoForEngine) UpdatePolicyRule(ctx context.Context, rule *model.PolicyRule) error {
+	return nil
+}
+func (m *mockPolicyRepoForEngine) DeletePolicyRule(ctx context.Context, ruleID string) error {
+	return nil
+}
+func (m *mockPolicyRepoForEngine) FindPolicyRules(ctx context.Context, resourceType, action string) ([]*model.PolicyRule, error) {
+	args := m.Called(ctx, resourceType, action)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
 	}
+	return args.Get(0).([]*model.PolicyRule), args.Error(1)
+}
+func (m *mockPolicyRepoForEngine) ListPolicyRules(ctx context.Context, filter model.PolicyRuleFilter) ([]*model.PolicyRule, error) {
+	return nil, nil
+}
+func (m *mockPolicyRepoForEngine) CreateAttributeDefinition(ctx context.Context, def *model.AttributeDefinition) error {
+	return nil
+}
+func (m *mockPolicyRepoForEngine) GetAttributeDefinition(ctx context.Context, key, scope string) (*model.AttributeDefinition, error) {
+	return nil, nil
+}
+func (m *mockPolicyRepoForEngine) ListAttributeDefinitions(ctx context.Context, scope, resourceType string) ([]*model.AttributeDefinition, error) {
+	return nil, nil
+}
+func (m *mockPolicyRepoForEngine) DeleteAttributeDefinition(ctx context.Context, key, scope string) error {
+	return nil
+}
+func (m *mockPolicyRepoForEngine) EnsureIndexes(ctx context.Context) error {
+	return nil
+}
 
-	t.Run("resolve user_id", func(t *testing.T) {
-		assert.Equal(t, "user_1", resolveSubjectField(subject, "user_id"))
-	})
-	t.Run("resolve role", func(t *testing.T) {
-		assert.Equal(t, "editor", resolveSubjectField(subject, "role"))
-	})
-	t.Run("resolve status", func(t *testing.T) {
-		assert.Equal(t, "active", resolveSubjectField(subject, "status"))
-	})
-	t.Run("resolve sensitivity_level", func(t *testing.T) {
-		assert.Equal(t, "internal", resolveSubjectField(subject, "sensitivity_level"))
-	})
-	t.Run("resolve group_ids", func(t *testing.T) {
-		assert.Equal(t, []string{"group_a", "group_b"}, resolveSubjectField(subject, "group_ids"))
-	})
-	t.Run("resolve custom attr", func(t *testing.T) {
-		assert.Equal(t, "engineering", resolveSubjectField(subject, "custom.team"))
-	})
-	t.Run("resolve unknown custom attr", func(t *testing.T) {
-		assert.Nil(t, resolveSubjectField(subject, "custom.unknown"))
-	})
-	t.Run("resolve unknown field", func(t *testing.T) {
-		assert.Nil(t, resolveSubjectField(subject, "unknown_field"))
+func newTestEngine(t *testing.T, mockRepo *mockPolicyRepoForEngine) *Engine {
+	t.Helper()
+	engine, err := NewEngine(mockRepo)
+	require.NoError(t, err, "OPA Engine should initialize successfully")
+	return engine
+}
+
+func TestOPAEngine_NewEngine(t *testing.T) {
+	t.Run("initialize OPA engine successfully", func(t *testing.T) {
+		mockRepo := new(mockPolicyRepoForEngine)
+		engine, err := NewEngine(mockRepo)
+		require.NoError(t, err)
+		assert.NotNil(t, engine)
 	})
 }
 
-func TestResolveResourceField(t *testing.T) {
-	resource := &model.ResourceAttrs{
-		ResourceID:       "doc_1",
-		ResourceType:     "docs",
-		ResourceParentID: "folder_1",
-		OwnerID:          "user_100",
-		SensitivityLevel: "restricted",
-		Status:           "published",
-		AllowedGroupIDs:  []string{"group_a"},
-		DeniedGroupIDs:   []string{"group_c"},
-		ResourceGroupIDs: []string{"group_x"},
-		CustomAttrs: []model.CustomAttr{
-			{Key: "doc.sensitivity", Value: "internal"},
-		},
-	}
+func TestOPAEngine_GroupDeny(t *testing.T) {
+	t.Run("deny when subject is in denied group", func(t *testing.T) {
+		mockRepo := new(mockPolicyRepoForEngine)
+		engine := newTestEngine(t, mockRepo)
 
-	t.Run("resolve resource_id", func(t *testing.T) {
-		assert.Equal(t, "doc_1", resolveResourceField(resource, "resource_id"))
+		// FindPolicyRules won't be reached because group deny happens in Rego
+		mockRepo.On("FindPolicyRules", mock.Anything, "docs", "read").Return([]*model.PolicyRule{}, nil)
+
+		subject := &model.Subject{
+			UserID:   "user_1",
+			Role:     "editor",
+			Status:   "active",
+			GroupIDs: []string{"group_blocked"},
+		}
+		resource := &model.ResourceAttrs{
+			ResourceID:     "doc_1",
+			ResourceType:   "docs",
+			DeniedGroupIDs: []string{"group_blocked", "group_other"},
+		}
+
+		resp, err := engine.CheckAccess(context.Background(), subject, resource, "read")
+		require.NoError(t, err)
+		assert.False(t, resp.Allowed)
+		assert.Contains(t, resp.Reason, "denied group")
 	})
-	t.Run("resolve resource_type", func(t *testing.T) {
-		assert.Equal(t, "docs", resolveResourceField(resource, "resource_type"))
-	})
-	t.Run("resolve owner_id", func(t *testing.T) {
-		assert.Equal(t, "user_100", resolveResourceField(resource, "owner_id"))
-	})
-	t.Run("resolve status", func(t *testing.T) {
-		assert.Equal(t, "published", resolveResourceField(resource, "status"))
-	})
-	t.Run("resolve custom attr", func(t *testing.T) {
-		assert.Equal(t, "internal", resolveResourceField(resource, "custom.doc.sensitivity"))
-	})
-	t.Run("resolve unknown field", func(t *testing.T) {
-		assert.Nil(t, resolveResourceField(resource, "unknown"))
+
+	t.Run("allow when subject is NOT in denied group", func(t *testing.T) {
+		mockRepo := new(mockPolicyRepoForEngine)
+		engine := newTestEngine(t, mockRepo)
+
+		mockRepo.On("FindPolicyRules", mock.Anything, "docs", "read").Return([]*model.PolicyRule{
+			{
+				Name: "allow active", ResourceType: "docs", Action: "read",
+				Effect: "allow", Priority: 10, Enabled: true,
+				Conditions: model.ConditionSet{
+					Subject: []model.Condition{{Field: "status", Operator: "eq", Value: "active"}},
+				},
+			},
+		}, nil)
+
+		subject := &model.Subject{
+			UserID: "user_1", Role: "editor", Status: "active", GroupIDs: []string{"group_safe"},
+		}
+		resource := &model.ResourceAttrs{
+			ResourceID: "doc_1", ResourceType: "docs", DeniedGroupIDs: []string{"group_blocked"},
+		}
+
+		resp, err := engine.CheckAccess(context.Background(), subject, resource, "read")
+		require.NoError(t, err)
+		assert.True(t, resp.Allowed)
 	})
 }
 
-func TestHasIntersection(t *testing.T) {
-	t.Run("has intersection", func(t *testing.T) {
-		assert.True(t, hasIntersection([]string{"a", "b", "c"}, []string{"b", "d"}))
+func TestOPAEngine_GroupAllow(t *testing.T) {
+	t.Run("deny when subject is not in allowed group", func(t *testing.T) {
+		mockRepo := new(mockPolicyRepoForEngine)
+		engine := newTestEngine(t, mockRepo)
+
+		mockRepo.On("FindPolicyRules", mock.Anything, "docs", "read").Return([]*model.PolicyRule{}, nil)
+
+		subject := &model.Subject{
+			UserID: "user_1", Role: "editor", Status: "active", GroupIDs: []string{"group_x"},
+		}
+		resource := &model.ResourceAttrs{
+			ResourceID: "doc_1", ResourceType: "docs",
+			AllowedGroupIDs: []string{"group_a", "group_b"},
+		}
+
+		resp, err := engine.CheckAccess(context.Background(), subject, resource, "read")
+		require.NoError(t, err)
+		assert.False(t, resp.Allowed)
+		assert.Contains(t, resp.Reason, "not in any allowed group")
 	})
-	t.Run("no intersection", func(t *testing.T) {
-		assert.False(t, hasIntersection([]string{"a", "b"}, []string{"c", "d"}))
+
+	t.Run("proceed when subject is in allowed group", func(t *testing.T) {
+		mockRepo := new(mockPolicyRepoForEngine)
+		engine := newTestEngine(t, mockRepo)
+
+		mockRepo.On("FindPolicyRules", mock.Anything, "docs", "read").Return([]*model.PolicyRule{
+			{
+				Name: "allow readers", ResourceType: "docs", Action: "read",
+				Effect: "allow", Priority: 10, Enabled: true,
+				Conditions: model.ConditionSet{
+					Subject: []model.Condition{{Field: "status", Operator: "eq", Value: "active"}},
+				},
+			},
+		}, nil)
+
+		subject := &model.Subject{
+			UserID: "user_1", Role: "editor", Status: "active", GroupIDs: []string{"group_a"},
+		}
+		resource := &model.ResourceAttrs{
+			ResourceID: "doc_1", ResourceType: "docs",
+			AllowedGroupIDs: []string{"group_a", "group_b"},
+		}
+
+		resp, err := engine.CheckAccess(context.Background(), subject, resource, "read")
+		require.NoError(t, err)
+		assert.True(t, resp.Allowed)
 	})
-	t.Run("empty slices", func(t *testing.T) {
-		assert.False(t, hasIntersection([]string{}, []string{}))
+}
+
+func TestOPAEngine_PolicyRules(t *testing.T) {
+	t.Run("allow when matching allow rule", func(t *testing.T) {
+		mockRepo := new(mockPolicyRepoForEngine)
+		engine := newTestEngine(t, mockRepo)
+
+		mockRepo.On("FindPolicyRules", mock.Anything, "docs", "read").Return([]*model.PolicyRule{
+			{
+				Name: "editors can read", ResourceType: "docs", Action: "read",
+				Effect: "allow", Priority: 10, Enabled: true,
+				Conditions: model.ConditionSet{
+					Subject: []model.Condition{
+						{Field: "status", Operator: "eq", Value: "active"},
+						{Field: "role", Operator: "in", Value: []interface{}{"editor", "admin"}},
+					},
+				},
+			},
+		}, nil)
+
+		subject := &model.Subject{
+			UserID: "user_1", Role: "editor", Status: "active", GroupIDs: []string{},
+		}
+		resource := &model.ResourceAttrs{ResourceID: "doc_1", ResourceType: "docs"}
+
+		resp, err := engine.CheckAccess(context.Background(), subject, resource, "read")
+		require.NoError(t, err)
+		assert.True(t, resp.Allowed)
+		assert.Contains(t, resp.Reason, "editors can read")
+	})
+
+	t.Run("deny when no rules match", func(t *testing.T) {
+		mockRepo := new(mockPolicyRepoForEngine)
+		engine := newTestEngine(t, mockRepo)
+
+		mockRepo.On("FindPolicyRules", mock.Anything, "docs", "read").Return([]*model.PolicyRule{
+			{
+				Name: "admins only", ResourceType: "docs", Action: "read",
+				Effect: "allow", Priority: 10, Enabled: true,
+				Conditions: model.ConditionSet{
+					Subject: []model.Condition{{Field: "role", Operator: "eq", Value: "admin"}},
+				},
+			},
+		}, nil)
+
+		subject := &model.Subject{
+			UserID: "user_1", Role: "viewer", Status: "active", GroupIDs: []string{},
+		}
+		resource := &model.ResourceAttrs{ResourceID: "doc_1", ResourceType: "docs"}
+
+		resp, err := engine.CheckAccess(context.Background(), subject, resource, "read")
+		require.NoError(t, err)
+		assert.False(t, resp.Allowed)
+	})
+
+	t.Run("deny rule wins at same priority", func(t *testing.T) {
+		mockRepo := new(mockPolicyRepoForEngine)
+		engine := newTestEngine(t, mockRepo)
+
+		mockRepo.On("FindPolicyRules", mock.Anything, "docs", "update").Return([]*model.PolicyRule{
+			{
+				Name: "editors can update", ResourceType: "docs", Action: "update",
+				Effect: "allow", Priority: 10, Enabled: true,
+				Conditions: model.ConditionSet{
+					Subject: []model.Condition{{Field: "role", Operator: "eq", Value: "editor"}},
+				},
+			},
+			{
+				Name: "deny restricted", ResourceType: "docs", Action: "update",
+				Effect: "deny", Priority: 10, Enabled: true,
+				Conditions: model.ConditionSet{
+					Subject: []model.Condition{{Field: "sensitivity_level", Operator: "eq", Value: "restricted"}},
+				},
+			},
+		}, nil)
+
+		subject := &model.Subject{
+			UserID: "user_1", Role: "editor", Status: "active",
+			SensitivityLevel: "restricted", GroupIDs: []string{},
+		}
+		resource := &model.ResourceAttrs{ResourceID: "doc_1", ResourceType: "docs"}
+
+		resp, err := engine.CheckAccess(context.Background(), subject, resource, "update")
+		require.NoError(t, err)
+		assert.False(t, resp.Allowed)
+		assert.Contains(t, resp.Reason, "denied by rule")
+	})
+
+	t.Run("no rules returns default deny", func(t *testing.T) {
+		mockRepo := new(mockPolicyRepoForEngine)
+		engine := newTestEngine(t, mockRepo)
+
+		mockRepo.On("FindPolicyRules", mock.Anything, "docs", "delete").Return([]*model.PolicyRule{}, nil)
+
+		subject := &model.Subject{
+			UserID: "user_1", Role: "editor", Status: "active", GroupIDs: []string{},
+		}
+		resource := &model.ResourceAttrs{ResourceID: "doc_1", ResourceType: "docs"}
+
+		resp, err := engine.CheckAccess(context.Background(), subject, resource, "delete")
+		require.NoError(t, err)
+		assert.False(t, resp.Allowed)
+		assert.Contains(t, resp.Reason, "no matching policy rules")
+	})
+
+	t.Run("resource condition check", func(t *testing.T) {
+		mockRepo := new(mockPolicyRepoForEngine)
+		engine := newTestEngine(t, mockRepo)
+
+		mockRepo.On("FindPolicyRules", mock.Anything, "docs", "delete").Return([]*model.PolicyRule{
+			{
+				Name: "delete only drafts", ResourceType: "docs", Action: "delete",
+				Effect: "allow", Priority: 10, Enabled: true,
+				Conditions: model.ConditionSet{
+					Subject:  []model.Condition{{Field: "role", Operator: "eq", Value: "admin"}},
+					Resource: []model.Condition{{Field: "status", Operator: "eq", Value: "draft"}},
+				},
+			},
+		}, nil)
+
+		subject := &model.Subject{
+			UserID: "user_1", Role: "admin", Status: "active", GroupIDs: []string{},
+		}
+		resource := &model.ResourceAttrs{ResourceID: "doc_1", ResourceType: "docs", Status: "draft"}
+
+		resp, err := engine.CheckAccess(context.Background(), subject, resource, "delete")
+		require.NoError(t, err)
+		assert.True(t, resp.Allowed)
+	})
+
+	t.Run("custom attribute condition", func(t *testing.T) {
+		mockRepo := new(mockPolicyRepoForEngine)
+		engine := newTestEngine(t, mockRepo)
+
+		mockRepo.On("FindPolicyRules", mock.Anything, "docs", "read").Return([]*model.PolicyRule{
+			{
+				Name: "engineering team access", ResourceType: "docs", Action: "read",
+				Effect: "allow", Priority: 10, Enabled: true,
+				Conditions: model.ConditionSet{
+					Subject: []model.Condition{{Field: "custom.team", Operator: "eq", Value: "engineering"}},
+				},
+			},
+		}, nil)
+
+		subject := &model.Subject{
+			UserID: "user_1", Role: "editor", Status: "active", GroupIDs: []string{},
+			CustomAttrs: []model.CustomAttr{{Key: "team", Value: "engineering"}},
+		}
+		resource := &model.ResourceAttrs{ResourceID: "doc_1", ResourceType: "docs"}
+
+		resp, err := engine.CheckAccess(context.Background(), subject, resource, "read")
+		require.NoError(t, err)
+		assert.True(t, resp.Allowed)
+		assert.Contains(t, resp.Reason, "engineering team access")
 	})
 }
 

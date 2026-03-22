@@ -2,340 +2,228 @@ package policy
 
 import (
 	"context"
+	"embed"
+	"encoding/json"
 	"fmt"
 	"rbac7/internal/abac/model"
 	"rbac7/internal/abac/repository"
 	"sort"
-	"strings"
+
+	"github.com/open-policy-agent/opa/v1/rego"
 )
 
-// Engine is the ABAC policy engine for access control evaluation
+//go:embed policies/abac.rego
+var policyFS embed.FS
+
+// Engine is the ABAC policy engine using embedded OPA for access control evaluation
 type Engine struct {
 	policyRepo repository.PolicyRepository
+	query      rego.PreparedEvalQuery
 }
 
-// NewEngine creates a new ABAC Policy Engine
-func NewEngine(policyRepo repository.PolicyRepository) *Engine {
+// NewEngine creates a new ABAC Policy Engine with OPA
+func NewEngine(policyRepo repository.PolicyRepository) (*Engine, error) {
+	policyBytes, err := policyFS.ReadFile("policies/abac.rego")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read rego policy: %w", err)
+	}
+
+	query, err := rego.New(
+		rego.Query("data.abac.allow; data.abac.reason"),
+		rego.Module("abac.rego", string(policyBytes)),
+	).PrepareForEval(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare OPA query: %w", err)
+	}
+
 	return &Engine{
 		policyRepo: policyRepo,
-	}
+		query:      query,
+	}, nil
 }
 
-// CheckAccess evaluates whether a subject can perform an action on a resource
-// Logic:
-// 1. Check group deny list (denied_group_ids) — immediate deny
-// 2. Check group allow list (allowed_group_ids) — if present, require intersection
-// 3. Load applicable policy rules (by resource_type + action, enabled, sorted by priority desc)
-// 4. Evaluate rules: same priority → deny wins; different priority → highest priority wins
-// 5. No matching rule → default deny
+// OPAInput represents the input document passed to OPA
+type OPAInput struct {
+	Subject  OPASubject  `json:"subject"`
+	Resource OPAResource `json:"resource"`
+	Action   string      `json:"action"`
+}
+
+// OPASubject is the subject representation for OPA input
+type OPASubject struct {
+	UserID           string                   `json:"user_id"`
+	Role             string                   `json:"role"`
+	Status           string                   `json:"status"`
+	SensitivityLevel string                   `json:"sensitivity_level"`
+	GroupIDs         []string                 `json:"group_ids"`
+	CustomAttrs      []map[string]interface{} `json:"custom_attrs"`
+}
+
+// OPAResource is the resource representation for OPA input
+type OPAResource struct {
+	ResourceID       string                   `json:"resource_id"`
+	ResourceType     string                   `json:"resource_type"`
+	ResourceParentID string                   `json:"resource_parent_id"`
+	OwnerID          string                   `json:"owner_id"`
+	SensitivityLevel string                   `json:"sensitivity_level"`
+	Status           string                   `json:"status"`
+	AllowedGroupIDs  []string                 `json:"allowed_group_ids"`
+	DeniedGroupIDs   []string                 `json:"denied_group_ids"`
+	ResourceGroupIDs []string                 `json:"resource_group_ids"`
+	CustomAttrs      []map[string]interface{} `json:"custom_attrs"`
+}
+
+// CheckAccess evaluates whether a subject can perform an action on a resource using OPA
 func (e *Engine) CheckAccess(
 	ctx context.Context,
 	subject *model.Subject,
 	resource *model.ResourceAttrs,
 	action string,
 ) (*model.CheckAccessResponse, error) {
-	// Step 1: Check denied_group_ids — if subject is in any denied group, immediate deny
-	if len(resource.DeniedGroupIDs) > 0 && len(subject.GroupIDs) > 0 {
-		if hasIntersection(subject.GroupIDs, resource.DeniedGroupIDs) {
-			return &model.CheckAccessResponse{
-				Allowed: false,
-				Reason:  "subject is in denied group",
-			}, nil
-		}
-	}
-
-	// Step 2: Check allowed_group_ids — if present, subject must be in at least one allowed group
-	if len(resource.AllowedGroupIDs) > 0 {
-		if len(subject.GroupIDs) == 0 || !hasIntersection(subject.GroupIDs, resource.AllowedGroupIDs) {
-			return &model.CheckAccessResponse{
-				Allowed: false,
-				Reason:  "subject is not in any allowed group",
-			}, nil
-		}
-	}
-
-	// Step 3: Load applicable policy rules
+	// Load applicable policy rules from DB
 	rules, err := e.policyRepo.FindPolicyRules(ctx, resource.ResourceType, action)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load policy rules: %w", err)
 	}
 
-	if len(rules) == 0 {
-		// No rules defined → default deny
+	// Build OPA input (includes subject, resource, action, AND rules from DB)
+	input := buildOPAInput(subject, resource, action, rules)
+
+	// Evaluate using OPA
+	results, err := e.query.Eval(ctx,
+		rego.EvalInput(input),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("OPA evaluation failed: %w", err)
+	}
+
+	return parseOPAResult(results)
+}
+
+// buildOPAInput converts Subject + Resource + Action + DB Rules into OPA input document
+func buildOPAInput(subject *model.Subject, resource *model.ResourceAttrs, action string, rules []*model.PolicyRule) map[string]interface{} {
+	// Convert subject
+	subjectCustom := make([]map[string]interface{}, 0, len(subject.CustomAttrs))
+	for _, attr := range subject.CustomAttrs {
+		subjectCustom = append(subjectCustom, map[string]interface{}{
+			"key":   attr.Key,
+			"value": attr.Value,
+		})
+	}
+
+	groupIDs := subject.GroupIDs
+	if groupIDs == nil {
+		groupIDs = []string{}
+	}
+
+	// Convert resource
+	resourceCustom := make([]map[string]interface{}, 0, len(resource.CustomAttrs))
+	for _, attr := range resource.CustomAttrs {
+		resourceCustom = append(resourceCustom, map[string]interface{}{
+			"key":   attr.Key,
+			"value": attr.Value,
+		})
+	}
+
+	allowedGroupIDs := resource.AllowedGroupIDs
+	if allowedGroupIDs == nil {
+		allowedGroupIDs = []string{}
+	}
+	deniedGroupIDs := resource.DeniedGroupIDs
+	if deniedGroupIDs == nil {
+		deniedGroupIDs = []string{}
+	}
+	resourceGroupIDs := resource.ResourceGroupIDs
+	if resourceGroupIDs == nil {
+		resourceGroupIDs = []string{}
+	}
+
+	// Convert DB rules to OPA-friendly format
+	opaRules := make([]map[string]interface{}, 0, len(rules))
+	for _, rule := range rules {
+		condBytes, _ := json.Marshal(rule.Conditions)
+		var conditions map[string]interface{}
+		_ = json.Unmarshal(condBytes, &conditions)
+
+		if conditions == nil {
+			conditions = map[string]interface{}{}
+		}
+		if _, ok := conditions["subject"]; !ok {
+			conditions["subject"] = []interface{}{}
+		}
+		if _, ok := conditions["resource"]; !ok {
+			conditions["resource"] = []interface{}{}
+		}
+
+		opaRules = append(opaRules, map[string]interface{}{
+			"name":          rule.Name,
+			"resource_type": rule.ResourceType,
+			"action":        rule.Action,
+			"effect":        rule.Effect,
+			"priority":      rule.Priority,
+			"conditions":    conditions,
+			"enabled":       rule.Enabled,
+		})
+	}
+
+	return map[string]interface{}{
+		"subject": map[string]interface{}{
+			"user_id":           subject.UserID,
+			"role":              subject.Role,
+			"status":            subject.Status,
+			"sensitivity_level": subject.SensitivityLevel,
+			"group_ids":         groupIDs,
+			"custom_attrs":      subjectCustom,
+		},
+		"resource": map[string]interface{}{
+			"resource_id":        resource.ResourceID,
+			"resource_type":      resource.ResourceType,
+			"resource_parent_id": resource.ResourceParentID,
+			"owner_id":           resource.OwnerID,
+			"sensitivity_level":  resource.SensitivityLevel,
+			"status":             resource.Status,
+			"allowed_group_ids":  allowedGroupIDs,
+			"denied_group_ids":   deniedGroupIDs,
+			"resource_group_ids": resourceGroupIDs,
+			"custom_attrs":       resourceCustom,
+		},
+		"action": action,
+		"rules":  opaRules,
+	}
+}
+
+// parseOPAResult extracts allow/reason from OPA evaluation result
+func parseOPAResult(results rego.ResultSet) (*model.CheckAccessResponse, error) {
+	if len(results) == 0 {
 		return &model.CheckAccessResponse{
 			Allowed: false,
-			Reason:  "no matching policy rules",
+			Reason:  "no OPA result",
 		}, nil
 	}
 
-	// Step 4: Evaluate rules (already sorted by priority desc from repo)
-	return e.evaluateRules(subject, resource, rules), nil
-}
+	allowed := false
+	reason := "no matching policy rules"
 
-// evaluateRules processes rules sorted by priority (desc).
-// Within the same priority level, deny takes precedence.
-// The first priority level that has any matching rule determines the result.
-func (e *Engine) evaluateRules(subject *model.Subject, resource *model.ResourceAttrs, rules []*model.PolicyRule) *model.CheckAccessResponse {
-	// Group rules by priority
-	type priorityGroup struct {
-		priority int
-		rules    []*model.PolicyRule
+	// results[0].Expressions[0] = data.abac.allow
+	// results[0].Expressions[1] = data.abac.reason
+	if len(results[0].Expressions) >= 1 {
+		if v, ok := results[0].Expressions[0].Value.(bool); ok {
+			allowed = v
+		}
 	}
-
-	groups := make([]priorityGroup, 0)
-	var currentGroup *priorityGroup
-
-	for _, rule := range rules {
-		if currentGroup == nil || currentGroup.priority != rule.Priority {
-			groups = append(groups, priorityGroup{priority: rule.Priority})
-			currentGroup = &groups[len(groups)-1]
-		}
-		currentGroup.rules = append(currentGroup.rules, rule)
-	}
-
-	// Evaluate each priority group (highest first)
-	for _, group := range groups {
-		var matchedAllow *model.PolicyRule
-		var matchedDeny *model.PolicyRule
-
-		for _, rule := range group.rules {
-			if e.evaluateConditions(subject, resource, &rule.Conditions) {
-				if rule.Effect == model.EffectDeny {
-					matchedDeny = rule
-				} else if rule.Effect == model.EffectAllow && matchedAllow == nil {
-					matchedAllow = rule
-				}
-			}
-		}
-
-		// If any rule matched at this priority level, decide
-		if matchedDeny != nil {
-			return &model.CheckAccessResponse{
-				Allowed: false,
-				Reason:  fmt.Sprintf("denied by rule: %s", matchedDeny.Name),
-			}
-		}
-		if matchedAllow != nil {
-			return &model.CheckAccessResponse{
-				Allowed: true,
-				Reason:  fmt.Sprintf("allowed by rule: %s", matchedAllow.Name),
-			}
+	if len(results[0].Expressions) >= 2 {
+		if v, ok := results[0].Expressions[1].Value.(string); ok {
+			reason = v
 		}
 	}
 
-	// No matching rules → default deny
 	return &model.CheckAccessResponse{
-		Allowed: false,
-		Reason:  "no matching policy rules",
-	}
+		Allowed: allowed,
+		Reason:  reason,
+	}, nil
 }
 
-// evaluateConditions checks if both subject and resource conditions are satisfied
-func (e *Engine) evaluateConditions(subject *model.Subject, resource *model.ResourceAttrs, conditions *model.ConditionSet) bool {
-	// All subject conditions must pass (AND logic)
-	for _, cond := range conditions.Subject {
-		fieldValue := resolveSubjectField(subject, cond.Field)
-		if !EvaluateCondition(fieldValue, cond.Operator, cond.Value) {
-			return false
-		}
-	}
-
-	// All resource conditions must pass (AND logic)
-	for _, cond := range conditions.Resource {
-		fieldValue := resolveResourceField(resource, cond.Field)
-		if !EvaluateCondition(fieldValue, cond.Operator, cond.Value) {
-			return false
-		}
-	}
-
-	return true
-}
-
-// EvaluateCondition evaluates a single condition: fieldValue <operator> expectedValue
-func EvaluateCondition(fieldValue interface{}, operator string, expectedValue interface{}) bool {
-	switch operator {
-	case model.OpEq:
-		return compareEqual(fieldValue, expectedValue)
-	case model.OpNeq:
-		return !compareEqual(fieldValue, expectedValue)
-	case model.OpIn:
-		return valueIn(fieldValue, expectedValue)
-	case model.OpNotIn:
-		return !valueIn(fieldValue, expectedValue)
-	case model.OpContains:
-		return sliceContains(fieldValue, expectedValue)
-	case model.OpGt:
-		return compareNumeric(fieldValue, expectedValue) > 0
-	case model.OpGte:
-		return compareNumeric(fieldValue, expectedValue) >= 0
-	case model.OpLt:
-		return compareNumeric(fieldValue, expectedValue) < 0
-	case model.OpLte:
-		return compareNumeric(fieldValue, expectedValue) <= 0
-	default:
-		return false
-	}
-}
-
-// resolveSubjectField extracts a field value from the Subject
-func resolveSubjectField(subject *model.Subject, field string) interface{} {
-	switch field {
-	case "user_id":
-		return subject.UserID
-	case "role":
-		return subject.Role
-	case "status":
-		return subject.Status
-	case "sensitivity_level":
-		return subject.SensitivityLevel
-	case "group_ids":
-		return subject.GroupIDs
-	default:
-		// Check custom attributes (e.g. "custom.team")
-		if strings.HasPrefix(field, "custom.") {
-			attrKey := strings.TrimPrefix(field, "custom.")
-			for _, attr := range subject.CustomAttrs {
-				if attr.Key == attrKey {
-					return attr.Value
-				}
-			}
-		}
-		return nil
-	}
-}
-
-// resolveResourceField extracts a field value from the ResourceAttrs
-func resolveResourceField(resource *model.ResourceAttrs, field string) interface{} {
-	switch field {
-	case "resource_id":
-		return resource.ResourceID
-	case "resource_type":
-		return resource.ResourceType
-	case "resource_parent_id":
-		return resource.ResourceParentID
-	case "owner_id":
-		return resource.OwnerID
-	case "sensitivity_level":
-		return resource.SensitivityLevel
-	case "status":
-		return resource.Status
-	case "allowed_group_ids":
-		return resource.AllowedGroupIDs
-	case "denied_group_ids":
-		return resource.DeniedGroupIDs
-	case "resource_group_ids":
-		return resource.ResourceGroupIDs
-	default:
-		// Check custom attributes (e.g. "custom.doc.sensitivity")
-		if strings.HasPrefix(field, "custom.") {
-			attrKey := strings.TrimPrefix(field, "custom.")
-			for _, attr := range resource.CustomAttrs {
-				if attr.Key == attrKey {
-					return attr.Value
-				}
-			}
-		}
-		return nil
-	}
-}
-
-// --- Helper functions ---
-
-// hasIntersection checks if two string slices have any common element
-func hasIntersection(a, b []string) bool {
-	set := make(map[string]bool, len(b))
-	for _, v := range b {
-		set[v] = true
-	}
-	for _, v := range a {
-		if set[v] {
-			return true
-		}
-	}
-	return false
-}
-
-// compareEqual compares two values for equality (handles type conversion)
-func compareEqual(a, b interface{}) bool {
-	return fmt.Sprintf("%v", a) == fmt.Sprintf("%v", b)
-}
-
-// valueIn checks if value is in a list (expectedValue should be a slice)
-func valueIn(fieldValue, expectedValue interface{}) bool {
-	list := toStringSlice(expectedValue)
-	fieldStr := fmt.Sprintf("%v", fieldValue)
-	for _, item := range list {
-		if item == fieldStr {
-			return true
-		}
-	}
-	return false
-}
-
-// sliceContains checks if a slice field contains the expected value
-func sliceContains(fieldValue, expectedValue interface{}) bool {
-	list := toStringSlice(fieldValue)
-	expected := fmt.Sprintf("%v", expectedValue)
-	for _, item := range list {
-		if item == expected {
-			return true
-		}
-	}
-	return false
-}
-
-// compareNumeric compares two values as float64, returns -1, 0, 1
-func compareNumeric(a, b interface{}) int {
-	fa := toFloat64(a)
-	fb := toFloat64(b)
-	if fa < fb {
-		return -1
-	}
-	if fa > fb {
-		return 1
-	}
-	return 0
-}
-
-// toFloat64 attempts to convert a value to float64
-func toFloat64(v interface{}) float64 {
-	switch val := v.(type) {
-	case float64:
-		return val
-	case float32:
-		return float64(val)
-	case int:
-		return float64(val)
-	case int32:
-		return float64(val)
-	case int64:
-		return float64(val)
-	case string:
-		var f float64
-		fmt.Sscanf(val, "%f", &f)
-		return f
-	default:
-		return 0
-	}
-}
-
-// toStringSlice converts an interface to a string slice
-func toStringSlice(v interface{}) []string {
-	switch val := v.(type) {
-	case []string:
-		return val
-	case []interface{}:
-		result := make([]string, len(val))
-		for i, item := range val {
-			result[i] = fmt.Sprintf("%v", item)
-		}
-		return result
-	default:
-		return nil
-	}
-}
-
-// SortRulesByPriority sorts rules by priority descending
+// SortRulesByPriority sorts rules by priority descending (utility function)
 func SortRulesByPriority(rules []*model.PolicyRule) {
 	sort.Slice(rules, func(i, j int) bool {
 		return rules[i].Priority > rules[j].Priority

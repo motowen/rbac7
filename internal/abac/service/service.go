@@ -58,13 +58,16 @@ type Service struct {
 }
 
 // NewService creates a new ABAC service
-func NewService(subjectRepo repository.ABACRepository, policyRepo repository.PolicyRepository) *Service {
-	engine := policy.NewEngine(policyRepo)
+func NewService(subjectRepo repository.ABACRepository, policyRepo repository.PolicyRepository) (*Service, error) {
+	engine, err := policy.NewEngine(policyRepo)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize OPA engine: %w", err)
+	}
 	return &Service{
 		SubjectRepo: subjectRepo,
 		PolicyRepo:  policyRepo,
 		Engine:      engine,
-	}
+	}, nil
 }
 
 // --- Access Check ---
