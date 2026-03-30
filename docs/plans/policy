@@ -1,0 +1,361 @@
+Q:
+Compiled policy是從UI生成出來的嗎?
+是否一開始會由space owner訂出一版, 然後呼叫
+Policy Projection Upload API?
+如果是, 下面的api req / response會是怎麼樣?
+PUT /v2/internal/spaces/{space_id}/policies/{policy_version}/rule-sets
+POST /v2/internal/spaces/{space_id}/policies/{policy_version}/activate
+主體綁定投影 (Principal Binding Projection)這隻api的用途是什麼? req/ response會是怎麼樣? 
+PUT /v2/internal/spaces/{space_id}/bindings/batch
+
+A: 是，但更精確地說：
+
+compiled policy 不是直接從畫面截圖生成
+它是從 Space BE 裡的 canonical policy 生成
+而這份 canonical policy，通常就是由 space owner / admin 透過 UI 編輯出來的
+所以實際流程是：
+
+space owner 在 Members / Roles / Permissions / Channels UI 上設定規則
+FE 把這些設定送到 Space BE
+Space BE 保存 canonical policy
+Space BE 執行 compiler，把 canonical policy 轉成 compiled policy
+Space BE 呼叫 Auth Platform 的 internal projection API
+Auth Platform 先收 draft rule sets
+全部收齊後，再 activate 成為正式生效版本
+所以不是 owner 直接呼叫 internal API，而是 owner 透過 UI 發布，Space BE 代為呼叫 internal API
+
+1. compiled policy 到底是怎麼來的
+
+你可以把它想成兩層：
+
+第一層：給人編輯的 canonical policy
+這一層長得像 UI：
+
+Backend Engineering 這個 org 進 engineering space 時是 Member
+Member 可以 channel.join
+Member 不可以 channel.post_message
+devops group 在 #incidents 可以 post_message
+第二層：給 OPA 跑的 compiled policy
+compiler 會把上面這些規則轉成 OPA 可讀的 rule data：
+
+一條 channel.join 的 type-level allow rule
+一條 channel.post_message 的 default deny
+一條 #incidents + devops group 的 instance-level allow override
+也就是：
+
+UI / canonical policy 是「管理者語言」
+compiled policy 是「授權引擎語言」
+2. 一開始是不是由 space owner 訂一版，然後上傳
+對，通常會是這樣。
+
+比較完整的 lifecycle 是：
+
+系統建立新 space 時，先套一份 default policy template
+例如先有 Owner / Admin / Member / Guest
+
+space owner 進入 Permissions UI 調整第一版
+例如：
+
+Member 可看 document
+Member 不可管理成員
+#incidents 只有 devops 可發文
+owner 按下 Publish
+
+Space BE 產出新的 policy_version
+
+Space BE 呼叫：
+
+PUT /v2/internal/spaces/{space_id}/policies/{policy_version}/rule-sets
+POST /v2/internal/spaces/{space_id}/policies/{policy_version}/activate
+所以是 Space BE 發布 version，不是 FE 直接發。
+
+3. PUT /policies/{policy_version}/rule-sets 是做什麼的
+這支 API 的用途是：
+
+把某個 space 的某個 policy_version 的 compiled rule sets 上傳到 Auth Platform，但先不上線。
+
+為什麼要分兩步？
+因為一個 policy 版本可能包含很多組 rule set，例如：
+
+space.view
+space.manage_members
+document.read
+document.create
+channel.join
+channel.post_message
+如果只傳到一半就直接生效，會有 partial policy 的風險。
+所以正確做法是：
+
+先 upload 完整 draft
+再 atomically activate
+4. PUT /policies/{policy_version}/rule-sets req / resp 範例
+
+假設 engineering space 的 owner 發布 policy_version = 17
+
+Request
+
+PUT /v2/internal/spaces/engineering/policies/17/rule-sets
+Content-Type: application/json
+Authorization: Bearer <space-be-service-token>
+{
+  "space_id": "engineering",
+  "policy_version": 17,
+  "source_matrix_version": 23,
+  "compiler_version": "space-policy-compiler/v1",
+  "checksum": "sha256:3d1dd7d3f99a7f4b4a6d...",
+  "published_by": {
+    "actor_type": "user",
+    "actor_id": "u_owner_001"
+  },
+  "rule_sets": [
+    {
+      "resource_type": "space",
+      "action": "view",
+      "default_effect": "deny",
+      "rules": [
+        {
+          "rule_id": "role-matrix-space-view-member",
+          "source_kind": "role_matrix",
+          "source_ref": "matrix:space:view:member",
+          "effect": "allow",
+          "priority": 750,
+          "target_scope": "type",
+          "target_resource_id": null,
+          "principal_any": ["space:engineering:role:member"],
+          "subject_conditions": [],
+          "resource_conditions": [],
+          "env_conditions": [],
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "resource_type": "channel",
+      "action": "join",
+      "default_effect": "deny",
+      "rules": [
+        {
+          "rule_id": "role-matrix-channel-join-member",
+          "source_kind": "role_matrix",
+          "source_ref": "matrix:channel:join:member",
+          "effect": "allow",
+          "priority": 750,
+          "target_scope": "type",
+          "target_resource_id": null,
+          "principal_any": ["space:engineering:role:member"],
+          "subject_conditions": [],
+          "resource_conditions": [],
+          "env_conditions": [],
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "resource_type": "channel",
+      "action": "post_message",
+      "default_effect": "deny",
+      "rules": [
+        {
+          "rule_id": "channel-override-incidents-devops-post-message",
+          "source_kind": "channel_override",
+          "source_ref": "channel:incidents:group:devops:post_message",
+          "effect": "allow",
+          "priority": 950,
+          "target_scope": "instance",
+          "target_resource_id": "incidents",
+          "principal_any": ["space:engineering:group:devops"],
+          "subject_conditions": [],
+          "resource_conditions": [],
+          "env_conditions": [],
+          "enabled": true
+        }
+      ]
+    }
+  ]
+}
+Response
+
+{
+  "space_id": "engineering",
+  "policy_version": 17,
+  "status": "draft_uploaded",
+  "source_matrix_version": 23,
+  "compiler_version": "space-policy-compiler/v1",
+  "checksum": "sha256:3d1dd7d3f99a7f4b4a6d...",
+  "received_rule_set_count": 3,
+  "stored_rule_set_count": 3,
+  "uploaded_at": "2026-03-30T14:10:21Z"
+}
+這支 API 的重點是：
+
+上傳的是 compiled rule sets
+還沒生效
+生效要靠下一支 activate
+5. POST /policies/{policy_version}/activate 是做什麼的
+這支 API 的用途是：
+
+把剛剛上傳完成的 draft policy version，正式切成 active version
+
+這樣做有兩個好處：
+
+避免 policy 傳一半就生效
+可以保留 version 與 audit trail
+6. POST /policies/{policy_version}/activate req / resp 範例
+
+Request
+
+POST /v2/internal/spaces/engineering/policies/17/activate
+Content-Type: application/json
+Authorization: Bearer <space-be-service-token>
+{
+  "space_id": "engineering",
+  "policy_version": 17,
+  "expected_checksum": "sha256:3d1dd7d3f99a7f4b4a6d...",
+  "expected_rule_set_count": 3,
+  "activated_by": {
+    "actor_type": "user",
+    "actor_id": "u_owner_001"
+  },
+  "reason": "publish permissions from space management UI"
+}
+Response
+
+{
+  "space_id": "engineering",
+  "active_policy_version": 17,
+  "previous_policy_version": 16,
+  "status": "active",
+  "activated_at": "2026-03-30T14:10:32Z",
+  "checksum": "sha256:3d1dd7d3f99a7f4b4a6d..."
+}
+7. Principal Binding Projection 這支 API 是做什麼的
+這支 API 很重要，因為它解的是另一個問題：
+
+policy 只回答：
+
+Member 可以做什麼
+devops group 可以做什麼
+但它完全沒有回答：
+
+誰是 Member
+誰在 devops group
+哪個 org 進來會變成 Member
+這就是 bindings/batch 的用途。
+
+你可以這樣理解：
+
+policy projection 定義「能力」
+principal binding projection 定義「身份對應」
+沒有 bindings，Auth Platform 只知道 member 能看 document，
+但不知道 Bob 到底是不是 member。
+
+8. PUT /bindings/batch 什麼時候會呼叫
+這支 API 通常在下面幾種情況會呼叫：
+
+owner 把某個 user 加入或移出 space
+owner 把某個 org 綁到 space role
+owner 把某個 user 加入或移出 group
+owner 改了某個 principal 在這個 space 的 role/group
+也就是說，只要影響「誰在這個 space 裡具有什麼身份」，就要更新 bindings。
+
+9. PUT /bindings/batch req / resp 範例
+
+假設 engineering space 裡有這些設定：
+
+backend_engineering 部門進來就是 Member
+u_bob 被額外加入 devops group
+u_alice 是 Admin
+Request
+
+PUT /v2/internal/spaces/engineering/bindings/batch
+Content-Type: application/json
+Authorization: Bearer <space-be-service-token>
+{
+  "space_id": "engineering",
+  "binding_version": 42,
+  "source_updated_at": "2026-03-30T14:05:00Z",
+  "sync_mode": "delta",
+  "upserts": [
+    {
+      "principal_type": "org",
+      "principal_id": "backend_engineering",
+      "grant_tokens": [
+        "space:engineering:role:member"
+      ]
+    },
+    {
+      "principal_type": "user",
+      "principal_id": "u_bob",
+      "grant_tokens": [
+        "space:engineering:group:devops"
+      ]
+    },
+    {
+      "principal_type": "user",
+      "principal_id": "u_alice",
+      "grant_tokens": [
+        "space:engineering:role:admin"
+      ]
+    }
+  ],
+  "deletes": [
+    {
+      "principal_type": "user",
+      "principal_id": "u_old_member"
+    }
+  ]
+}
+Response
+
+{
+  "space_id": "engineering",
+  "binding_version": 42,
+  "status": "applied",
+  "applied": {
+    "upserts": 3,
+    "deletes": 1
+  },
+  "updated_at": "2026-03-30T14:05:03Z"
+}
+10. 這支 binding API 跟 OPA 的關係是什麼
+OPA 本身不會去理解 UI 的「member list」「department list」「group member list」。
+OPA 只會看 decision input 裡的 principal_tokens。
+
+所以在 Bob 發請求時，Auth Platform 會這樣組裝 subject：
+
+先從 token 知道 user_id = u_bob
+從 org_user_snapshot 知道 Bob 屬於 backend_engineering
+查 space_principal_bindings
+org:backend_engineering -> role:member
+user:u_bob -> group:devops
+union 之後得到：
+{
+  "user_id": "u_bob",
+  "principal_tokens": [
+    "space:engineering:user:u_bob",
+    "space:engineering:org:backend_engineering",
+    "space:engineering:role:member",
+    "space:engineering:group:devops"
+  ],
+  "group_ids": ["devops"]
+}
+接著 OPA 才拿這些 principal_tokens 去比對 compiled rule set。
+
+也就是說：
+
+bindings/batch 決定 Bob 會變成什麼身份
+rule-sets 決定這些身份能做什麼
+OPA 把兩者合起來算出 allow / deny
+11. 一句話分清楚這三件事
+你跟老闆講時，可以直接用這三句：
+
+UI / canonical policy：管理者設定規則的地方
+bindings projection：把「誰屬於什麼身份」投影到授權平台
+policy projection：把「這些身份能做什麼」投影到授權平台
+這三者合起來，Auth Platform 才能做完整 ABAC 決策。
+
+12. 最後一句最容易講懂的版本
+
+compiled policy 是從 UI 背後的 canonical policy 編譯出來的，不是直接由 FE 生成。
+bindings/batch 是在告訴授權平台「誰在這個 space 裡是 member、admin、devops」。
+rule-sets + activate 是在告訴授權平台「member、admin、devops 各自能做什麼」，而且要用 version 化、原子切換的方式上線。
