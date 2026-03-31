@@ -311,6 +311,605 @@
 
 兩邊是合作，不是二選一。
 
+## 新 resource onboarding 與 relation model
+
+### 核心結論
+
+新 resource 不應該直接把 policy rule 註冊到 `Auth Platform`。
+
+比較合理的做法是：
+
+1. `Resource BE` 先把自己的 `authorization contract` 註冊給 `Space BE`
+2. `Space BE` 決定是否把它納入 `space` 統一權限模型
+3. `Space BE` 再把 canonical policy compile 成 `rule_sets`
+4. `Auth Platform` 只接收 compiled projection，作為 runtime decision store
+
+也就是：
+
+- `Resource BE` 註冊的是 contract
+- `Space BE` 發布的是 policy
+- `Auth Platform` 執行的是 decision
+
+### 一個新的獨立型 resource 接進平台的實際例子：`asset`
+
+#### Step 1. `Resource BE -> Space BE` 註冊 resource contract
+
+這支 API 是建議補上的平台內部 API。
+
+**Request**
+
+```http
+PUT /v1/internal/resource-contracts/asset
+Authorization: Bearer <resource-be-service-token>
+Content-Type: application/json
+```
+
+```json
+{
+  "resource_type": "asset",
+  "display_name": "Assets",
+  "description": "Software and infrastructure assets inside a space",
+  "category": "app_resource",
+  "actions": [
+    "read",
+    "create",
+    "update",
+    "delete",
+    "manage_permissions"
+  ],
+  "supported_attrs": [
+    "owner_id",
+    "classification",
+    "visibility",
+    "status"
+  ],
+  "supports_instance_override": true,
+  "authorization_mode": "space_scoped",
+  "default_template": {
+    "owner": ["read", "create", "update", "delete", "manage_permissions"],
+    "admin": ["read", "create", "update", "delete"],
+    "member": ["read"],
+    "guest": []
+  },
+  "ui": {
+    "permissions_group": "Assets",
+    "list_actions": ["read", "update", "delete"],
+    "create_action": "create"
+  },
+  "contract_version": 1
+}
+```
+
+**Response**
+
+```json
+{
+  "resource_type": "asset",
+  "contract_version": 1,
+  "status": "registered",
+  "review_status": "approved",
+  "registered_at": "2026-03-31T10:00:00Z"
+}
+```
+
+這一步的目的不是上線 policy，而是告訴 `Space BE`：
+
+- 我叫什麼 `resource_type`
+- 我有哪些 `actions`
+- decision 時需要哪些 `attrs`
+- 我支不支援 instance override
+- 平台公版 template 建議怎麼長
+
+#### Step 2. `Space BE` 查詢目前平台可接入的 resource contracts
+
+**Request**
+
+```http
+GET /v1/internal/resource-contracts
+Authorization: Bearer <space-be-service-token>
+```
+
+**Response**
+
+```json
+{
+  "items": [
+    {
+      "resource_type": "document",
+      "contract_version": 3,
+      "status": "registered"
+    },
+    {
+      "resource_type": "channel",
+      "contract_version": 2,
+      "status": "registered"
+    },
+    {
+      "resource_type": "asset",
+      "contract_version": 1,
+      "status": "registered"
+    }
+  ]
+}
+```
+
+### 某個 `space` 想啟用這個新 resource：`engineering` 使用 `asset`
+
+#### Step 3. owner 查 space 目前可啟用哪些 resource
+
+**Request**
+
+```http
+GET /api/spaces/engineering/available-resource-types
+Authorization: Bearer <owner-token>
+```
+
+**Response**
+
+```json
+{
+  "space_id": "engineering",
+  "items": [
+    {
+      "resource_type": "asset",
+      "display_name": "Assets",
+      "contract_version": 1,
+      "enabled": false,
+      "default_template_available": true
+    }
+  ]
+}
+```
+
+#### Step 4. owner 把 `asset` 納入這個 `space`
+
+這一步的意思不是直接上線 rule，而是把它加入此 `space` 的 canonical policy draft。
+
+**Request**
+
+```http
+POST /api/spaces/engineering/resource-types
+Authorization: Bearer <owner-token>
+Content-Type: application/json
+```
+
+```json
+{
+  "resource_type": "asset",
+  "contract_version": 1,
+  "source_template": "default",
+  "customize_now": false
+}
+```
+
+**Response**
+
+```json
+{
+  "space_id": "engineering",
+  "resource_type": "asset",
+  "matrix_version": 8,
+  "status": "added_to_draft",
+  "generated_permissions": [
+    "asset.read",
+    "asset.create",
+    "asset.update",
+    "asset.delete",
+    "asset.manage_permissions"
+  ]
+}
+```
+
+這一步後，`Permissions` UI 會多出 `Assets` 區塊。
+
+#### Step 5. owner 讀取更新後的 permission config
+
+**Request**
+
+```http
+GET /api/spaces/engineering/permissions/config
+Authorization: Bearer <owner-token>
+```
+
+**Response**
+
+```json
+{
+  "space_id": "engineering",
+  "matrix_version": 8,
+  "permissions": [
+    {
+      "resource_type": "asset",
+      "action": "read",
+      "cells": {
+        "owner": "allow",
+        "admin": "allow",
+        "member": "allow",
+        "guest": "deny"
+      }
+    },
+    {
+      "resource_type": "asset",
+      "action": "create",
+      "cells": {
+        "owner": "allow",
+        "admin": "allow",
+        "member": "deny",
+        "guest": "deny"
+      }
+    }
+  ]
+}
+```
+
+#### Step 6. owner 如果要調整 `asset` 的規則
+
+**Request**
+
+```http
+PUT /api/spaces/engineering/permissions/config
+Authorization: Bearer <owner-token>
+Content-Type: application/json
+```
+
+```json
+{
+  "matrix_version": 9,
+  "permissions": [
+    {
+      "resource_type": "asset",
+      "action": "read",
+      "cells": {
+        "owner": "allow",
+        "admin": "allow",
+        "member": "allow",
+        "guest": "deny"
+      }
+    },
+    {
+      "resource_type": "asset",
+      "action": "create",
+      "cells": {
+        "owner": "allow",
+        "admin": "allow",
+        "member": "allow",
+        "guest": "deny"
+      }
+    }
+  ]
+}
+```
+
+**Response**
+
+```json
+{
+  "space_id": "engineering",
+  "matrix_version": 9,
+  "status": "saved_draft"
+}
+```
+
+#### Step 7. 發布這個 `space` 的新 policy
+
+**Request**
+
+```http
+POST /api/spaces/engineering/permissions/publish
+Authorization: Bearer <owner-token>
+Content-Type: application/json
+```
+
+```json
+{
+  "matrix_version": 9,
+  "reason": "enable asset resource for engineering space"
+}
+```
+
+**Response**
+
+```json
+{
+  "space_id": "engineering",
+  "policy_version": 18,
+  "status": "publishing"
+}
+```
+
+#### Step 8. `Space BE -> Auth Platform` 上傳 `asset` 的 compiled rules
+
+**Internal Request**
+
+```http
+PUT /v2/internal/spaces/engineering/policies/18/rule-sets
+Authorization: Bearer <space-be-service-token>
+Content-Type: application/json
+```
+
+```json
+{
+  "space_id": "engineering",
+  "policy_version": 18,
+  "source_matrix_version": 9,
+  "rule_sets": [
+    {
+      "resource_type": "asset",
+      "action": "read",
+      "default_effect": "deny",
+      "rules": [
+        {
+          "rule_id": "role-matrix-asset-read-member",
+          "source_kind": "role_matrix",
+          "effect": "allow",
+          "priority": 750,
+          "target_scope": "type",
+          "target_resource_id": null,
+          "principal_any": ["space:engineering:role:member"],
+          "subject_conditions": [],
+          "resource_conditions": [],
+          "env_conditions": [],
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "resource_type": "asset",
+      "action": "create",
+      "default_effect": "deny",
+      "rules": [
+        {
+          "rule_id": "role-matrix-asset-create-member",
+          "source_kind": "role_matrix",
+          "effect": "allow",
+          "priority": 750,
+          "target_scope": "type",
+          "target_resource_id": null,
+          "principal_any": ["space:engineering:role:member"],
+          "subject_conditions": [],
+          "resource_conditions": [],
+          "env_conditions": [],
+          "enabled": true
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Internal Response**
+
+```json
+{
+  "space_id": "engineering",
+  "policy_version": 18,
+  "status": "draft_uploaded",
+  "stored_rule_set_count": 2
+}
+```
+
+#### Step 9. activate
+
+**Internal Request**
+
+```http
+POST /v2/internal/spaces/engineering/policies/18/activate
+Authorization: Bearer <space-be-service-token>
+Content-Type: application/json
+```
+
+```json
+{
+  "space_id": "engineering",
+  "policy_version": 18,
+  "expected_rule_set_count": 2,
+  "expected_checksum": "sha256:asset-policy-v18"
+}
+```
+
+**Internal Response**
+
+```json
+{
+  "space_id": "engineering",
+  "active_policy_version": 18,
+  "previous_policy_version": 17,
+  "status": "active"
+}
+```
+
+### resource 很少單獨存在，若它跟其他 resource 有關係要如何定義
+
+大多數 resource 不是孤立的。
+
+例如：
+
+- `dashboard_widget` 屬於 `dashboard`
+- `attachment` 屬於 `message` 或 `document`
+- `thread_reply` 屬於 `channel_thread`
+
+這種情況不建議每個 child resource 都長一整套獨立 policy。  
+比較好的做法是先定義 **relation model**。
+
+### 建議的兩種 relation model
+
+#### 模式 A：`inherits_parent`
+
+適合大多數 child resource。
+
+例子：
+
+- `dashboard_widget` 繼承 `dashboard`
+- `thread_reply` 繼承 `channel_thread`
+- `attachment` 繼承 `document` 或 `message`
+
+這種模式下，child resource 不一定要在 `Permissions` UI 裡變成獨立一塊。
+
+#### 模式 B：`independent_with_parent_constraints`
+
+適合 child resource 有自己獨立 action，但仍受 parent 約束。
+
+例子：
+
+- `dashboard_widget.move`
+- `task_comment.delete`
+- `channel_thread.lock`
+
+### 關聯型 resource 的 contract 範例：`dashboard_widget`
+
+**Request**
+
+```http
+PUT /v1/internal/resource-contracts/dashboard_widget
+Authorization: Bearer <dashboard-service-token>
+Content-Type: application/json
+```
+
+```json
+{
+  "resource_type": "dashboard_widget",
+  "display_name": "Dashboard Widgets",
+  "category": "dashboard_child_resource",
+  "actions": ["read", "update", "delete", "move"],
+  "supported_attrs": [
+    "resource_parent_id",
+    "resource_parent_type",
+    "widget_type",
+    "owner_id"
+  ],
+  "supports_instance_override": false,
+  "authorization_mode": "inherits_parent",
+  "relation_model": {
+    "parent_resource_type": "dashboard",
+    "parent_id_field": "resource_parent_id",
+    "parent_type_field": "resource_parent_type",
+    "action_mapping": {
+      "read": "dashboard.read",
+      "update": "dashboard.update",
+      "delete": "dashboard.update",
+      "move": "dashboard.update"
+    }
+  },
+  "default_template": null,
+  "contract_version": 1
+}
+```
+
+**Response**
+
+```json
+{
+  "resource_type": "dashboard_widget",
+  "contract_version": 1,
+  "status": "registered"
+}
+```
+
+### 關聯型 resource 在 runtime 怎麼判斷
+
+如果 `dashboard_widget` 完全繼承 `dashboard`，那就不需要另外在 `Space BE` 生一整套 `dashboard_widget.*` rules。
+
+runtime 時由 `Dashboard BE` 做 action mapping：
+
+- `dashboard_widget.read -> dashboard.read`
+- `dashboard_widget.update -> dashboard.update`
+
+例如 Bob 點 widget 時，`Dashboard BE` 先讀到：
+
+```json
+{
+  "widget_id": "cpu_widget_01",
+  "dashboard_id": "devops-monitor"
+}
+```
+
+然後它不是去問 `dashboard_widget.read`，而是直接問 parent resource：
+
+**Internal Request**
+
+```http
+POST /v2/internal/decisions/check
+Authorization: Bearer <dashboard-be-service-token>
+Content-Type: application/json
+```
+
+```json
+{
+  "space_id": "engineering",
+  "action": "read",
+  "resource": {
+    "resource_id": "devops-monitor",
+    "resource_type": "dashboard",
+    "space_id": "engineering",
+    "visibility": "space"
+  },
+  "context": {
+    "child_resource_type": "dashboard_widget",
+    "child_resource_id": "cpu_widget_01"
+  }
+}
+```
+
+**Response**
+
+```json
+{
+  "space_id": "engineering",
+  "decision": {
+    "allow": true,
+    "matched_rule_id": "role-matrix-dashboard-read-member"
+  }
+}
+```
+
+這樣做的好處是：
+
+- 不需要為每個 widget action 再長一套完整 rules
+- child resource 可以天然跟 parent 保持一致
+- rule volume 不會失控
+
+### 新增一種 resource 的完整接入清單
+
+#### Resource team 要做
+
+1. 定義 `resource_type`
+2. 定義 `actions`
+3. 定義 `supported_attrs`
+4. 定義是否 `supports_instance_override`
+5. 定義 `authorization_mode`
+6. 如果是 child resource，定義 `relation_model`
+7. 向 `Space BE` 註冊 contract
+8. 在 runtime 接 `Auth Platform` 的 check / batch check
+9. 在寫操作前做 hard enforcement
+
+#### Space / platform team 要做
+
+1. 接收並保存 resource contract catalog
+2. 決定這個 resource 是獨立進入 policy matrix，還是繼承 parent
+3. 如果是獨立 resource：
+   - 加到 template
+   - 加到 `Permissions` UI
+   - 讓 compiler 支援它
+4. 如果是關聯型 resource：
+   - 定義 inheritance / mapping 規則
+5. 當某個 `space` 啟用它時，把它納入該 `space` 的 canonical policy
+6. 發布後 compile 成 `rule_sets`
+7. 上傳到 `Auth Platform`
+
+#### Auth Platform 要做
+
+1. 不需要理解 resource 的業務 UI
+2. 接收 compiled `rule_sets`
+3. 在 runtime 用 attrs + bindings + policy 做 decision
+
+### 一句話總結
+
+新 resource 應該先把自己的 `authorization contract` 註冊給 `Space BE`，
+由 `Space BE` 決定它是獨立 resource 還是 parent-child 關聯 resource，
+再把該 `space` 的 policy compile 成 `rule_sets` 發布到 `Auth Platform`。
+
+如果是 child resource，預設應優先走 parent inheritance，而不是另外長一整套 policy rules。
+
 ## 共用情境
 
 ### 共用角色
