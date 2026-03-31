@@ -1,0 +1,1073 @@
+Q:
+已附件的UI來解釋要怎麼設定跟實際運作
+並解釋目前的架構有哪些performance問題我們有思考過
+尤其是下面幾隻api
+GET /api/spaces/{space_id}/me/capabilities
+POST /api/spaces/{space_id}/me/resource-type-capabilities
+POST /api/spaces/{space_id}/me/resource-instance-capabilities
+你可以直接用下面這個邏輯跟老闆報告。核心目標是先讓他聽懂三件事：
+
+這個 ABAC 設計是可行的。
+UI 上怎麼設定，會怎麼轉成系統真正執行的規則。
+我們已經先想過效能問題，尤其是 capability 相關 API。
+先講結論
+
+這個設計是可行的，但前提是責任邊界要守住：
+
+Space BE 負責「人看得懂、可編輯」的權限設定。
+Auth Platform 負責「機器跑得快、可判斷」的授權決策。
+Resource BE 負責查真正的 resource 資料與做最後 enforcement。
+FE 不直接打 raw permission check，而是拿 capability snapshot 來渲染 UI。
+一句話總結可以這樣講：
+
+我們不是把整個產品都塞進授權平台，而是把「規則編輯」跟「規則執行」拆開。
+Space BE 管規則，Auth Platform 跑規則，Resource BE 管資源，這樣功能可做、效能可控、責任也清楚。
+
+用 UI 解釋設定邏輯
+
+你可以照這個順序講，會最容易懂。
+
+Members 頁
+這一頁不是在定義 permission 本身，而是在定義「誰屬於這個 space 的哪些 principal」。
+對應到你附圖裡的 Members 畫面：
+
+個人 member：直接綁定 user 到這個 space
+Department / org member：不是把 org 規則寫死在前端，而是轉成 space_id + org_id 的 binding
+群組：群組主資料留在 Space BE，但授權平台會拿到 projection，方便判斷
+所以這一頁回答的是：
+
+誰是 owner / admin / member / guest
+哪些 org 進來會自動有某種 role
+哪些 user 在哪些 group 裡
+Roles 頁
+這一頁是人類可理解的角色封裝。
+例如 Owner、Admin、Member、Guest、Contributor、External Reviewer。
+它的目的不是直接讓 OPA 判斷，而是讓 UI 和管理者能用角色思考權限。
+
+所以這一頁回答的是：
+
+我們想用哪些角色來管理 space
+每個角色大致代表什麼責任範圍
+Permissions 頁
+這一頁才是 canonical permission matrix。
+像你附圖裡的 General、Channels、Messaging、Documents、Files、Tasks，每個 action 對每個 role 是 allow / deny / inherit。
+這一頁回答的是：
+
+Member 可不可以 document.create
+Guest 可不可以 file.download
+Admin 可不可以 space.manage_members
+這一頁是給人編輯的，不是直接給 decision engine 跑的。
+
+Channels 頁
+這一頁是 resource instance override。
+你附圖裡看到的 general、design-feedback、resources，每個 channel 都可以對 base policy 做 override，而且有 Inherit / Allow / Deny。
+這一頁回答的是：
+
+一般規則是什麼
+某個 channel 有沒有特別例外
+這種 override 最適合編譯成高優先級的 instance-level rule。
+
+Audit Log 頁
+這一頁是治理與追蹤，不是授權判斷本身。
+它的價值是讓老闆知道：這套設計不是黑箱，改了什麼、誰能看什麼，都應該可追蹤。
+系統實際怎麼運作
+
+對老闆最重要的不是資料表細節，而是這個 flow：
+
+Space BE 保存 Members / Roles / Permissions / Channel Overrides 這些 UI 設定
+Space BE 把這些設定 compile 成 Auth Platform 可執行的 policy projection
+Auth Platform 再把 user 的 org snapshot、space bindings、compiled policy 合在一起做 decision
+Resource BE 真正查資料時，再向 Auth Platform 要 capability / decision
+FE 拿 capability snapshot 來顯示按鈕、列表操作、頁面入口
+一句話講法：
+
+UI 上看到的是「管理模型」，系統執行的是「編譯後的 ABAC 規則」。
+
+這三支 API 的角色
+
+API	要解的問題	誰呼叫	回傳粒度	典型畫面
+GET /api/spaces/{space_id}/me/capabilities	我在這個 space 的全域能力是什麼	Space BE -> Auth Platform	space 級	Members/Permissions/Audit Log tab 是否顯示、能不能新增 channel
+POST /api/spaces/{space_id}/me/resource-type-capabilities	這個頁面上每種 resource type 我能做什麼	Space BE 或頁面 BFF -> Auth Platform	resource type 級	Documents 頁能不能 create、Tasks 頁能不能 update
+POST /api/spaces/{space_id}/me/resource-instance-capabilities	當前列表或明細中的每一筆 resource，我能做什麼	Resource BE -> Auth Platform	resource instance 級	每列 document/channel/task 的按鈕能不能出現
+這三支 API 的設計重點是：
+
+第一支回答「看不看得到頁面或大功能」
+第二支回答「進到某一頁後，大功能有哪些」
+第三支回答「具體到這一筆資料，可不可以做某個動作」
+這樣 FE 就不用自己一顆按鈕打一支 check API。
+
+為什麼這樣設計比 FE 直接 check 好
+
+如果 FE 直接對每個按鈕打 check：
+
+頁面上按鈕一多，API 次數會爆
+每次都做 token verify + data lookup + policy eval，延遲很差
+FE 邏輯會綁死在授權細節上
+真正後端 enforcement 還是要再做一次，等於重複成本
+所以 capability snapshot 的設計，本質上是在做「批次化、頁面化、語意化」的授權結果輸出。
+
+目前架構我們已經先想過的 performance 問題
+
+你可以直接跟老闆講：我們不是等到上線才發現慢，而是設計階段就先把幾個 hotspot 看過了。
+
+最大風險不是 OPA 本身，而是資料查詢方式
+如果每個 request 都要即時去別的系統查 org、查 group、查 policy，系統一定慢。
+所以我們的解法是：
+OrgUser 先 daily sync 到 Auth Platform
+space principal bindings 先 projection 到 Auth Platform
+compiled policy 先 projection 到 Auth Platform
+也就是說，decision 熱路徑讀的是本地資料，不是跨服務即時拼接。
+
+最大的重 API 是 resource-instance-capabilities
+因為它最容易變成：
+一頁 50 筆 resource
+每筆 4 個 action
+就是 200 個 decision
+如果做錯，就會變成：
+
+200 次 rule lookup
+200 次 OPA input 組裝
+200 次重複 subject resolution
+所以我們的設計是：
+
+同一次 request 只 resolve subject 一次
+同一種 resource_type + action 只載 rule set 一次
+只對「當頁 resource」做 batch，不做全庫掃描
+GET /me/capabilities 應該很輕
+這支 API 不應該去碰 resource instance。
+它只看：
+這個人是誰
+在這個 space 有哪些 principal
+這個 space 的全域 / page-level action 是不是 allowed
+所以它的成本應該是固定而且可 cache 的。
+這一支如果慢，通常代表 architecture 做錯了。
+
+resource-type-capabilities 也應該是可控的
+這支 API 的成本取決於：
+頁面上有幾種 resource type
+每種要查幾個 action
+正常情況下這是有限集合，不會失控。
+例如 Documents / Files / Tasks / Channels 就是幾種固定 type，不是幾百種。
+
+真正不能讓 Auth Platform 做的是「query available resources」
+這是很重要的邊界。
+授權平台應該回答「這筆資源可不可以」，而不是自己變成搜尋引擎去掃整個 resource table。
+正確做法是：
+
+Resource BE 先用自己的 DB index 查 candidate resources
+再把當頁或 candidate set 丟給 Auth Platform 做 batch authorize
+最後回 FE
+如果反過來讓 Auth Platform 直接查 resource，會有兩個問題：
+
+ownership 錯掉
+效能也會更差
+Channel override 會造成 rule 數量膨脹
+因為像你附圖的 Channels 頁，理論上每個 channel 都可以 override 多個 permission。
+如果每個 channel 都複製整套 matrix，rule 數量會快速變大。
+所以我們的思路是：
+
+inherit 不產生 rule
+只有 allow/deny override 才 compile 成 instance rule
+而且 instance rule 的 priority 高於 resource type baseline
+這樣才能控制 rule volume。
+
+三支 API 的效能說明，可以這樣講
+
+GET /api/spaces/{space_id}/me/capabilities
+性質：固定集合、小而快
+成本來源：subject resolution + 少量 space-level actions
+設計重點：可 cache、不可碰 instance data
+風險：如果把 page 上所有 resource 一起算進來，這支 API 會被做爛
+POST /api/spaces/{space_id}/me/resource-type-capabilities
+性質：中等負載
+成本來源：resource_types x actions
+設計重點：只查當頁真的需要的 type 和 action
+風險：如果 FE 每次傳一大包全系統 type/action，就會浪費
+POST /api/spaces/{space_id}/me/resource-instance-capabilities
+性質：最高負載
+成本來源：page_size x actions
+設計重點：
+只查當頁
+batch
+resolve subject once
+load rule set once per (space_id, resource_type, action)
+風險：這支如果沒有 page boundary 和 batch grouping，會是主要瓶頸
+Sequence 1：Space 管理者修改權限後，系統怎麼更新
+
+
+Auth Platform
+SpaceBE
+FE
+Auth Platform
+SpaceBE
+FE
+修改 Members / Roles / Permissions / Channel Overrides
+保存 canonical policy 與 bindings
+compile 成 compiled ABAC policy
+上傳 bindings projection
+上傳 policy projection 並 activate 新版本
+新 policy_version 生效
+設定成功
+你可以這樣解釋：
+
+管理者在 UI 改的是 business-friendly 設定，真正讓系統跑得快的是 compile 後的 projection。
+
+Sequence 2：Space UI 載入時，怎麼決定哪些頁籤和按鈕要顯示
+
+
+Auth Platform
+SpaceBE
+FE
+Auth Platform
+SpaceBE
+FE
+進入 Space
+GET /me/capabilities 對應的批次判斷
+讀 org snapshot + principal bindings + space policy
+space-level capabilities
+capability snapshot
+你可以對老闆說：
+
+所以 Members、Permissions、Channels、Audit Log 這些 tab，不是前端自己猜能不能顯示，而是後端回一份能力快照。
+
+Sequence 3：列表頁怎麼決定每一列有哪些操作
+
+
+Auth Platform
+ResourceDB
+ResourceBE
+FE
+Auth Platform
+ResourceDB
+ResourceBE
+FE
+請求 Documents / Channels / Apps 列表
+查當頁 candidate resources
+回當頁資料與 attrs
+POST /me/resource-instance-capabilities 對當頁做 batch 判斷
+每筆 resource 的 capability
+資料 + capability snapshot
+這可以拿你附的 Dashboard、Channel、Asset Management 頁面來講：
+
+Dashboard：哪些 dashboard/app tile 可看、可編輯
+Channel：可不可以發文、pin message、manage settings
+Asset Management：每一列 asset 可不可以看、編輯、進一步操作
+最後建議你對老闆的收尾說法
+
+你可以這樣收：
+
+這個設計是可行的，而且我們不是只考慮功能有沒有做出來，也先把執行效率和責任邊界想清楚了。
+具體來說，我們把人編輯的權限模型留在 Space BE，把機器執行的授權決策留在 Auth Platform，把資源查詢留在 Resource BE。
+這樣既能支援 Members / Roles / Permissions / Channels / Audit Log 這種管理 UI，也能支援真正的 dashboard、channel、app、document、file、task 這些 runtime 頁面，而且三支 capability API 都有清楚的定位與性能控制方式。
+
+A:
+1. 結論
+這個 ABAC 設計是可行的，而且比只用 RBAC 更適合新的 space 授權。
+
+原因很簡單：在 space 裡，權限不只看「你是什麼角色」，還會同時看：
+
+你屬於哪個 org
+你在這個 space 裡屬於哪些 group
+你要操作的是哪種 resource
+這個 resource 有沒有特殊條件或 override
+所以我們不是放棄 RBAC，而是把 role / group / org 都當成 ABAC 的屬性，最後由授權平台做決策。這是務實的混合式 ABAC。
+
+2. 這套設計怎麼對應到 UI
+可以把管理 UI 分成 4 個層次看。
+
+第一層是 Members 頁。
+這一頁不是在定義 permission，而是在定義「誰進入這個 space、以什麼身份進入」。
+例如：
+
+某個 user 是 Admin
+某個 dept 進入這個 space 預設是 Member
+某些人再被加入 backend 或 reviewers group
+第二層是 Roles 頁。
+這一頁是管理者看得懂的抽象層。
+例如 Owner / Admin / Member / Guest / Contributor / External Reviewer。
+它的作用是讓權限管理簡單，不是直接拿去執行。
+
+第三層是 Permissions 頁。
+這一頁是整個 space 的「基礎權限矩陣」。
+例如：
+
+Member 可不可以 create documents
+Guest 可不可以 download files
+Admin 可不可以 manage members
+第四層是 Channels 頁。
+這一頁是「例外規則」。
+例如 space 預設 Member 可以發訊息，但 #incidents 只允許 devops group 發文，其他人只能看不能發。
+這類規則就是 ABAC 很適合的地方，因為它不是全域角色能單獨解決的。
+
+Audit Log 頁則是治理能力，用來回答「誰改了什麼、誰做了什麼」，不是判斷權限本身，但對老闆來說很重要，因為這代表權限不是黑箱。
+
+3. 實際運作怎麼跑
+這個設計的核心不是讓 FE 直接問授權平台「這個按鈕能不能按」，而是把責任拆乾淨：
+
+Space BE 負責保存管理 UI 上的設定
+Auth Platform 負責保存決策用 projection，並用 OPA 做授權判斷
+Resource BE 負責真正的 resource 查詢與最後 enforcement
+FE 只拿 capability snapshot 來決定 UI 呈現
+換句話說：
+
+UI 上編輯的是「人看得懂的規則」
+系統執行的是「編譯後的 ABAC 規則」
+4. 用一個例子講清楚
+以 Engineering space 為例：
+
+在 Members 頁，Backend Engineering 這個 dept 被綁成 Member。
+在 Permissions 頁，Member 被設定成可以看 Documents / Files / Channels，但不能 manage members。
+在 Channels 頁，#incidents 額外設定成只有 devops group 可以 send messages。
+
+那實際效果就是：
+
+Backend Engineering 的人進入 Engineering space 時，先因為 org binding 取得 Member
+如果他同時在 devops group，就會再多一個 group 屬性
+進到一般頁面時，會套用 space 的基礎權限矩陣
+進到 #incidents 時，會再套用 channel override
+最後 UI 顯示哪些按鈕、後端允不允許操作，都是根據同一套授權結果
+這就是「基礎規則 + 特例 override」的運作方式。
+
+5. 三支 API 為什麼要分開
+這三支 API 其實是在解三種不同層級的問題。
+
+GET /api/spaces/{space_id}/me/capabilities
+
+回答的是「我在這個 space 的整體能力是什麼」
+用來控制 space 級 UI
+例如看不看得到 Permissions、Members、Audit Log，能不能 create channel
+POST /api/spaces/{space_id}/me/resource-type-capabilities
+
+回答的是「在這個頁面裡，這種 resource 類型我能做什麼」
+用來控制頁面級功能
+例如在 Documents 頁能不能 create、在 Tasks 頁能不能 update
+POST /api/spaces/{space_id}/me/resource-instance-capabilities
+
+回答的是「當前這一頁列出來的每一筆 resource，我能做什麼」
+用來控制列表列操作或 detail page 按鈕
+例如某一份 document 能不能 edit/delete，某個 channel 能不能 post/manage settings
+這樣 FE 拿到的是「能力快照」，不是逐顆按鈕自己打一支 permission check。
+
+6. 我們已經先想過的 performance 問題
+真正的風險不是 ABAC 這個概念，而是執行方式。
+
+第一個風險是跨服務即時拼資料。
+如果每次判斷都臨時去查 org system、Space BE、policy store，延遲一定高。
+所以我們把熱路徑需要的資料先放到授權平台本地：
+
+OrgUser snapshot 由外部團隊每日 sync
+space principal bindings 由 Space BE 即時推送
+compiled policy 由 Space BE 發布後同步到授權平台
+第二個風險是 resource-instance-capabilities。
+這是最重的一支 API，因為它很容易變成「一頁 50 筆資源，每筆 4 個 action」。
+如果設計錯，就會變成 200 次重複判斷。
+
+第三個風險是 channel override 造成 rule 膨脹。
+如果每個 channel 都複製整套 permission matrix，規則量會爆掉。
+所以我們的做法是：
+
+基礎規則只存一次
+只有 Allow / Deny 的 override 才額外編譯成 instance rule
+Inherit 不產生 rule
+第四個風險是把 query available resources 做錯地方。
+授權平台不應該自己去掃所有 documents/files/tasks。
+正確做法一定是：
+
+Resource BE 先用自己的 DB index 查 candidate resources
+再把當頁資料批次丟給授權平台做 authorize
+最後回 FE
+7. 這三支 API 的效能設計
+GET /me/capabilities 應該是最輕的。
+因為它只看 space 級 action，不碰 resource instance。這支 API 應該可 cache，而且成本接近固定。
+
+POST /resource-type-capabilities 是中等負載。
+因為它只算某幾種 resource type 與某幾個 action 的組合，範圍是可控的。
+
+POST /resource-instance-capabilities 是最重的。
+所以它一定要守幾個原則：
+
+只針對當頁 resource 做 batch，不做全庫掃描
+同一個 request 只 resolve subject 一次
+同一組 (space_id, resource_type, action, policy_version) 只載 rule set 一次
+只把真正的 exception 放到 instance rule，不能每個 resource 都展平成完整規則
+如果這幾件事做好，ABAC 不是不能跑，而是可以在合理成本下跑。
+
+8. 最後的管理層結論
+這個設計的價值，不只是「能不能做出權限功能」，而是它同時兼顧了 3 件事：
+
+管理上可理解：因為 UI 仍然是 Members、Roles、Permissions、Channels 這種產品語言
+系統上可執行：因為授權平台吃的是 compile 後的 ABAC projection
+效能上可控制：因為我們把最重的判斷限定在 batch、page、local projection 這三個原則內
+如果要用一句話收尾，可以這樣講：
+
+這套方案可行，而且我們不是只把權限做出來，而是把規則編輯、規則執行、資源查詢三件事拆清楚，所以功能、治理、效能三件事都能一起成立。
+
+A:
+第 1 張：為什麼要用 ABAC
+新的 space 授權不只是角色問題，還會同時受到 org、group、resource type、resource override 影響。
+所以單純 RBAC 不夠，我們採用的是「以 ABAC 為核心、把 role/group/org 當成屬性輸入」的混合式設計。
+這樣既保留管理上的直覺，也能處理 channel override、敏感文件、部門綁定這類情境。
+
+第 2 張：UI 上怎麼設定
+管理 UI 可以分成四層：
+
+Members：定義誰進入 space、以什麼身份進入，包含 user 與 org 綁定
+Roles：定義管理者看得懂的角色，例如 Owner、Admin、Member
+Permissions：定義 space 的基礎權限矩陣
+Channels：定義個別 channel 的例外規則 override
+也就是說，UI 上編輯的是「人看得懂的規則」，不是直接讓執行引擎跑的格式。
+
+第 3 張：系統實際怎麼運作
+Space BE 保存 Members / Roles / Permissions / Channel Overrides，並把它們編譯成授權平台可執行的 policy projection。
+Auth Platform 保存 OrgUser snapshot、space principal bindings、compiled policy，再用 OPA 做授權判斷。
+Resource BE 負責查真正的資源資料並做最後 enforcement。
+FE 不直接打 raw permission check，而是拿 capability snapshot 來決定 UI 呈現。
+
+第 4 張：三支 capability API 的定位
+
+GET /api/spaces/{space_id}/me/capabilities
+決定 space 級 UI，例如 Members、Permissions、Audit Log 能不能看到
+POST /api/spaces/{space_id}/me/resource-type-capabilities
+決定頁面級功能，例如 Documents 頁能不能 create
+POST /api/spaces/{space_id}/me/resource-instance-capabilities
+決定列表或明細中的每一筆 resource 可以做哪些操作
+這樣 FE 拿到的是一份能力快照，不需要逐顆按鈕自己打一支 permission check。
+
+第 5 張：我們已經先想過的效能問題
+最大風險不是 ABAC 概念本身，而是執行方式。
+我們已經先控制 4 個關鍵點：
+
+熱路徑不跨服務即時拼資料，OrgUser、bindings、compiled policy 都先落在授權平台本地
+resource-instance-capabilities 只做當頁 batch，不做全庫掃描
+channel override 只編譯真正的例外規則，inherit 不產生 rule，避免規則量膨脹
+query available resources 由 Resource BE 先查 candidate，再批次授權，不讓 Auth Platform 變成搜尋引擎
+一句話收尾：
+
+這套方案可行，因為它同時兼顧了管理上的可理解、系統上的可執行，以及效能上的可控制。
+
+Q: 實際運作
+A: 第 3 張：實際運作範例，從設定到畫面
+投影片標題
+一個實際例子：同一個人進入 Space 後，畫面為什麼會不一樣
+
+投影片內容
+
+以 Bob Johnson 進入 Engineering space 為例
+權限不是只看角色，而是同時看 org + group + resource + override
+UI 上的設定，會先由 Space BE 編譯，再由 Auth Platform 做最終判斷
+口頭講法
+我們用一個很具體的例子來看整個流程。
+
+假設 Bob Johnson 是 Backend Engineering 部門的人，這個資訊每天會從 org 系統同步到授權平台，所以授權平台知道 Bob 的 dept_id=backend_engineering。
+
+接著在 Engineering 這個 space 的管理 UI 裡，我們做了幾個設定：
+
+在 Members 頁裡，我們把 Backend Engineering 這個部門加入這個 space，並指定它的預設身份是 Member。
+這代表 Backend 部門的人，只要進到這個 space，就先有 Member 的基本權限。
+
+在 Permissions 頁裡，我們設定：
+
+Member 可以看 Dashboard、Documents、Files、Tasks、Channels
+Member 可以在一般 channel 發訊息
+Member 不能管理 members
+Member 不能修改 space permissions
+Admin 才能進 Permissions、Members、Audit Log 這些管理功能
+在 Members 或 group 管理邏輯裡，我們另外把 Bob 放進 devops group。
+這個 group 主資料仍然在 Space BE，但授權平台會收到 projection，知道 Bob 在 Engineering space 裡同時具備 Member 跟 devops group 這兩個身份。
+
+在 Channels 頁裡，我們又做一個 override：
+
+一般 Member 在 #incidents 只能看，不能發文
+devops group 在 #incidents 可以發文、pin message
+所以當 Bob 進入 Engineering space 的時候，系統不是只看他是不是 Member，而是會做這幾步：
+
+先從授權平台本地的 OrgUser snapshot 找到 Bob 的 org 資訊
+再看 space principal bindings，確認 Backend Engineering -> Member
+再補上 Bob 自己在這個 space 裡的 group，例如 devops
+最後把這些資訊組合成 Bob 在這個 space 的有效身份：
+他是 Member
+他屬於 devops group
+這時候 Bob 看到的畫面會是：
+
+可以看到 Dashboard、Documents、Files、Tasks、Channels
+看不到 Permissions、Members、Audit Log 這些管理頁
+進 #general 可以正常發文
+進 #incidents 也可以發文，因為他多了 devops group 的特例權限
+如果今天換成另一個同樣屬於 Backend Engineering、但不在 devops group 的人進來：
+
+他一樣可以進 space
+一樣可以看一般內容
+但進 #incidents 時就只能看，不能發文
+所以這個例子要讓老闆理解的是：
+
+我們不是只有一個粗粒度 role，而是把「部門進 space 的身份」、「群組特例」、「channel override」三層疊在一起，最後做成精準的 ABAC 判斷。
+
+第 4 張：三支 Capability API 怎麼支撐實際畫面
+投影片標題
+同一個使用者進入頁面時，三支 API 各自負責哪一層判斷
+
+投影片內容
+
+GET /me/capabilities：決定 space 級 UI
+POST /resource-type-capabilities：決定頁面級功能
+POST /resource-instance-capabilities：決定每一筆資料的操作按鈕
+口頭講法
+我們還是用剛剛的 Bob 例子，來看他從進 space 到看到每個按鈕，系統實際怎麼跑。
+
+第一步，Bob 剛進入 Engineering space
+這時候 FE 不會逐個按鈕去問「能不能看」。
+而是由 Space BE 去拿：
+
+GET /api/spaces/{space_id}/me/capabilities
+
+這支 API 回答的是 space 級問題，例如：
+
+能不能看到 Members
+能不能看到 Permissions
+能不能看到 Audit Log
+能不能 Create Channel
+能不能 Create Document
+如果 Bob 是 Member + devops，那回來的結果可能像這樣：
+
+space.view = true
+channel.create = false
+document.create = true
+space.manage_members = false
+space.manage_permissions = false
+audit_log.view = false
+所以 FE 收到這份 capability snapshot 後，就知道：
+
+Members / Permissions / Audit Log 這些管理 tab 不要顯示
+Documents 的新增按鈕可以顯示
+Create Channel 按鈕不要顯示
+這支 API 的重點是：
+它只處理 space 級能力，所以理論上是最輕、最穩定、最好 cache 的。
+
+第二步，Bob 進到某個功能頁，例如 Asset Management 或 Documents
+這時候系統要知道的不是「整個 space 能做什麼」，而是「在這個頁面裡，這種 resource type 能做什麼」。
+
+所以 Space BE 或頁面 BFF 會呼叫：
+
+POST /api/spaces/{space_id}/me/resource-type-capabilities
+
+例如傳：
+
+resource_types = ["document", "channel", "asset"]
+actions = ["read", "create", "update", "delete", "manage_permissions"]
+回來的結果可能是：
+
+document.create = true
+document.delete = false
+channel.read = true
+channel.manage_settings = false
+asset.read = true
+asset.delete = false
+這時 FE 就知道：
+
+在 Documents 頁顯示 New Document
+但不要顯示整頁的 Bulk Delete
+在 Asset Management 頁可以進列表
+但不要顯示只有管理員才有的管理按鈕
+這支 API 的意義是：
+
+它把判斷範圍縮在「某個頁面真正需要的 resource type」
+不會一進頁面就把全系統所有 type 都算一遍
+所以負載是可控的
+第三步，Bob 真的看到一個列表，例如 Asset Management 列出 20 筆資產
+這時候還有最後一層問題：
+Bob 對「每一筆」資料是不是都一樣有權限？其實不一定。
+
+例如：
+
+asset_1 是一般資產，Bob 可以看
+asset_2 是 critical，只有 admin 或特定群組可以刪除
+asset_3 屬於某個 restricted 區域，只允許特定 group 更新
+所以 Resource BE 會查完當頁 20 筆資料後，再批次呼叫：
+
+POST /api/spaces/{space_id}/me/resource-instance-capabilities
+
+然後把當頁資源清單和要判斷的 action 一起送出去，例如：
+
+asset_1, asset_2, asset_3 ... asset_20
+actions: read, update, delete
+回來後，可能會得到：
+
+asset_1: read=true, update=false, delete=false
+asset_2: read=true, update=false, delete=false
+asset_3: read=true, update=true, delete=false
+這時 FE 才能精準地控制每一列的按鈕：
+
+哪些資產列可以進 detail
+哪些可以編輯
+哪些刪除按鈕要隱藏
+這支 API 是三支裡最重的，所以我們特別先想過效能：
+
+只對「當頁」資源做 batch，不做全庫掃描
+同一個 request 只 resolve Bob 的身份一次
+同一組 space + resource_type + action 只載一次 rule set
+不讓 FE 自己打一堆單筆 check API
+所以老闆可以這樣理解：
+
+第一支 API 決定「能不能進這個功能」
+第二支 API 決定「進來後這類功能能不能用」
+第三支 API 決定「這一筆資料的按鈕能不能按」
+
+你報告時可以這樣收尾
+
+所以整體上，這不是 FE 自己在猜權限，也不是授權平台去掃所有資源。
+我們是把權限判斷拆成 space 級、頁面級、資料列級三層，既能支援複雜 ABAC，又能把效能控制在可預期範圍內。
+
+Q: 實際的API req & resp, OPA運作方式
+
+A: 我用同一個例子，把 實際 API req/resp、Auth Platform 內部呼叫、以及 OPA 怎麼判斷 串起來。
+
+先講一個固定情境：
+
+使用者：Bob Johnson，user_id = u_bob
+Space：engineering
+Bob 的 org 資訊：dept_id = backend_engineering
+Space 設定：
+backend_engineering 部門進入 engineering space 時，自動成為 Member
+Bob 個人另外被加入 devops group
+Permission matrix：
+Member 可以 space.view
+Member 可以 document.create
+Member 不可以 space.manage_members
+Admin 才可以 space.manage_permissions
+Member 可以 channel.join
+channel.post_message 預設不開放
+Channel override：
+#incidents 額外允許 devops group 可以 post_message、pin_message
+所以 Bob 的最終有效身份會是：
+
+space:engineering:role:member
+space:engineering:group:devops
+1. API 1: 進入 Space 時，先拿 space 級 capability
+
+這支 API 用來決定：
+
+能不能看到 Members
+能不能看到 Permissions
+能不能看到 Audit Log
+能不能看到 Create Document
+能不能看到 Create Channel
+Request
+
+GET /api/spaces/engineering/me/capabilities
+Authorization: Bearer <user-token>
+Response
+
+{
+  "space_id": "engineering",
+  "policy_version": 17,
+  "capabilities": {
+    "space.view": true,
+    "space.manage_members": false,
+    "space.manage_permissions": false,
+    "audit_log.view": false,
+    "document.create": true,
+    "channel.create": false
+  }
+}
+老闆要聽懂的點
+
+Bob 可以進這個 space
+Bob 看不到 Members / Permissions / Audit Log
+Bob 可以看到 New Document
+Bob 看不到 Create Channel
+這支 API 只解 space 級問題，所以最輕。
+
+2. API 2: 進入某個頁面後，拿 resource type 級 capability
+
+假設 Bob 進到 Channels 頁和 Documents 頁，系統要先知道：
+
+對 channel 這種 resource，Bob 大方向能做什麼
+對 document 這種 resource，Bob 大方向能做什麼
+Request
+
+POST /api/spaces/engineering/me/resource-type-capabilities
+Authorization: Bearer <user-token>
+Content-Type: application/json
+{
+  "resource_types": ["channel", "document"],
+  "actions": ["join", "post_message", "pin_message", "manage_settings", "create"]
+}
+Response
+
+{
+  "space_id": "engineering",
+  "policy_version": 17,
+  "capabilities": {
+    "channel": {
+      "join": true,
+      "post_message": false,
+      "pin_message": false,
+      "manage_settings": false
+    },
+    "document": {
+      "create": true
+    }
+  }
+}
+老闆要聽懂的點
+
+Bob 對 channel 類型來說，預設只能 join
+Bob 對 document 類型來說，可以 create
+這一層還沒看「某個特定 channel」，只是看這個 resource type 的基礎能力
+這支 API 是頁面級判斷，負載中等，但可控。
+
+3. API 3: 當前列表的每一筆 resource，再拿 instance 級 capability
+
+假設 Channels 頁目前顯示兩個 channel：
+
+general
+incidents
+這時候 FE 還要知道：
+Bob 對 general 跟 incidents 這兩筆資料，是不是完全一樣？答案是不一定。
+
+Request
+
+POST /api/spaces/engineering/me/resource-instance-capabilities
+Authorization: Bearer <user-token>
+Content-Type: application/json
+{
+  "resources": [
+    {
+      "resource_id": "general",
+      "resource_type": "channel"
+    },
+    {
+      "resource_id": "incidents",
+      "resource_type": "channel"
+    }
+  ],
+  "actions": ["join", "post_message", "pin_message", "manage_settings"]
+}
+Response
+
+{
+  "space_id": "engineering",
+  "policy_version": 17,
+  "results": {
+    "general": {
+      "join": true,
+      "post_message": false,
+      "pin_message": false,
+      "manage_settings": false
+    },
+    "incidents": {
+      "join": true,
+      "post_message": true,
+      "pin_message": true,
+      "manage_settings": false
+    }
+  }
+}
+老闆要聽懂的點
+
+Bob 對 general 只能進去看，不能發文
+Bob 對 incidents 可以發文，也可以 pin
+差異不是來自角色不同，而是因為 incidents 這個 channel 有 override，且 Bob 屬於 devops group
+這支 API 最重，因為它是「當頁每一筆資料」的能力判斷。
+
+4. Resource BE 實際是怎麼問 Auth Platform 的
+
+上面三支 API 是給 FE 的。
+但真正決策時，後端會把資料整理好，再打 Auth Platform 的 internal API。
+
+以剛剛第 3 支 API 為例，Resource BE 會先查出兩個 channel 的 metadata，再呼叫：
+
+Internal Request
+
+POST /v2/internal/decisions/check/batch
+Authorization: Bearer <user-token>
+Content-Type: application/json
+{
+  "space_id": "engineering",
+  "requests": [
+    {
+      "resource": {
+        "resource_id": "general",
+        "resource_type": "channel",
+        "space_id": "engineering",
+        "visibility": "space"
+      },
+      "actions": ["join", "post_message", "pin_message", "manage_settings"]
+    },
+    {
+      "resource": {
+        "resource_id": "incidents",
+        "resource_type": "channel",
+        "space_id": "engineering",
+        "visibility": "space"
+      },
+      "actions": ["join", "post_message", "pin_message", "manage_settings"]
+    }
+  ],
+  "include_trace": true
+}
+Internal Response
+
+{
+  "space_id": "engineering",
+  "policy_version": 17,
+  "subject": {
+    "user_id": "u_bob"
+  },
+  "results": [
+    {
+      "resource_id": "general",
+      "decisions": {
+        "join": {
+          "allow": true,
+          "matched_rule_id": "role-matrix-channel-join-member",
+          "reason": "matched type-level allow"
+        },
+        "post_message": {
+          "allow": false,
+          "matched_rule_id": "",
+          "reason": "default deny"
+        },
+        "pin_message": {
+          "allow": false,
+          "matched_rule_id": "",
+          "reason": "default deny"
+        },
+        "manage_settings": {
+          "allow": false,
+          "matched_rule_id": "",
+          "reason": "default deny"
+        }
+      }
+    },
+    {
+      "resource_id": "incidents",
+      "decisions": {
+        "join": {
+          "allow": true,
+          "matched_rule_id": "role-matrix-channel-join-member",
+          "reason": "matched type-level allow"
+        },
+        "post_message": {
+          "allow": true,
+          "matched_rule_id": "channel-override-incidents-devops-post-message",
+          "reason": "matched instance-level allow"
+        },
+        "pin_message": {
+          "allow": true,
+          "matched_rule_id": "channel-override-incidents-devops-pin-message",
+          "reason": "matched instance-level allow"
+        },
+        "manage_settings": {
+          "allow": false,
+          "matched_rule_id": "",
+          "reason": "default deny"
+        }
+      }
+    }
+  ]
+}
+這一層回的是 raw decision。
+Resource BE 再把它轉成 FE 比較好吃的 capability snapshot。
+
+5. OPA 真正吃進去的 input 長什麼樣
+
+Auth Platform 不會把 UI matrix 直接丟給 OPA。
+它會先做三件事：
+
+驗證 token，拿到 user_id = u_bob
+讀本地 org_user_snapshot
+讀本地 space_principal_bindings
+所以送進 OPA 前，Bob 的 subject 會先被整理成：
+
+{
+  "subject": {
+    "user_id": "u_bob",
+    "status": "active",
+    "org": {
+      "dept_id": "backend_engineering",
+      "division_id": "engineering",
+      "function_ids": ["backend"]
+    },
+    "principal_tokens": [
+      "space:engineering:user:u_bob",
+      "space:engineering:org:backend_engineering",
+      "space:engineering:role:member",
+      "space:engineering:group:devops"
+    ],
+    "group_ids": ["devops"]
+  },
+  "resource": {
+    "space_id": "engineering",
+    "resource_id": "incidents",
+    "resource_type": "channel",
+    "visibility": "space"
+  },
+  "action": "post_message",
+  "rule_set": {
+    "space_id": "engineering",
+    "policy_version": 17,
+    "resource_type": "channel",
+    "action": "post_message",
+    "default_effect": "deny",
+    "rules": [
+      {
+        "rule_id": "channel-override-incidents-devops-post-message",
+        "source_kind": "channel_override",
+        "effect": "allow",
+        "priority": 950,
+        "target_scope": "instance",
+        "target_resource_id": "incidents",
+        "principal_any": ["space:engineering:group:devops"],
+        "subject_conditions": [],
+        "resource_conditions": [],
+        "env_conditions": [],
+        "enabled": true
+      }
+    ]
+  }
+}
+這就是 OPA 真正判斷的材料。
+
+6. Compiled policy 實際會長什麼樣
+
+先看 channel.join 這個 action 的 rule set。
+因為 Member 可以 join channel，所以 compile 後會像這樣：
+
+{
+  "space_id": "engineering",
+  "policy_version": 17,
+  "resource_type": "channel",
+  "action": "join",
+  "default_effect": "deny",
+  "rules": [
+    {
+      "rule_id": "role-matrix-channel-join-member",
+      "source_kind": "role_matrix",
+      "effect": "allow",
+      "priority": 750,
+      "target_scope": "type",
+      "target_resource_id": null,
+      "principal_any": ["space:engineering:role:member"],
+      "subject_conditions": [],
+      "resource_conditions": [],
+      "env_conditions": [],
+      "enabled": true
+    }
+  ]
+}
+再看 channel.post_message 這個 action。
+預設沒開給 Member，所以沒有 type-level allow；只有 incidents 的例外：
+
+{
+  "space_id": "engineering",
+  "policy_version": 17,
+  "resource_type": "channel",
+  "action": "post_message",
+  "default_effect": "deny",
+  "rules": [
+    {
+      "rule_id": "channel-override-incidents-devops-post-message",
+      "source_kind": "channel_override",
+      "effect": "allow",
+      "priority": 950,
+      "target_scope": "instance",
+      "target_resource_id": "incidents",
+      "principal_any": ["space:engineering:group:devops"],
+      "subject_conditions": [],
+      "resource_conditions": [],
+      "env_conditions": [],
+      "enabled": true
+    }
+  ]
+}
+所以：
+
+general + post_message 沒有規則命中，回到 default_effect = deny
+incidents + post_message 命中 devops 這條 instance override，回 allow
+7. OPA 怎麼判斷
+
+可以用 6 步跟老闆解釋：
+
+Auth Platform 先把 Bob 的有效身份算出來
+結果是：
+role:member
+group:devops
+再依照這次要問的 action 載入對應的 compiled rule set
+例如現在問的是 channel.post_message
+OPA 先找「目標是否符合」
+也就是：
+這條 rule 是不是給 channel
+如果是 instance rule，resource_id 是不是 incidents
+OPA 再找「主體是否符合」
+也就是：
+principal_any 有沒有跟 Bob 的 principal_tokens 相交
+這裡 space:engineering:group:devops 有命中
+OPA 如果還有 subject_conditions、resource_conditions，就繼續比對
+這例子沒有額外條件，所以直接通過
+最後選出優先級最高的命中規則
+命中 channel-override-incidents-devops-post-message
+effect 是 allow
+所以回 allow=true
+如果沒有任何規則命中，就走 default_effect。
+在這個例子裡，channel.post_message 的 default_effect = deny，所以 general 會是 deny。
+
+8. OPA 的 Rego 邏輯可以怎麼理解
+
+不用跟老闆講太多 Rego 細節，但可以用這種白話版：
+
+default allow = false
+
+candidate_rules[r] {
+  r := input.rule_set.rules[_]
+  target_match(r, input.resource)
+  principal_match(r, input.subject.principal_tokens)
+  subject_conditions_match(r, input.subject)
+  resource_conditions_match(r, input.resource)
+}
+
+winning_rules[r] {
+  some r in candidate_rules
+  r.priority == max([x.priority | x := candidate_rules[_]])
+}
+
+deny {
+  some r in winning_rules
+  r.effect == "deny"
+}
+
+allow {
+  not deny
+  some r in winning_rules
+  r.effect == "allow"
+}
+老闆只要理解這件事就夠了：
+
+OPA 不知道 UI 長什麼樣，它只知道輸入有哪些 subject/resource/action/policy data，然後依照命中的規則、優先級、allow/deny 去算結果。
+
+9. 這三支 API 的效能重點，也可以用這個例子直接講
+
+以 Bob 的 Channels 頁為例，假設當頁有 20 個 channel，每個 channel 要判斷 4 個 action：
+
+join
+post_message
+pin_message
+manage_settings
+直覺上像是 80 次 decision。
+但我們不會做成 80 次完整查詢。
+
+實際上會是：
+
+subject resolution 只做 1 次
+org_user_snapshot 只讀 1 次
+space_principal_bindings 只讀 1 次
+channel.join / post_message / pin_message / manage_settings 這 4 個 rule set 各載 1 次
+OPA 在記憶體內做 80 次 evaluation
+所以真正重的是「rule evaluation 次數」，不是「資料載入次數」。
+這就是為什麼 resource-instance-capabilities 雖然最重，但仍然是可控的。
+
+一句話讓老闆記住
+可以這樣收：
+
+這套設計不是把每個按鈕都拿去遠端即時判斷，而是先把 org、space binding、compiled policy 都準備好，讓 OPA 在本地快速判斷。
+所以它可以同時支援複雜 ABAC，並把效能控制在 page-level batch 的範圍內。

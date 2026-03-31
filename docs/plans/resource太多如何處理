@@ -1,0 +1,173 @@
+Q: 這個design rule怎麼來的? resource一多會不會最後rule最後大爆炸?
+
+A: 會，如果 rule 的設計方式錯了，最後一定會爆。
+所以重點不是「ABAC 會不會爆」，而是「我們把什麼東西編譯成 rule」。
+
+先講結論
+我們現在這個 design rule，不是從 OPA 規格硬推的，而是從 3 個產品事實推導出來的：
+
+UI 上有「基礎權限矩陣」
+例如 Member 可不可以 document.create
+
+UI 上有「例外規則」
+例如 #incidents 只有 devops group 可以 post_message
+
+系統上有「大量 resource instance」
+例如 1 個 space 裡有 1,000 個 channel、10,000 個 document
+
+所以 compiler 的原則一定要是：
+
+基礎規則編成 type-level rule
+例外規則才編成 instance-level rule
+binding 跟 policy 分開
+resource 本身多，不代表 rule 要跟著等比例變多
+這就是這個 design rule 的來源。
+
+如果設計錯，會怎麼爆
+最危險的做法是：
+
+每個 resource instance 都複製一整套 permission matrix
+每個 role x action x resource 都生成一條 rule
+這樣 rule 數量會接近：
+
+space數 × resource數 × action數 × role數
+
+舉個很直觀的例子：
+
+1 個 space
+1,000 個 channel
+8 個 channel action
+6 個 role
+如果你把每個 channel 都展平成完整 rule，光 channel 就會變成：
+
+1,000 × 8 × 6 = 48,000 條 rule
+
+而且這還只是 channel，還沒算 document、file、task、dashboard、app。
+
+這種做法一定不行。
+
+我們現在這個設計，為什麼不會同樣爆
+因為我們選的是另一種模型：
+
+第一層，基礎權限只存一次
+例如 channel.join、channel.manage_settings 這些，不會因為 space 裡有 1,000 個 channel，就存 1,000 份。
+它只存成：
+
+resource_type = channel
+action = join
+principal_any = role:member
+也就是說，這類規則的數量比較接近：
+
+space數 × resource_type數 × action數 × role數
+
+不是跟 resource instance 綁在一起。
+
+第二層，只有例外才產生 instance rule
+例如只有 #incidents 跟一般 channel 不一樣，那 compiler 才會多生出一條：
+
+resource_type = channel
+action = post_message
+target_scope = instance
+target_resource_id = incidents
+principal_any = group:devops
+所以 rule 數量增加的來源不是「resource 很多」，而是「真正有多少 override」。
+
+這兩者差很多。
+
+第三層，group / org 不會被編成 permission rule 爆量
+這也是設計上很關鍵的一刀。
+
+org -> role
+user -> group
+這些不是 policy rule。
+它們放在 space_principal_bindings。
+
+也就是說：
+
+binding 是「誰變成什麼身份」
+policy 是「這些身份能做什麼」
+如果把 binding 也一起展平成 rule，規模會再放大一次。
+我們現在的設計就是刻意把它拆開，避免 explosion。
+
+可以用一個公式跟老闆講
+有兩種規模成長方式：
+
+錯的方式
+規則數 ≈ resources × actions × roles
+
+對的方式
+規則數 ≈ resource_types × actions × roles + overrides + conditional_rules
+
+差別就在於：
+
+前者跟每一筆 resource 綁在一起
+後者只跟「類型」和「真正的例外」綁在一起
+這是我們刻意的設計選擇。
+
+再用一個具體數字講一次
+假設 Engineering space 有：
+
+1,000 個 channel
+10,000 份 document
+6 個 role
+20 個常用 action
+如果每筆都展開，rule 量會非常大。
+但如果走我們的模型：
+
+channel 的 base matrix 只是一小組 type-level rules
+document 的 base matrix 也只是一小組 type-level rules
+只有像 #incidents、restricted document 這種真的有特殊要求的，才額外加 instance rule
+那最後 rule 數量通常會落在：
+
+一組固定的 base rules
+加上一小部分 override rules
+而不是跟 11,000 個 resource instance 一起線性膨脹
+所以 resource 多，真正會變多的是什麼
+不是 rule store 先爆，通常先變重的是 evaluation volume。
+
+例如：
+
+一頁 50 筆資料
+每筆要判斷 4 個 action
+那就是 200 次 evaluation。
+
+但這跟 200 次「重新載入規則」不一樣。
+我們的做法是：
+
+subject resolution 做一次
+rule set 依 (space_id, resource_type, action) 載一次
+OPA 在記憶體裡重複套用到 50 筆 resource attrs 上
+所以 resource 多的主要壓力在：
+
+batch decision 次數
+當頁 page size
+OPA evaluation 次數
+不是 rule documents 本身無限制膨脹。
+
+什麼情況下還是會爆
+有 3 種情況要特別防：
+
+每個 resource 都允許單獨設一整套 ACL
+這會讓 instance override 從例外變常態，rule 一定膨脹。
+
+UI 的 inherit 被 compile 成顯式 rule
+這會讓本來不用存的東西被存下來。
+
+query available resources 想直接靠 Auth Platform 掃全庫
+這時候不是 rule store 爆，而是 decision 流量爆。
+
+所以我們的控制原則是什麼
+可以直接跟老闆這樣講：
+
+base permission 只做 type-level rule
+inherit 不產生 rule
+org/group membership 放 binding，不放 policy rule
+instance override 只留給少數例外情境
+Resource BE 先查 candidate，再做 page-level batch authorize
+這 5 件事，是避免 rule explosion 的核心。
+
+一句話總結
+這個 design rule 的本質是：
+
+我們不是把每個 resource 的每個權限都預先展平成 rule，
+而是把「共通規則」存成 type-level policy，把「差異」存成少量 override，再把大量 resource 留到 runtime 用 attributes 去判斷。
