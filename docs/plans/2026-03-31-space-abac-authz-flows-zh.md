@@ -203,6 +203,114 @@
 - 不持久化以上資料
 - 只做 evaluate
 
+## `Space BE` 與 `Resource BE` 的 rule ownership
+
+### 核心結論
+
+這不是二選一，而是分兩層：
+
+- `Space BE` 定義 `space-scoped` 的授權規則
+- `Resource BE` 定義 resource 的授權語意、action catalog、resource attrs，並做最後 enforcement
+
+所以真正要分清楚的是：
+
+- 誰定義授權模型契約
+- 誰編輯 `space` 的 policy
+- 誰提供 runtime resource 狀態
+- 誰執行 hard enforcement
+
+### 具體責任切分
+
+| 題目 | 責任方 | 說明 |
+|---|---|---|
+| 這個 resource 有哪些 action 可授權，例如 `read/update/delete/post_message` | `Resource BE` | resource domain 自己定義 action catalog |
+| 這些 action 要不要出現在 `Space Management > Permissions / Channels` 這種統一管理 UI 裡 | `Space BE` | `Space BE` 決定是否納入 `space` 統一 policy |
+| 哪些 `role/group/org` 對這些 action 是 `allow/deny/inherit` | `Space BE` | `Space BE` 是 policy authoring layer |
+| 某筆 resource 目前的 `owner_id/classification/visibility/...` 是什麼 | `Resource BE` | resource metadata source of truth 在 `Resource BE` |
+| 真正執行操作前要不要放行 | `Resource BE` + `Auth Platform` | `Auth Platform` 判斷，`Resource BE` enforce |
+
+### 用白話講
+
+`Space BE` 不是去擁有 resource domain。
+
+`Space BE` 擁有的是：
+
+- 哪些 resource type 被納入 `space` 的統一授權
+- 這些 resource type 的 `role/group/org` 規則
+- 哪些 channel 或 resource instance 需要 override
+
+`Resource BE` 擁有的是：
+
+- 這個 resource type 到底有哪些 action
+- 這個 resource decision 時要帶哪些 attrs
+- 這筆 resource 實際現在長什麼樣
+- 寫操作前最後要不要放行
+
+### 例子一：`document`
+
+#### `Resource BE` 定義
+
+- actions: `read/create/update/delete`
+- attrs: `owner_id`, `classification`, `visibility`
+
+#### `Space BE` 定義
+
+- `Member` 可不可以 `document.read`
+- `Admin` 可不可以 `document.delete`
+- `reviewers` 可不可以讀 `classification=restricted`
+
+#### `Resource BE` runtime
+
+- 讀出 `doc_123` 的 `classification=restricted`
+- 問 `Auth Platform`
+- 決定是否回資料或 `403`
+
+### 例子二：`channel`
+
+#### `Resource BE` 或 channel service 定義
+
+- actions: `join/post_message/pin_message/manage_settings`
+- attrs: `resource_id`, `visibility`
+
+#### `Space BE` 定義
+
+- 基礎 matrix
+- `#incidents` 的 override
+
+#### `Resource BE` runtime
+
+- 判斷 `general` 或 `incidents`
+- 帶入 `resource_id`
+- 問 `Auth Platform`
+
+### 推薦落地方式
+
+每個 `Resource BE` 對 `Space BE` 提供一份 `authorization contract`。
+
+例如：
+
+```json
+{
+  "resource_type": "document",
+  "actions": ["read", "create", "update", "delete"],
+  "supported_attrs": ["owner_id", "classification", "visibility"],
+  "supports_instance_override": true
+}
+```
+
+然後：
+
+- `Space BE` 用這份 contract 決定 UI 上能配置哪些權限
+- `Space BE` compile 成 `space_policy_rule_sets`
+- `Resource BE` 在 runtime 提供 attrs 並做 hard enforcement
+
+### 一句話總結
+
+`Space BE` 應該定義「`space` 裡這些 resource 的授權規則」，
+但 `Resource BE` 應該定義「這些 resource 有哪些 action、有哪些屬性、以及實際 resource 狀態」。
+
+兩邊是合作，不是二選一。
+
 ## 共用情境
 
 ### 共用角色
