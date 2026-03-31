@@ -24,6 +24,185 @@
 - `Auth Platform` 管 projections 與 OPA decision
 - `Resource BE` 管 resource 主資料與 hard enforcement
 
+## Projection 與資料責任
+
+### 核心結論
+
+- `OPA` 不負責持久化資料
+- `Auth Platform` 負責存放 runtime projection
+- `Space BE` 負責存放 human-editable 的 canonical policy 與 members/groups/org 主資料
+
+可以把責任拆成三層：
+
+1. `Space BE`
+   - 存管理者編輯的原始資料
+   - 例如 permission matrix、channel override、members、groups、org-role mapping
+2. `Auth Platform`
+   - 存給 OPA decision 使用的 projection
+   - 例如 `space_principal_bindings`、`space_policy_manifests`、`space_policy_rule_sets`
+3. `OPA`
+   - 不持久化 projection
+   - 只消費 `Auth Platform` 在 runtime 提供的 subject/resource/action/rule data
+
+### `rule_set` 要存在哪裡
+
+`rule_set` 應該存放在 `Auth Platform`，不是存放在 `OPA`，也不是把 `Space BE` 當成 runtime rule source。
+
+責任如下：
+
+- `Space BE`：在 publish 時 compile 出 `rule_set`
+- `Auth Platform`：持久化 `rule_set`，作為 decision hot path 的 runtime policy store
+- `OPA`：在 decision 時讀取 `rule_set`，做 allow/deny 判斷
+
+一句話：
+
+- `rule_set` 由 `Space BE` 產生，存進 `Auth Platform`，再由 `OPA` 執行
+
+### 資料責任對照表
+
+| 物件 | 實體存放位置 | Source of Truth | 誰建立 | 建立時機 | 用途 |
+|---|---|---|---|---|---|
+| `space_principal_bindings` | `Auth Platform` DB | `Space BE` | `Space BE` 產生 payload，`Auth Platform` 寫入 | member / org-role / group membership 變更時 | 把 `user/org` 映射成 `space` 內的 `role/group` 身份 |
+| `space_policy_manifests` | `Auth Platform` DB | runtime state 在 `Auth Platform`，來源 metadata 由 `Space BE` 提供 | `Auth Platform` 建立或更新 | policy upload / activate 時 | 記錄 active `policy_version`、checksum、published_at、status |
+| `space_policy_rule_sets` | `Auth Platform` DB | `Space BE` 編譯結果 | `Space BE` 產生 payload，`Auth Platform` 寫入 | permissions publish / override publish 時 | 提供 `OPA` decision 使用的 grouped rule data |
+| `space_policy_projection` | 建議不要單獨落一張表；概念上等於 `manifest + rule_sets` | 邏輯概念，不是獨立 SoT | `Space BE` compile 時形成 projection payload | policy publish 時 | 表示一整包可供 runtime decision 的 compiled policy |
+
+### `space_policy_projection` 是否要獨立存成一張表
+
+設計上不建議把 `space_policy_projection` 做成一張獨立 collection / table。
+
+比較好的做法是拆成兩部分：
+
+- `space_policy_manifests`
+  - 管版本、checksum、active pointer
+- `space_policy_rule_sets`
+  - 管每個 `(space_id, policy_version, resource_type, action)` 的規則內容
+
+所以：
+
+- `space_policy_projection` 是概念上的總稱
+- `manifest + rule_sets` 才是實際 runtime 落地結構
+
+### 每個 projection 回答的問題
+
+#### `space_principal_bindings`
+
+回答的是：
+
+- 誰在這個 `space` 裡，會變成什麼身份
+
+例子：
+
+- `org:backend_engineering -> role:member`
+- `user:u_alice -> role:owner`
+- `user:u_bob -> group:devops`
+
+它不是 policy。
+它不回答 `member` 能做什麼。
+它只回答誰是 `member`、誰在 `devops`。
+
+#### `space_policy_rule_sets`
+
+回答的是：
+
+- 這些身份可以做什麼
+
+例子：
+
+- `space.view`
+- `document.create`
+- `channel.post_message`
+- `channel.pin_message`
+
+它是給 `OPA` 跑的 compiled policy data。
+
+#### `space_policy_manifests`
+
+回答的是：
+
+- 這個 `space` 目前到底哪一個 `policy_version` 正在生效
+
+例子：
+
+- `engineering -> active_policy_version = 17`
+
+它不是規則內容本身，而是 active policy pointer 與 metadata。
+
+#### `space_policy_projection`
+
+它是總稱，表示：
+
+- 一份從 canonical policy compile 出來，可供 `Auth Platform` 直接做 decision 的 runtime projection
+
+但實際落地時，建議拆成：
+
+- `manifest`
+- `rule_sets`
+
+### 建立時機與 data flow
+
+#### A. member / org / group 變更
+
+1. `owner` 在 UI 改 members / org-role / group
+2. `FE -> Space BE`
+3. `Space BE` 更新主資料
+4. `Space BE -> Auth Platform: PUT /v2/internal/spaces/{space_id}/bindings/batch`
+5. `Auth Platform` 更新 `space_principal_bindings`
+
+這條流程通常不碰 policy。
+
+#### B. permissions / override 變更
+
+1. `owner` 在 UI 改 permissions / channel override
+2. `FE -> Space BE`
+3. `Space BE` 更新 canonical policy
+4. `Space BE` compile 出 `space_policy_projection`
+5. `Space BE -> Auth Platform: PUT /v2/internal/spaces/{space_id}/policies/{policy_version}/rule-sets`
+6. `Space BE -> Auth Platform: POST /v2/internal/spaces/{space_id}/policies/{policy_version}/activate`
+7. `Auth Platform` 更新 `space_policy_rule_sets + space_policy_manifests`
+
+這條流程才會更新 compiled policy。
+
+#### C. user 進行 runtime decision
+
+1. user 帶 token 進來
+2. `Auth Platform` 驗 token
+3. 讀 `org_user_snapshots`
+4. 讀 `space_principal_bindings`
+5. 組出 effective subject
+6. 讀 `space_policy_manifests` 找 active version
+7. 讀 `space_policy_rule_sets`
+8. 丟給 `OPA` 做 decision
+
+所以 `OPA` runtime 真正依賴的是：
+
+- `org_user_snapshots`
+- `space_principal_bindings`
+- `space_policy_manifests`
+- `space_policy_rule_sets`
+
+### 最容易對齊團隊的版本
+
+#### 放在 `Space BE`
+
+- canonical permission matrix
+- channel overrides
+- members
+- groups master data
+- org-role assignments 的原始管理資料
+
+#### 放在 `Auth Platform`
+
+- `org_user_snapshots`
+- `space_principal_bindings`
+- `space_policy_manifests`
+- `space_policy_rule_sets`
+
+#### 放在 `OPA`
+
+- 不持久化以上資料
+- 只做 evaluate
+
 ## 共用情境
 
 ### 共用角色
