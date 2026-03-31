@@ -1,0 +1,17 @@
+目標
+支援空間層級 (space-level) 授權。
+支援基於群組 (group-based) 的授權。
+支援基於組織 (org-based) 的授權。
+支援資源類型 (resource-type) 和資源實例 (resource-instance) 授權。
+支援頻道層級 (channel-level) 的覆寫行為。
+需有custom role能力。
+需有custom attr能力。
+需有guery available resource能力。
+
+架構
+職責劃分
+資料所有權
+
+可以先定義attr
+
+再講資料模型
