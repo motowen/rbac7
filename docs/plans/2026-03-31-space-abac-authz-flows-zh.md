@@ -910,6 +910,213 @@ Content-Type: application/json
 
 如果是 child resource，預設應優先走 parent inheritance，而不是另外長一整套 policy rules。
 
+## 新增 `resource type` 時，OPA / Rego 是否需要修改
+
+### 先講結論
+
+依這份 design 的目標狀態，**新增一個一般的 standalone `resource type` 不應該每次都修改 Rego**。
+
+正確做法是：
+
+1. `Resource BE` 註冊新的 `authorization contract`
+2. `Space BE` 把它納入 template / `space` policy
+3. `Space BE` compile 成新的 `rule_sets`
+4. `Auth Platform` 仍然用同一套通用 Rego evaluator 做 decision
+
+也就是說，新增 `resource type` 本身應該只是新增 data，不是新增 policy language。
+
+### 什麼情況才需要修改 Rego
+
+只有當新 `resource` 帶來**新的授權語意**時，才需要改 Rego。常見例子：
+
+- 新的 condition operator
+  - 例如新增 `intersects`
+- 新的 principal matching 模型
+  - 例如 `principal_any`
+- 新的 relation model
+  - 例如 parent inheritance 要由 OPA 自己理解
+- 新的 env / context 判斷
+- 新的 input schema 欄位，而且 Rego 需要直接理解它
+
+換句話說：
+
+- 新增一般 `resource`: 通常不用改 Rego
+- 新增新的 rule semantic: 才要改 Rego
+
+### 目前 repo 的現況
+
+目前 repo 裡的 OPA/Rego 還是較舊的 ABAC 模型，還沒有完全對齊這份 design 的 projection-based runtime model。
+
+目前的 `abac.rego` 與 `engine.go` 主要理解的是：
+
+- `subject.role`
+- `subject.group_ids`
+- `resource.allowed_group_ids / denied_group_ids`
+- `conditions.subject / conditions.resource`
+- `resource_type + action` 直接匹配
+
+它還沒有完整支援 design 裡的幾個關鍵 runtime 概念，例如：
+
+- `principal_tokens`
+- `principal_any`
+- `target_scope`
+- `target_resource_id`
+- `rule_set` 分組輸入
+- 更完整的 relation model
+
+所以實務上要分兩階段看：
+
+1. **第一階段**
+   - 先把 Rego / engine generic 化，升級成 design doc 的通用 rule-set evaluator
+2. **第二階段**
+   - 做完 generic 化之後，新增一般 `resource type` 就不應該再一直改 Rego
+
+### 實際例子：新增 `asset` 這個 `resource type`
+
+假設新增一個 `asset` resource，它的 contract 是：
+
+```json
+{
+  "resource_type": "asset",
+  "actions": ["read", "create", "update", "delete", "manage_permissions"],
+  "supported_attrs": ["owner_id", "classification", "visibility", "status"],
+  "supports_instance_override": true,
+  "authorization_mode": "space_scoped"
+}
+```
+
+`Space BE` 把它納入某個 `space` 的 policy 後，compile 出來的 `rule_set` 可能會是：
+
+```json
+{
+  "space_id": "engineering",
+  "policy_version": 18,
+  "resource_type": "asset",
+  "action": "read",
+  "default_effect": "deny",
+  "rules": [
+    {
+      "rule_id": "role-matrix-asset-read-member",
+      "effect": "allow",
+      "priority": 750,
+      "target_scope": "type",
+      "target_resource_id": null,
+      "principal_any": ["space:engineering:role:member"],
+      "subject_conditions": [],
+      "resource_conditions": [],
+      "env_conditions": [],
+      "enabled": true
+    }
+  ]
+}
+```
+
+如果 Rego 已經是 design 目標中的 generic evaluator，那 OPA 只會看到：
+
+- `resource_type = asset`
+- `action = read`
+- `principal_any = space:engineering:role:member`
+- `resource attrs = owner_id/classification/visibility/status`
+
+這種情況下，**不應該因為 `asset` 這個新名字而改任何一行 Rego**。
+
+### 真正要改的是哪一段 Rego
+
+以目前 repo 的狀態來看，真正要做的是一次性的 generic 化改造，而不是每新增一個 `resource` 都 patch 一次 Rego。
+
+#### 1. Subject input 從單一 `role` 升級成 `principal_tokens`
+
+目前比較接近：
+
+```rego
+resolve_subject_field(field) := input.subject.role if field == "role"
+resolve_subject_field(field) := input.subject.group_ids if field == "group_ids"
+```
+
+目標狀態應該新增對這些欄位的理解：
+
+```rego
+resolve_subject_field(field) := input.subject.principal_tokens if field == "principal_tokens"
+resolve_subject_field(field) := input.subject.group_ids if field == "group_ids"
+resolve_subject_field(field) := input.subject.org if field == "org"
+```
+
+#### 2. Rule matching 升級成 `target_scope + principal_any + conditions`
+
+目前比較接近：
+
+```rego
+matching_rules contains rule if {
+    some r in input.rules
+    r.enabled == true
+    r.resource_type == input.resource.resource_type
+    r.action == input.action
+    all_conditions_met(r.conditions)
+}
+```
+
+目標狀態應該改成：
+
+```rego
+matching_rules contains rule if {
+    some r in input.rule_set.rules
+    r.enabled == true
+    target_match(r)
+    principal_match(r)
+    subject_conditions_match(r.subject_conditions)
+    resource_conditions_match(r.resource_conditions)
+    rule := {
+        "id": r.rule_id,
+        "priority": r.priority,
+        "effect": r.effect,
+    }
+}
+```
+
+#### 3. 新增 `target_match`，支援 type-level 與 instance-level
+
+```rego
+target_match(r) if {
+    r.target_scope == "type"
+    input.resource.resource_type == input.rule_set.resource_type
+}
+
+target_match(r) if {
+    r.target_scope == "instance"
+    input.resource.resource_type == input.rule_set.resource_type
+    r.target_resource_id == input.resource.resource_id
+}
+```
+
+#### 4. 新增 `principal_match`，支援 role / group / org 的統一 principal 模型
+
+```rego
+principal_match(r) if {
+    count(r.principal_any) == 0
+}
+
+principal_match(r) if {
+    some p in r.principal_any
+    some s in input.subject.principal_tokens
+    p == s
+}
+```
+
+### 一句話總結
+
+根據目前的 design，新增 `resource type` 時，Rego 不應該跟著一直長。
+
+正確做法是：
+
+- 先把 Rego / engine 一次性改成 generic evaluator
+- 後續新增像 `asset` 這類普通 `resource`
+  - 改 contract
+  - 改 template / policy
+  - 改 compiled `rule_sets`
+  - **不改 Rego**
+
+只有當新 `resource` 帶來新的授權語意時，才需要改 Rego。
+
 ## 共用情境
 
 ### 共用角色
